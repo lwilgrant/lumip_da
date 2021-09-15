@@ -19,6 +19,8 @@ Created on Wed Jul  1 16:52:49 2020
 # v2:
     # addition of forest + crop cover maps for lu check
     # option for pseudo pc from projecting "lu" onto forest and crop eof
+    
+# why isn't 'cru' being loaded?
 
 
 # =============================================================================
@@ -101,7 +103,7 @@ flag_var=0;  # 0: tasmax
 
 
 # << SELECT >>
-flag_analysis=0;  # 0: projections onto EOF of hist vs histnolu mmm
+flag_analysis=1;  # 0: projections onto EOF of hist vs histnolu mmm
                   # 1: projections onto EOF of LUH2 forest + crop
                   
 # << SELECT >>
@@ -236,6 +238,7 @@ for obs in obs_types:
         mod_data[obs][mod]['lu'] = mod_data[obs][mod]['historical'] - mod_data[obs][mod]['hist-noLu']
         mod_data[obs][mod]['lu'] = mod_data[obs][mod]['lu'].where(ar6_land==1)
         
+    # mmm ensembles
     mod_data[obs]['mmm'] = {}  
     
     for exp in ['historical','hist-noLu','lu']:
@@ -245,8 +248,25 @@ for obs in obs_types:
         for mod in models:
             
             data.append(mod_data[obs][mod][exp])
-            
+
         mod_data[obs]['mmm'][exp] = da_ensembler(data)
+
+    # mmm k-fold ensembles (leave 1 out)
+    for mod in models:
+
+        mod_data[obs]['mmm_no_'+mod] = {}
+
+        for exp in ['historical','hist-noLu','lu']:
+
+            alt_data = []
+            cf_mod_list = cp.deepcopy(models)
+            cf_mod_list.remove(mod)
+
+            for m in cf_mod_list:
+
+                alt_data.append(mod_data[obs][m][exp])
+
+            mod_data[obs]['mmm_no_'+mod][exp] = da_ensembler(alt_data)
         
     # obs data
     os.chdir(obsDIR)      
@@ -290,11 +310,12 @@ for obs in obs_types:
             
             luh2_data[obs][lc] = nc_read(file,
                                          y1,
-                                         var='cell_area')
+                                         var='cell_area',
+                                         obs=obs)
             
-            if obs == 'berkley_earth':
+            # if obs == 'berkley_earth':
                 
-                luh2_data[obs][lc] = luh2_data[obs][lc].rename({'latitude':'lat','longitude':'lon'})
+            #     luh2_data[obs][lc] = luh2_data[obs][lc].rename({'latitude':'lat','longitude':'lon'})
             
             if correlation == "yes":
                 
@@ -344,7 +365,12 @@ for obs in obs_types:
         
         for exp in ['historical','hist-noLu','lu']:
             
-            mod_data[obs]['mmm'][exp] = mod_data[obs]['mmm'][exp].where(mask1==1)        
+            mod_data[obs]['mmm'][exp] = mod_data[obs]['mmm'][exp].where(mask1==1)     
+
+            for mod in models:
+
+                mod_data[obs]['mmm_no_'+mod][exp] = mod_data[obs]['mmm_no_'+mod][exp].where(mask1==1)   
+                mod_data[obs][mod][exp] = mod_data[obs][mod][exp].where(mask1==1)
         
         luh2_data[obs][lc] = luh2_data[obs][lc].where(mask2==1)
         
@@ -411,26 +437,33 @@ elif analysis == "luh2":
         pcs[obs] = {}
         pseudo_pcs[obs] = {}
         
-# =============================================================================
-#         weights = np.cos(np.deg2rad(mod_data[obs]['mmm']['lu'].lat))
-#         weighted_arr = xr.zeros_like(mod_data[obs]['mmm']['lu']).isel(time=0)    
-#         x = weighted_arr.coords['lon']
-#         
-#         for y in weighted_arr.lat.values:
-#             
-#             weighted_arr.loc[dict(lon=x,lat=y)] = weights.sel(lat=y).item()
-# =============================================================================
+        weights = np.cos(np.deg2rad(mod_data[obs]['mmm']['lu'].lat))
+        weighted_arr = xr.zeros_like(mod_data[obs]['mmm']['lu']).isel(time=0)    
+        x = weighted_arr.coords['lon']
+        
+        for y in weighted_arr.lat.values:
+            
+            weighted_arr.loc[dict(lon=x,lat=y)] = weights.sel(lat=y).item()
             
         for lc in landcover_types:
         
-            solver_dict[obs][lc] = Eof(luh2_data[obs][lc]) 
+            solver_dict[obs][lc] = Eof(luh2_data[obs][lc])
             eof_dict[obs][lc] = solver_dict[obs][lc].eofs(neofs=1)
             pcs[obs][lc] = solver_dict[obs][lc].pcs(npcs=1)
             pseudo_pcs[obs][lc] = solver_dict[obs][lc].projectField(mod_data[obs]['mmm']['lu'],
                                                                     neofs=1)
-    
-    print("nothing yet")
-     
+            pseudo_pcs[obs][lc] = {}
+
+            for mod in models:
+
+                solver_dict[obs]['mmm_no_'+mod] = Eof(mod_data[obs]['mmm_no_'+mod]['lu'])
+                eof_dict[obs]['mmm_no_'+mod] = solver_dict[obs]['mmm_no_'+mod].eofs(neofs=1)    
+                pseudo_pcs[obs][lc]['mmm_no_'+mod] = solver_dict[obs][lc].projectField(mod_data[obs]['mmm_no_'+mod]['lu'],
+                                                                                       neofs=1)   
+                pseudo_pcs[obs][lc][mod] = solver_dict[obs][lc].projectField(mod_data[obs][mod]['lu'],
+                                                                             neofs=1)                                               
+                                    
+        
            
 # =============================================================================
 # plotting        
@@ -438,7 +471,7 @@ elif analysis == "luh2":
 
 
 if analysis == "models":
-    
+
     pca_plot(eof_dict,
              pcs,
              pseudo_pcs,
@@ -448,7 +481,14 @@ if analysis == "models":
     
 elif analysis == "luh2":
     
-    print("nothing yet")
+    pca_plot_luh2(eof_dict,
+                  pcs,
+                  pseudo_pcs,
+                  landcover_types,
+                  obs_types,
+                  outDIR)
+                  
+
             
     
                       
