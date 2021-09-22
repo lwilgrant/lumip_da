@@ -75,8 +75,8 @@ curDIR = '/Users/Luke/Documents/PHD/lumip/da'
 os.chdir(curDIR)
 
 # data input directories
-obsDIR = os.path.join(curDIR, 'data/obs')
-modDIR = os.path.join(curDIR, 'data/mod')
+obsDIR = os.path.join(curDIR, 'data/obs/final')
+modDIR = os.path.join(curDIR, 'data/mod/final')
 # piDIR = os.path.join(curDIR, 'data/pi/final')
 mapDIR = os.path.join(curDIR, 'data/map/final')
 outDIR = os.path.join(curDIR, 'figures_v3')
