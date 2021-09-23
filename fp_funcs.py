@@ -6,9 +6,9 @@ Created on Fri Jan 12 2018
 Title: Optimal Fingerprinting after Ribes et al., 2009
 """
 
-# =============================================================================
+#%%=============================================================================
 # import
-# =============================================================================
+#===============================================================================
 
 
 import numpy as np
@@ -30,10 +30,11 @@ from matplotlib.lines import Line2D
 import matplotlib as mpl
 
 
-# =============================================================================
+#==============================================================================
 # functions
-# =============================================================================
+#==============================================================================
 
+#%%==============================================================================    
 
 def nc_read(file,
             y1,
@@ -67,7 +68,7 @@ def nc_read(file,
     
     return da
 
-#==============================================================================
+#%%==============================================================================    
 
 def ar6_mask(da,
              obs):
@@ -81,7 +82,7 @@ def ar6_mask(da,
     
     return ar6_regs
 
-#==============================================================================
+#%%==============================================================================    
 
 def weighted_mean(continents,
                   da,
@@ -104,7 +105,7 @@ def weighted_mean(continents,
             
     return matrix
 
-#==============================================================================
+#%%==============================================================================    
 
 def temp_center(ns,
                 mod_ar6):
@@ -117,7 +118,7 @@ def temp_center(ns,
         
     return mod_ar6
 
-#==============================================================================
+#%%==============================================================================    
 
 def ensembler(data_list,
               ax=False):
@@ -133,7 +134,7 @@ def ensembler(data_list,
     
     return ens_mean,nx
 
-#==============================================================================
+#%%==============================================================================    
 
 def da_ensembler(data):
     
@@ -672,14 +673,15 @@ def pca_plot_luh2(eof_dict,
 
         # plot time series
         for lc in landcover_types:
-            data = principal_components[obs][lc] - principal_components[obs][lc].mean(dim='time')
             ax = ts_axes[lc]
-            data.plot(ax=ax,
-                      add_legend=False,
-                      color='k',
-                      linestyle=ls_types['mmm'],
-                      linewidth=5,
-                      label='PC1')
+            # data = principal_components[obs][lc] - principal_components[obs][lc].mean(dim='time')
+            # ax = ts_axes[lc]
+            # data.plot(ax=ax,
+            #           add_legend=False,
+            #           color='k',
+            #           linestyle=ls_types['mmm'],
+            #           linewidth=5,
+            #           label='PC1')
             # plot mmm
             data = pseudo_principal_components[obs][lc]['mmm'] - pseudo_principal_components[obs][lc]['mmm'].mean(dim='time')
             data.plot(ax=ax,
@@ -766,7 +768,7 @@ def pca_plot_luh2(eof_dict,
 
 #%%==============================================================================   
 
-def standardize(da):
+def standard_data(da):
     
     climatology_mean = da.mean("time")
     climatology_std = da.std("time")
@@ -786,4 +788,10 @@ def standardize(da):
 #     scen_max = aligned.max(dim='concat_dim').rolling(dim={roller_dim:21},center=True).mean()
 #     scen_min = aligned.min(dim='concat_dim').rolling(dim={roller_dim:21},center=True).mean()
 #     return [mean,scen_max,scen_min]
-        
+
+#%%==============================================================================           
+
+def lengther(mask):
+    mask = mask.values.flatten()
+    mask_length = np.count_nonzero(mask)
+    return(mask_length)

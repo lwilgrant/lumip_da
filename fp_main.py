@@ -43,9 +43,9 @@ Created on Wed Jul  1 16:52:49 2020
 
 
 
-# =============================================================================
+#%%==============================================================================
 # import
-# =============================================================================
+# ===============================================================================
 
 
 import sys
@@ -65,13 +65,12 @@ import xarray as xr
 from eofs.xarray import Eof
 
 
-
-#==============================================================================
+#%%==============================================================================
 # path
-#==============================================================================
+#================================================================================
 
 
-curDIR = '/Users/Luke/Documents/PHD/lumip/da'
+curDIR = '/home/luke/documents/lumip/d_a/'
 os.chdir(curDIR)
 
 # data input directories
@@ -85,9 +84,9 @@ outDIR = os.path.join(curDIR, 'figures_v3')
 from fp_funcs import *
 
 
-#==============================================================================
+#%%==============================================================================
 # options - analysis
-#==============================================================================
+#================================================================================
 
 
 # adjust these flag settings for analysis choices only change '<< SELECT >>' lines
@@ -115,7 +114,7 @@ flag_y1=0;        # 0: 1915
                   # 1: 1965
 
 # << SELECT >>
-flag_len=1;        # 0: 50
+flag_len=0;        # 0: 50
                    # 1: 100
 
 # << SELECT >>
@@ -131,14 +130,18 @@ flag_landcover=0;  # 0: forest
                    # 1: crops
                    
 # << SELECT >>
+flag_standardize=0;  # 0: no (standardization before input to PCA and projections)
+                     # 1: yes, standardize 
+                   
+# << SELECT >>
 flag_correlation=0;  # 0: no
                      # 1: yes
                   
 # redefine some flags for luh2 testing
-if flag_analysis == 1:
+# if flag_analysis == 1:
     
-    flag_y1=0
-    flag_len=1
+#     flag_y1=0
+#     flag_len=1
 
 # << SELECT >>
 trunc=0
@@ -172,6 +175,8 @@ analyses = ['models',
             'luh2']
 landcover_types = ['forest',
                    'crops']
+standardize_opts = ['no',
+                    'yes']
 correlation_opts = ['no',
                     'yes']
 
@@ -182,6 +187,7 @@ length = lengths[flag_len]
 var = variables[flag_var]
 analysis = analyses[flag_analysis]
 landcover = landcover_types[flag_landcover]
+standardize = standardize_opts[flag_standardize]
 correlation = correlation_opts[flag_correlation]
 
 # temporal extent of analysis data
@@ -198,9 +204,11 @@ models = ['CanESM5',
 exps_start = ['historical',
               'hist-noLu']
 
-#==============================================================================
+
+#%%==============================================================================
 # mod + obs + luh2 data 
-#==============================================================================
+#================================================================================
+
 
 mod_files = {}
 mod_data = {}
@@ -332,11 +340,7 @@ for obs in obs_types:
                                          y1,
                                          var='cell_area',
                                          obs=obs)
-            
-            # if obs == 'berkley_earth':
-                
-            #     luh2_data[obs][lc] = luh2_data[obs][lc].rename({'latitude':'lat','longitude':'lon'})
-            
+        
             if correlation == "yes":
                 
                 # adjust data to be temporally centered and unit variance (check xarray for this)
@@ -346,93 +350,97 @@ for obs in obs_types:
             else:
                 
                 luh2_data[obs][lc] = luh2_data[obs][lc].where(ar6_land==1)
-                
             
-#==============================================================================
-# mutual mask of data 
-#==============================================================================
-
-
-for obs in obs_types:
-        
-    exp = 'lu'
-    arr1 = cp.deepcopy(mod_data[obs]['mmm'][exp].isel(time=0))
-    
-    if analysis == "models":
-    
-        arr2 = cp.deepcopy(obs_data[obs].isel(time=0))
-        
-    elif analysis == "luh2":
-        
-        arr2 = cp.deepcopy(luh2_data[obs][lc].isel(time=0))
-    
-    arr1 = arr1.fillna(-999)
-    arr2 = arr2.fillna(-999)
-    
-    mask1 = xr.where(arr2!=-999,1,0)
-    mask2 = xr.where(arr1!=-999,1,0).where(mask1==1).fillna(0)
-    
-    
-    if analysis == "models":
+    # standardize data
+    if standardize == "yes":
         
         for exp in ['historical','hist-noLu','lu']:
             
-            mod_data[obs]['mmm'][exp] = mod_data[obs]['mmm'][exp].where(mask1==1)
-            obs_data[obs] = obs_data[obs].where(mask2==1)
+            mod_data[obs]['mmm'][exp] = standard_data(mod_data[obs]['mmm'][exp])
         
-    
-    elif analysis == "luh2":
-        
-        for exp in ['historical','hist-noLu','lu']:
-            
-            mod_data[obs]['mmm'][exp] = mod_data[obs]['mmm'][exp].where(mask1==1)     
-
             for mod in models:
-
-                mod_data[obs]['mmm_no_'+mod][exp] = mod_data[obs]['mmm_no_'+mod][exp].where(mask1==1)   
-                mod_data[obs][mod][exp] = mod_data[obs][mod][exp].where(mask1==1)
+                
+                mod_data[obs]['mmm_no_'+mod][exp] = standard_data(mod_data[obs]['mmm_no_'+mod][exp])
+    
+        obs_data[obs] = standard_data(obs_data[obs])
         
-        luh2_data[obs][lc] = luh2_data[obs][lc].where(mask2==1)
+        for lc in landcover_types:
         
+            luh2_data[obs][lc] = standard_data(luh2_data[obs][lc])
+          
             
-#==============================================================================
+#%%==============================================================================
+# mutual mask of data 
+#================================================================================
+
+
+mod_msk = {}
+
+for obs in obs_types:    
+    
+    mod_msk[obs] = {}
+    
+    for lc in landcover_types:
+    
+        exp = 'lu'
+        arr1 = cp.deepcopy(mod_data[obs]['mmm'][exp].isel(time=0)).drop('time')
+        
+        if analysis == "models":
+            
+            arr2 = cp.deepcopy(obs_data[obs].isel(time=0)).drop('time')
+            
+        elif analysis == "luh2":
+            
+            arr2 = cp.deepcopy(luh2_data[obs][lc].isel(time=0)).drop('time')
+            
+        arr1 = arr1.fillna(-999)
+        arr2 = arr2.fillna(-999)
+        
+        alt_msk = xr.where(arr2!=-999,1,0)
+        mod_msk[obs][lc] = xr.where(arr1!=-999,1,0).where(alt_msk==1).fillna(0)
+    
+                   
+#%%==============================================================================
 # pca
-#==============================================================================
+#================================================================================
 
 
 solver_dict = {}
 eof_dict = {}
 principal_components = {}
 pseudo_principal_components = {}
+weighted_arr = {}
+
+for obs in obs_types:
+    
+    solver_dict[obs] = {}
+    eof_dict[obs] = {}
+    principal_components[obs] = {}
+    pseudo_principal_components[obs] = {}
+    
+    weights = np.cos(np.deg2rad(mod_data[obs]['mmm']['lu'].lat))
+    weighted_arr[obs] = xr.zeros_like(mod_data[obs]['mmm']['lu']).isel(time=0)    
+    x = weighted_arr[obs].coords['lon']
+    
+    for y in weighted_arr[obs].lat.values:
+        
+        weighted_arr[obs].loc[dict(lon=x,lat=y)] = weights.sel(lat=y).item()
 
 if analysis == "models":
     
     for obs in obs_types:
-        
-        solver_dict[obs] = {}
-        eof_dict[obs] = {}
-        principal_components[obs] = {}
-        pseudo_principal_components[obs] = {}
-        
-        weights = np.cos(np.deg2rad(mod_data[obs]['mmm']['lu'].lat))
-        weighted_arr = xr.zeros_like(mod_data[obs]['mmm']['lu']).isel(time=0)    
-        x = weighted_arr.coords['lon']
-        
-        for y in weighted_arr.lat.values:
-            
-            weighted_arr.loc[dict(lon=x,lat=y)] = weights.sel(lat=y).item()
             
         for exp in ['historical','hist-noLu','lu']:
         
-            solver_dict[obs][exp] = Eof(mod_data[obs]['mmm'][exp],
-                                        weights=weighted_arr) 
+            solver_dict[obs][exp] = Eof(mod_data[obs]['mmm'][exp].where(mod_msk[obs][lc]==1),
+                                        weights=weighted_arr[obs]) 
             eof_dict[obs][exp] = solver_dict[obs][exp].eofs(neofs=1)
             principal_components[obs][exp] = solver_dict[obs][exp].pcs(npcs=1)
-            pseudo_principal_components[obs][exp] = solver_dict[obs][exp].projectField(obs_data[obs],
-                                                                      neofs=1)
+            pseudo_principal_components[obs][exp] = solver_dict[obs][exp].projectField(obs_data[obs].where(mod_msk[obs][lc]==1),
+                                                                                       neofs=1)
             
-        solver_dict[obs][obs] = Eof(obs_data[obs],
-                                    weights=weighted_arr)
+        solver_dict[obs][obs] = Eof(obs_data[obs].where(mod_msk[obs][lc]==1),
+                                    weights=weighted_arr[obs])
         eof_dict[obs][obs] = solver_dict[obs][obs].eofs(neofs=1)
         
 
@@ -440,44 +448,31 @@ if analysis == "models":
 elif analysis == "luh2":
     
     for obs in obs_types:
-        
-        solver_dict[obs] = {}
-        eof_dict[obs] = {}
-        principal_components[obs] = {}
-        pseudo_principal_components[obs] = {}
-        
-        weights = np.cos(np.deg2rad(mod_data[obs]['mmm']['lu'].lat))
-        weighted_arr = xr.zeros_like(mod_data[obs]['mmm']['lu']).isel(time=0)    
-        x = weighted_arr.coords['lon']
-        
-        for y in weighted_arr.lat.values:
-            
-            weighted_arr.loc[dict(lon=x,lat=y)] = weights.sel(lat=y).item()
             
         for lc in landcover_types:
-        
-            solver_dict[obs][lc] = Eof(luh2_data[obs][lc],
-                                        weights=weighted_arr)
+    
+            solver_dict[obs][lc] = Eof(luh2_data[obs][lc].where(mod_msk[obs][lc]==1),
+                                       weights=weighted_arr[obs])
             eof_dict[obs][lc] = solver_dict[obs][lc].eofs(neofs=1)
             principal_components[obs][lc] = solver_dict[obs][lc].pcs(npcs=1)
             pseudo_principal_components[obs][lc] = {}
-            pseudo_principal_components[obs][lc]['mmm'] = solver_dict[obs][lc].projectField(mod_data[obs]['mmm']['lu'],
-                                                                           neofs=1)
+            pseudo_principal_components[obs][lc]['mmm'] = solver_dict[obs][lc].projectField(mod_data[obs]['mmm']['lu'].where(mod_msk[obs][lc]==1),
+                                                                                            neofs=1)
 
             for mod in models:
 
-                solver_dict[obs]['mmm_no_'+mod] = Eof(mod_data[obs]['mmm_no_'+mod]['lu'],
-                                                      weights=weighted_arr)
+                solver_dict[obs]['mmm_no_'+mod] = Eof(mod_data[obs]['mmm_no_'+mod]['lu'].where(mod_msk[obs][lc]==1),
+                                                      weights=weighted_arr[obs])
                 eof_dict[obs]['mmm_no_'+mod] = solver_dict[obs]['mmm_no_'+mod].eofs(neofs=1)    
-                pseudo_principal_components[obs][lc]['mmm_no_'+mod] = solver_dict[obs][lc].projectField(mod_data[obs]['mmm_no_'+mod]['lu'],
-                                                                                       neofs=1)   
-                pseudo_principal_components[obs][lc][mod] = solver_dict[obs][lc].projectField(mod_data[obs][mod]['lu'],
-                                                                             neofs=1)                                               
+                pseudo_principal_components[obs][lc]['mmm_no_'+mod] = solver_dict[obs][lc].projectField(mod_data[obs]['mmm_no_'+mod]['lu'].where(mod_msk[obs][lc]==1),
+                                                                                                        neofs=1)   
+                pseudo_principal_components[obs][lc][mod] = solver_dict[obs][lc].projectField(mod_data[obs][mod]['lu'].where(mod_msk[obs][lc]==1),
+                                                                                              neofs=1)                                               
                                     
 
-# =============================================================================
+#%%=============================================================================
 # plotting        
-# =============================================================================
+#===============================================================================
 
 
 if analysis == "models":
