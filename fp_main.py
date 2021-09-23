@@ -110,7 +110,7 @@ flag_obs_type=1;   # 0: cru
                    # 1: berkley_earth
                 
 # << SELECT >>
-flag_y1=0;        # 0: 1915
+flag_y1=1;        # 0: 1915
                   # 1: 1965
 
 # << SELECT >>
@@ -132,6 +132,11 @@ flag_landcover=0;  # 0: forest
 # << SELECT >>
 flag_standardize=0;  # 0: no (standardization before input to PCA and projections)
                      # 1: yes, standardize 
+                     
+# << SELECT >>
+flag_scale=0;         # 0: global
+                      # 1: latitudinal
+                      # 2: ar6 regions
                    
 # << SELECT >>
 flag_correlation=0;  # 0: no
@@ -179,6 +184,9 @@ standardize_opts = ['no',
                     'yes']
 correlation_opts = ['no',
                     'yes']
+scale_opts = ['global',
+              'latitudinal',
+              'ar6']
 
 tres = seasons[flag_tres]
 obs = obs_types[flag_obs_type]
@@ -189,6 +197,7 @@ analysis = analyses[flag_analysis]
 landcover = landcover_types[flag_landcover]
 standardize = standardize_opts[flag_standardize]
 correlation = correlation_opts[flag_correlation]
+scale = scale_opts[flag_scale]
 
 # temporal extent of analysis data
 strt_dt = str(y1) + '01'
@@ -203,6 +212,32 @@ models = ['CanESM5',
 
 exps_start = ['historical',
               'hist-noLu']
+
+continents = {}
+continents['North America'] = [3,4,5,6,7]
+continents['South America'] = [9,10,11,12,13,14]
+continents['Europe'] = [16,17,18,19]
+continents['Asia'] = [29,30,32,35,37]
+continents['Africa'] = [21,22,23,24,25,26]
+continents['Australia'] = [39,40,41,42]
+
+continent_names = []
+for c in continents.keys():
+    continent_names.append(c)
+
+labels = {}
+labels['North America'] = ['WNA','CNA','ENA','NCA','SCA']
+labels['South America'] = ['NWS','NSA','NES','SAM','SES']
+labels['Europe'] = ['NEU','WCE','EEU','MED']
+labels['Asia'] = ['WSB','ESB','WCA','EAS','SAS']
+labels['Africa'] = ['WAF','CAF','NEAF','SEAF','SWAF','ESAF']
+labels['Australia'] = ['NAU','CAU','EAU','SAU']
+
+lat_ranges = {}
+lat_ranges['boreal'] = slice(51.5,89.5)
+lat_ranges['tropics'] = slice(-23.5,23.5)
+lat_ranges['temperate_south'] = slice(-50.5,-24.5)
+lat_ranges['temperate_north'] = slice(24.5,50.5)
 
 
 #%%==============================================================================
@@ -395,7 +430,6 @@ for obs in obs_types:
             
         arr1 = arr1.fillna(-999)
         arr2 = arr2.fillna(-999)
-        
         alt_msk = xr.where(arr2!=-999,1,0)
         mod_msk[obs][lc] = xr.where(arr1!=-999,1,0).where(alt_msk==1).fillna(0)
     
@@ -417,7 +451,6 @@ for obs in obs_types:
     eof_dict[obs] = {}
     principal_components[obs] = {}
     pseudo_principal_components[obs] = {}
-    
     weights = np.cos(np.deg2rad(mod_data[obs]['mmm']['lu'].lat))
     weighted_arr[obs] = xr.zeros_like(mod_data[obs]['mmm']['lu']).isel(time=0)    
     x = weighted_arr[obs].coords['lon']
@@ -425,26 +458,66 @@ for obs in obs_types:
     for y in weighted_arr[obs].lat.values:
         
         weighted_arr[obs].loc[dict(lon=x,lat=y)] = weights.sel(lat=y).item()
-
+        
+# projection of obs onto mmm hist vs mmm histnolu fps
 if analysis == "models":
     
     for obs in obs_types:
-            
-        for exp in ['historical','hist-noLu','lu']:
         
-            solver_dict[obs][exp] = Eof(mod_data[obs]['mmm'][exp].where(mod_msk[obs][lc]==1),
-                                        weights=weighted_arr[obs]) 
-            eof_dict[obs][exp] = solver_dict[obs][exp].eofs(neofs=1)
-            principal_components[obs][exp] = solver_dict[obs][exp].pcs(npcs=1)
-            pseudo_principal_components[obs][exp] = solver_dict[obs][exp].projectField(obs_data[obs].where(mod_msk[obs][lc]==1),
-                                                                                       neofs=1)
+        # global pca
+        if scale == 'global':
             
-        solver_dict[obs][obs] = Eof(obs_data[obs].where(mod_msk[obs][lc]==1),
-                                    weights=weighted_arr[obs])
-        eof_dict[obs][obs] = solver_dict[obs][obs].eofs(neofs=1)
+            for exp in ['historical','hist-noLu','lu']:
+            
+                solver_dict[obs][exp] = Eof(mod_data[obs]['mmm'][exp].where(mod_msk[obs][lc]==1),
+                                            weights=weighted_arr[obs]) 
+                eof_dict[obs][exp] = solver_dict[obs][exp].eofs(neofs=1)
+                principal_components[obs][exp] = solver_dict[obs][exp].pcs(npcs=1)
+                pseudo_principal_components[obs][exp] = solver_dict[obs][exp].projectField(obs_data[obs].where(mod_msk[obs][lc]==1),
+                                                                                           neofs=1)
+                
+            solver_dict[obs][obs] = Eof(obs_data[obs].where(mod_msk[obs][lc]==1),
+                                        weights=weighted_arr[obs])
+            eof_dict[obs][obs] = solver_dict[obs][obs].eofs(neofs=1)
+
+        # latitudinal pca            
+        elif scale == 'latitudinal':
+            
+            for exp in ['historical', 'hist-noLu', 'lu']:
+                
+                solver_dict[obs][exp] = {}
+                eof_dict[obs][exp] = {}
+                principal_components[obs][exp] = {}
+                pseudo_principal_components[obs][exp] = {}
+                
+                for ltr in lat_ranges.keys():
+                    
+                    mod_slice = mod_data[obs]['mmm'][exp].where(mod_msk[obs][lc]==1)
+                    mod_slice = mod_slice.sel(lat=lat_ranges[ltr])
+                    solver_dict[obs][exp][ltr] = Eof(mod_slice,
+                                                     weights=weighted_arr[obs].sel(lat=lat_ranges[ltr]))
+                    eof_dict[obs][exp][ltr] = solver_dict[obs][exp][ltr].eofs(neofs=1)
+                    principal_components[obs][exp][ltr] = solver_dict[obs][exp][ltr].pcs(npcs=1)
+                    obs_slice = obs_data[obs].where(mod_msk[obs][lc] == 1)
+                    obs_slice = obs_slice.sel(lat=lat_ranges[ltr])
+                    pseudo_principal_components[obs][exp][ltr] = solver_dict[obs][exp][ltr].projectField(obs_slice,
+                                                                                                         neofs=1)
+            solver_dict[obs][obs] = {}
+            eof_dict[obs][obs] = {}
+            
+            for ltr in lat_ranges.keys():        
+                
+                obs_slice = obs_data[obs].where(mod_msk[obs][lc] == 1)
+                obs_slice = obs_slice.sel(lat=lat_ranges[ltr])
+                solver_dict[obs][obs][ltr] = Eof(obs_slice,
+                                                 weights=weighted_arr[obs].sel(lat=lat_ranges[ltr]))
+                eof_dict[obs][obs][ltr] = solver_dict[obs][obs][ltr].eofs(neofs=1)
+                           
+        # ar6 pca            
+        elif scale == 'ar6':
         
 
-        
+# projection of mmm lu onto luh2 fps   
 elif analysis == "luh2":
     
     for obs in obs_types:
