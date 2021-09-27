@@ -41,7 +41,10 @@ Created on Wed Jul  1 16:52:49 2020
         # can PCs be interpreted similarly as pseudo PCs?
     # 
 
-# use xarray polyfit for polyfit_coefficients to compare slopes between hist and histnolu for map of detail
+# repeat latitudinal, continental etc options for luh2
+# pseudo-pcs differ for 2nd eof (proj obs onto hist vs histnolu)
+    # n-temperate hist has more cooling in NA, for example, but histnolu has more cooling in China
+    # project LU onto 2nd eof for historical vs hist-nolu?
 
 #%%==============================================================================
 # import
@@ -135,7 +138,7 @@ flag_standardize=0;  # 0: no (standardization before input to PCA and projection
                      # 1: yes, standardize 
                      
 # << SELECT >>
-flag_scale=2;         # 0: global
+flag_scale=1;         # 0: global
                       # 1: latitudinal
                       # 2: continental
                       # 3: ar6 regions
@@ -218,7 +221,7 @@ continents = {}
 continents['North America'] = [1,2,3,4,5,6,7]
 continents['South America'] = [9,10,11,12,13,14,15]
 continents['Europe'] = [16,17,18,19]
-continents['Asia'] = [29,30,32,34,35,37,38]
+continents['Asia'] = [29,30,32,33,34,35,37,38]
 continents['Africa'] = [21,22,23,24,25,26]
 continents['Australia'] = [39,40,41,42]
 
@@ -500,12 +503,12 @@ if analysis == "models":
                     mod_slice = mod_slice.sel(lat=lat_ranges[ltr])
                     solver_dict[obs][exp][ltr] = Eof(mod_slice,
                                                      weights=weighted_arr[obs].sel(lat=lat_ranges[ltr]))
-                    eof_dict[obs][exp][ltr] = solver_dict[obs][exp][ltr].eofs(neofs=1)
-                    principal_components[obs][exp][ltr] = solver_dict[obs][exp][ltr].pcs(npcs=1)
+                    eof_dict[obs][exp][ltr] = solver_dict[obs][exp][ltr].eofs(neofs=2)
+                    principal_components[obs][exp][ltr] = solver_dict[obs][exp][ltr].pcs(npcs=2)
                     obs_slice = obs_data[obs].where(mod_msk[obs][lc] == 1)
                     obs_slice = obs_slice.sel(lat=lat_ranges[ltr])
                     pseudo_principal_components[obs][exp][ltr] = solver_dict[obs][exp][ltr].projectField(obs_slice,
-                                                                                                         neofs=1)
+                                                                                                         neofs=2)
                     
             solver_dict[obs][obs] = {}
             eof_dict[obs][obs] = {}
@@ -516,9 +519,9 @@ if analysis == "models":
                 obs_slice = obs_slice.sel(lat=lat_ranges[ltr])
                 solver_dict[obs][obs][ltr] = Eof(obs_slice,
                                                  weights=weighted_arr[obs].sel(lat=lat_ranges[ltr]))
-                eof_dict[obs][obs][ltr] = solver_dict[obs][obs][ltr].eofs(neofs=1)
+                eof_dict[obs][obs][ltr] = solver_dict[obs][obs][ltr].eofs(neofs=2)
 
-        # ar6 pca            
+        # continental pca            
         elif scale == 'continental':
             
             for exp in ['historical', 'hist-noLu', 'lu']:
@@ -595,26 +598,144 @@ if analysis == "models":
 elif analysis == "luh2":
     
     for obs in obs_types:
+        
+        if scale == "global":
             
-        for lc in landcover_types:
-    
-            solver_dict[obs][lc] = Eof(luh2_data[obs][lc].where(mod_msk[obs][lc]==1),
-                                       weights=weighted_arr[obs])
-            eof_dict[obs][lc] = solver_dict[obs][lc].eofs(neofs=1)
-            principal_components[obs][lc] = solver_dict[obs][lc].pcs(npcs=1)
-            pseudo_principal_components[obs][lc] = {}
-            pseudo_principal_components[obs][lc]['mmm'] = solver_dict[obs][lc].projectField(mod_data[obs]['mmm']['lu'].where(mod_msk[obs][lc]==1),
-                                                                                            neofs=1)
+            for lc in landcover_types:
+        
+                solver_dict[obs][lc] = Eof(luh2_data[obs][lc].where(mod_msk[obs][lc]==1),
+                                        weights=weighted_arr[obs])
+                eof_dict[obs][lc] = solver_dict[obs][lc].eofs(neofs=1)
+                principal_components[obs][lc] = solver_dict[obs][lc].pcs(npcs=1)
+                pseudo_principal_components[obs][lc] = {}
+                pseudo_principal_components[obs][lc]['mmm'] = solver_dict[obs][lc].projectField(mod_data[obs]['mmm']['lu'].where(mod_msk[obs][lc]==1),
+                                                                                                neofs=1)
 
-            for mod in models:
+                for mod in models:
 
-                solver_dict[obs]['mmm_no_'+mod] = Eof(mod_data[obs]['mmm_no_'+mod]['lu'].where(mod_msk[obs][lc]==1),
+                    solver_dict[obs]['mmm_no_'+mod] = Eof(mod_data[obs]['mmm_no_'+mod]['lu'].where(mod_msk[obs][lc]==1),
+                                                        weights=weighted_arr[obs])
+                    eof_dict[obs]['mmm_no_'+mod] = solver_dict[obs]['mmm_no_'+mod].eofs(neofs=1)    
+                    pseudo_principal_components[obs][lc]['mmm_no_'+mod] = solver_dict[obs][lc].projectField(mod_data[obs]['mmm_no_'+mod]['lu'].where(mod_msk[obs][lc]==1),
+                                                                                                            neofs=1)   
+                    pseudo_principal_components[obs][lc][mod] = solver_dict[obs][lc].projectField(mod_data[obs][mod]['lu'].where(mod_msk[obs][lc]==1),
+                                                                                                neofs=1)      
+
+        # latitudinal pca            
+        elif scale == 'latitudinal':
+                
+            for lc in landcover_types:
+                    
+                solver_dict[obs][lc] = {}
+                eof_dict[obs][lc] = {}
+                principal_components[obs][lc] = {}
+                pseudo_principal_components[obs][lc] = {}
+                
+                for ltr in lat_ranges.keys():
+                    
+                    luh2_slice = luh2_data[obs][lc].where(mod_msk[obs][lc]==1)
+                    luh2_slice = luh2_slice.sel(lat=lat_ranges[ltr])
+                    solver_dict[obs][lc][ltr] = Eof(luh2_slice,
+                                                    weights=weighted_arr[obs])
+                    eof_dict[obs][lc][ltr] = solver_dict[obs][lc][ltr].eofs(neofs=1)
+                    principal_components[obs][lc][ltr] = solver_dict[obs][lc][ltr].pcs(npcs=1)
+                    pseudo_principal_components[obs][lc][ltr] = {}
+                    mod_slice = mod_data[obs]['mmm']['lu'].where(mod_msk[obs][lc]==1)
+                    mod_slice = mod_slice.sel(lat=lat_ranges)
+                    pseudo_principal_components[obs][lc][ltr]['mmm'] = solver_dict[obs][lc][ltr].projectField(mod_slice,
+                                                                                                              neofs=1)
+
+                    for mod in models:
+
+                        mod_slice = mod_data[obs]['mmm_no_'+mod]['lu'].where(mod_msk[obs][lc]==1)
+                        mod_slice = mod_slice.sel(lat=lat_ranges[ltr])
+                        pseudo_principal_components[obs][lc][ltr]['mmm_no_'+mod] = solver_dict[obs][lc][ltr].projectField(mod_slice,
+                                                                                                                          neofs=1)   
+                        mod_slice = mod_data[obs][mod]['lu'].where(mod_msk[obs][lc]==1)
+                        mod_slice = mod_slice.sel(lat=lat_ranges[ltr])
+                        pseudo_principal_components[obs][lc][ltr][mod] = solver_dict[obs][lc][ltr].projectField(mod_slice,
+                                                                                                                neofs=1)     
+                
+                
+        # continental pca            
+        elif scale == 'continental':
+            
+            for lc in landcover_types:
+                    
+                solver_dict[obs][lc] = {}
+                eof_dict[obs][lc] = {}
+                principal_components[obs][lc] = {}
+                pseudo_principal_components[obs][lc] = {}
+                continent = ar6[obs].where(ar6[obs].isin(continents[lc]))
+                
+                for c in continents.keys():
+                    
+                    luh2_slice = luh2_data[obs][lc].where(mod_msk[obs][lc]==1)
+                    luh2_slice = luh2_slice.where(continent > 0)
+                    solver_dict[obs][lc][c] = Eof(luh2_slice,
+                                                  weights=weighted_arr[obs])
+                    eof_dict[obs][lc][c] = solver_dict[obs][lc][c].eofs(neofs=1)
+                    principal_components[obs][lc][c] = solver_dict[obs][lc][c].pcs(npcs=1)
+                    pseudo_principal_components[obs][lc][c] = {}
+                    mod_slice = mod_data[obs]['mmm']['lu'].where(mod_msk[obs][lc]==1)
+                    mod_slice = mod_slice.where(continent > 0)
+                    pseudo_principal_components[obs][lc][c]['mmm'] = solver_dict[obs][lc][c].projectField(mod_slice,
+                                                                                                          neofs=1)
+
+                    for mod in models:
+
+                        mod_slice = mod_data[obs]['mmm_no_'+mod]['lu'].where(mod_msk[obs][lc]==1)
+                        mod_slice = mod_slice.where(continent > 0)
+                        pseudo_principal_components[obs][lc][c]['mmm_no_'+mod] = solver_dict[obs][lc][c].projectField(mod_slice,
+                                                                                                                      neofs=1)   
+                        mod_slice = mod_data[obs][mod]['lu'].where(mod_msk[obs][lc]==1)
+                        mod_slice = mod_slice.where(continent > 0)
+                        pseudo_principal_components[obs][lc][c][mod] = solver_dict[obs][lc][c].projectField(mod_slice,
+                                                                                                              neofs=1)    
+                           
+        # ar6 pca            
+        elif scale == 'ar6':
+            
+            for lc in landcover_types:
+                    
+                solver_dict[obs][lc] = {}
+                eof_dict[obs][lc] = {}
+                principal_components[obs][lc] = {}
+                pseudo_principal_components[obs][lc] = {}
+                
+                for c in continents.keys():
+                    
+                    for i in continents[c]:
+                        
+                        luh2_slice = luh2_data[obs][lc].where(mod_msk[obs][lc]==1)
+                        luh2_slice = luh2_slice.where(ar6[obs] == i)
+                        solver_dict[obs][lc][i] = Eof(luh2_slice,
                                                       weights=weighted_arr[obs])
-                eof_dict[obs]['mmm_no_'+mod] = solver_dict[obs]['mmm_no_'+mod].eofs(neofs=1)    
-                pseudo_principal_components[obs][lc]['mmm_no_'+mod] = solver_dict[obs][lc].projectField(mod_data[obs]['mmm_no_'+mod]['lu'].where(mod_msk[obs][lc]==1),
-                                                                                                        neofs=1)   
-                pseudo_principal_components[obs][lc][mod] = solver_dict[obs][lc].projectField(mod_data[obs][mod]['lu'].where(mod_msk[obs][lc]==1),
-                                                                                              neofs=1)                                               
+                        eof_dict[obs][lc][i] = solver_dict[obs][lc][i].eofs(neofs=1)
+                        principal_components[obs][lc][i] = solver_dict[obs][lc][i].pcs(npcs=1)
+                        pseudo_principal_components[obs][lc][i] = {}
+                        mod_slice = mod_data[obs]['mmm']['lu'].where(mod_msk[obs][lc]==1)
+                        mod_slice = mod_slice.where(ar6[obs] == i)
+                        pseudo_principal_components[obs][lc][i]['mmm'] = solver_dict[obs][lc][i].projectField(mod_slice,
+                                                                                                              neofs=1)
+                        
+            solver_dict[obs][obs] = {}
+            eof_dict[obs][obs] = {}
+            
+            for c in continents.keys():
+                
+                for i in continents[c]:        
+                
+                    for mod in models:
+
+                        mod_slice = mod_data[obs]['mmm_no_'+mod]['lu'].where(mod_msk[obs][lc]==1)
+                        mod_slice = mod_slice.where(ar6[obs] == i)
+                        pseudo_principal_components[obs][lc][i]['mmm_no_'+mod] = solver_dict[obs][lc][i].projectField(mod_slice,
+                                                                                                                      neofs=1)   
+                        mod_slice = mod_data[obs][mod]['lu'].where(mod_msk[obs][lc]==1)
+                        mod_slice = mod_slice.where(ar6[obs] == i)
+                        pseudo_principal_components[obs][lc][i][mod] = solver_dict[obs][lc][i].projectField(mod_slice,
+                                                                                                            neofs=1) 
 
 # from scipy import stats as sts
 
@@ -652,8 +773,19 @@ if analysis == "models":
                 exps_start,
                 obs_types,
                 outDIR)
-        
+
     elif scale == 'latitudinal':
+        
+        # projecting obs onto hist and hist-nolu fingerprints
+        pca_plot_latitudinal(eof_dict,
+                             principal_components,
+                             pseudo_principal_components,
+                             exps_start,
+                             lat_ranges,
+                             obs_types,
+                             outDIR)
+        
+    elif scale == 'continental':
         
         # projecting obs onto hist and hist-nolu fingerprints
         pca_plot_continental(eof_dict,
@@ -663,6 +795,17 @@ if analysis == "models":
                              continents,
                              obs_types,
                              outDIR)
+        
+    elif scale == 'ar6':
+        
+        # projecting NOT YET READY
+        pca_plot_ar6(eof_dict,
+                     principal_components,
+                     pseudo_principal_components,
+                     exps_start,
+                     continents,
+                     obs_types,
+                     outDIR)
     
 elif analysis == "luh2":
 
