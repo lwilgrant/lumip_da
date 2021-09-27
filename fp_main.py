@@ -41,7 +41,7 @@ Created on Wed Jul  1 16:52:49 2020
         # can PCs be interpreted similarly as pseudo PCs?
     # 
 
-
+# use xarray polyfit for polyfit_coefficients to compare slopes between hist and histnolu for map of detail
 
 #%%==============================================================================
 # import
@@ -62,6 +62,7 @@ import regionmask as rm
 from random import shuffle
 from matplotlib.lines import Line2D
 import xarray as xr
+from scipy import stats as sts
 from eofs.xarray import Eof
 
 
@@ -75,10 +76,10 @@ os.chdir(curDIR)
 
 # data input directories
 obsDIR = os.path.join(curDIR, 'data/obs/final')
-modDIR = os.path.join(curDIR, 'data/mod/final')
+modDIR = os.path.join(curDIR, 'data/mod/obs_grid')
 # piDIR = os.path.join(curDIR, 'data/pi/final')
 mapDIR = os.path.join(curDIR, 'data/map/final')
-outDIR = os.path.join(curDIR, 'figures_v3')
+outDIR = os.path.join(curDIR, 'figures_pca')
 
 # bring in functions
 from fp_funcs import *
@@ -122,7 +123,7 @@ flag_var=0;  # 0: tasmax
 
 
 # << SELECT >>
-flag_analysis=1;  # 0: projections onto EOF of hist vs histnolu mmm
+flag_analysis=0;  # 0: projections onto EOF of hist vs histnolu mmm
                   # 1: projections onto EOF of LUH2 forest + crop
                   
 # << SELECT >>
@@ -134,9 +135,10 @@ flag_standardize=0;  # 0: no (standardization before input to PCA and projection
                      # 1: yes, standardize 
                      
 # << SELECT >>
-flag_scale=0;         # 0: global
+flag_scale=2;         # 0: global
                       # 1: latitudinal
-                      # 2: ar6 regions
+                      # 2: continental
+                      # 3: ar6 regions
                    
 # << SELECT >>
 flag_correlation=0;  # 0: no
@@ -157,8 +159,6 @@ seasons = ['jja',
            'max']
 obs_types = ['cru',
              'berkley_earth']
-analyses = ['global',
-            'continental']
 deforest_options = ['all',
                     'defor',
                     'ar6']
@@ -186,6 +186,7 @@ correlation_opts = ['no',
                     'yes']
 scale_opts = ['global',
               'latitudinal',
+              'continental',
               'ar6']
 
 tres = seasons[flag_tres]
@@ -214,10 +215,10 @@ exps_start = ['historical',
               'hist-noLu']
 
 continents = {}
-continents['North America'] = [3,4,5,6,7]
-continents['South America'] = [9,10,11,12,13,14]
+continents['North America'] = [1,2,3,4,5,6,7]
+continents['South America'] = [9,10,11,12,13,14,15]
 continents['Europe'] = [16,17,18,19]
-continents['Asia'] = [29,30,32,35,37]
+continents['Asia'] = [29,30,32,34,35,37,38]
 continents['Africa'] = [21,22,23,24,25,26]
 continents['Australia'] = [39,40,41,42]
 
@@ -249,6 +250,7 @@ mod_files = {}
 mod_data = {}
 obs_data = {}
 luh2_data = {}
+ar6 = {}
 
 # individual model ensembles and lu extraction
 for obs in obs_types:
@@ -282,11 +284,12 @@ for obs in obs_types:
                 
                 mod_data[obs][mod][exp] = nc_read(mod_files[obs][mod][exp],
                                                   y1,
-                                                  var,
+                                                    var,
                                                   obs)
             
                 ar6_regs = ar6_mask(mod_data[obs][mod][exp],
                                     obs)
+                ar6[obs] = ar6_regs
                 ar6_land = xr.where((ar6_regs>0)&(ar6_regs<44),1,0)
                 mod_data[obs][mod][exp] = mod_data[obs][mod][exp].where(ar6_land==1)
                 i += 1
@@ -365,6 +368,7 @@ for obs in obs_types:
     luh2_data[obs] = {}
     
     for lc in landcover_types:
+        
         for file in [file for file in sorted(os.listdir(mapDIR))\
                      if obs in file\
                          and 'grid' in file\
@@ -502,6 +506,7 @@ if analysis == "models":
                     obs_slice = obs_slice.sel(lat=lat_ranges[ltr])
                     pseudo_principal_components[obs][exp][ltr] = solver_dict[obs][exp][ltr].projectField(obs_slice,
                                                                                                          neofs=1)
+                    
             solver_dict[obs][obs] = {}
             eof_dict[obs][obs] = {}
             
@@ -512,10 +517,79 @@ if analysis == "models":
                 solver_dict[obs][obs][ltr] = Eof(obs_slice,
                                                  weights=weighted_arr[obs].sel(lat=lat_ranges[ltr]))
                 eof_dict[obs][obs][ltr] = solver_dict[obs][obs][ltr].eofs(neofs=1)
+
+        # ar6 pca            
+        elif scale == 'continental':
+            
+            for exp in ['historical', 'hist-noLu', 'lu']:
+                
+                solver_dict[obs][exp] = {}
+                eof_dict[obs][exp] = {}
+                principal_components[obs][exp] = {}
+                pseudo_principal_components[obs][exp] = {}
+                
+                for c in continents.keys():                
+                    
+                    continent = ar6[obs].where(ar6[obs].isin(continents[c]))
+                    mod_slice = mod_data[obs]['mmm'][exp].where(mod_msk[obs][lc]==1)
+                    mod_slice = mod_slice.where(continent > 0)
+                    solver_dict[obs][exp][c] = Eof(mod_slice,
+                                                   weights=weighted_arr[obs].where(continent > 0))
+                    eof_dict[obs][exp][c] = solver_dict[obs][exp][c].eofs(neofs=1)
+                    principal_components[obs][exp][c] = solver_dict[obs][exp][c].pcs(npcs=1)
+                    obs_slice = obs_data[obs].where(mod_msk[obs][lc] == 1)
+                    obs_slice = obs_slice.where(continent > 0)
+                    pseudo_principal_components[obs][exp][c] = solver_dict[obs][exp][c].projectField(obs_slice,
+                                                                                                     neofs=1)
+                    
+            solver_dict[obs][obs] = {}
+            eof_dict[obs][obs] = {}
+            
+            for c in continents.keys():        
+                
+                continent = ar6[obs].where(ar6[obs].isin(continents[c]))
+                obs_slice = obs_data[obs].where(mod_msk[obs][lc] == 1)
+                obs_slice = obs_slice.where(continent > 0)
+                solver_dict[obs][obs][c] = Eof(obs_slice,
+                                               weights=weighted_arr[obs].where(continent > 0))
+                eof_dict[obs][obs][c] = solver_dict[obs][obs][c].eofs(neofs=1)
                            
         # ar6 pca            
         elif scale == 'ar6':
-        
+            
+            for exp in ['historical', 'hist-noLu', 'lu']:
+                
+                solver_dict[obs][exp] = {}
+                eof_dict[obs][exp] = {}
+                principal_components[obs][exp] = {}
+                pseudo_principal_components[obs][exp] = {}
+                
+                for c in continents.keys():
+                    
+                    for i in continents[c]:
+                    
+                        mod_slice = mod_data[obs]['mmm'][exp].where(mod_msk[obs][lc]==1)
+                        mod_slice = mod_slice.where(ar6[obs] == i)
+                        solver_dict[obs][exp][i] = Eof(mod_slice,
+                                                         weights=weighted_arr[obs].where(ar6[obs] == i))
+                        eof_dict[obs][exp][i] = solver_dict[obs][exp][i].eofs(neofs=1)
+                        principal_components[obs][exp][i] = solver_dict[obs][exp][i].pcs(npcs=1)
+                        obs_slice = obs_data[obs].where(mod_msk[obs][lc] == 1)
+                        obs_slice = obs_slice.where(ar6[obs] == i)
+                        pseudo_principal_components[obs][exp][i] = solver_dict[obs][exp][i].projectField(obs_slice,
+                                                                                                             neofs=1)
+            solver_dict[obs][obs] = {}
+            eof_dict[obs][obs] = {}
+            
+            for c in continents.keys():
+                
+                for i in continents[c]:        
+                
+                    obs_slice = obs_data[obs].where(mod_msk[obs][lc] == 1)
+                    obs_slice = obs_slice.where(ar6[obs] == i)
+                    solver_dict[obs][obs][i] = Eof(obs_slice,
+                                                   weights=weighted_arr[obs].where(ar6[obs] == i))
+                    eof_dict[obs][obs][i] = solver_dict[obs][obs][i].eofs(neofs=1)
 
 # projection of mmm lu onto luh2 fps   
 elif analysis == "luh2":
@@ -541,7 +615,21 @@ elif analysis == "luh2":
                                                                                                         neofs=1)   
                 pseudo_principal_components[obs][lc][mod] = solver_dict[obs][lc].projectField(mod_data[obs][mod]['lu'].where(mod_msk[obs][lc]==1),
                                                                                               neofs=1)                                               
-                                    
+
+# from scipy import stats as sts
+
+# testhist = pseudo_principal_components[obs]['historical'][c] - pseudo_principal_components[obs]['historical'][c].mean(dim='time')
+# testhistnolu = pseudo_principal_components[obs]['hist-noLu'][c] - pseudo_principal_components[obs]['hist-noLu'][c].mean(dim='time')
+
+# testhist = np.squeeze(testhist.drop('mode').values)
+# testhistnolu = np.squeeze(testhistnolu.drop('mode').values)
+
+# x = np.arange(1,len(testhist)+1)
+
+# slope_hist,_,_,_,_ = sts.linregress(x,testhist)
+# slope_histnolu,_,_,_,_ = sts.linregress(x,testhistnolu)
+
+
 
 #%%=============================================================================
 # plotting        
@@ -550,13 +638,31 @@ elif analysis == "luh2":
 
 if analysis == "models":
 
-    # projecting obs onto hist and hist-nolu fingerprints
-    pca_plot(eof_dict,
-             principal_components,
-             pseudo_principal_components,
-             exps_start,
-             obs_types,
-             outDIR)
+
+# scale_opts = ['global',
+#               'latitudinal',
+#               'continental',
+#               'ar6']
+    if scale == 'global':
+        
+        # projecting obs onto hist and hist-nolu fingerprints
+        pca_plot(eof_dict,
+                principal_components,
+                pseudo_principal_components,
+                exps_start,
+                obs_types,
+                outDIR)
+        
+    elif scale == 'latitudinal':
+        
+        # projecting obs onto hist and hist-nolu fingerprints
+        pca_plot_continental(eof_dict,
+                             principal_components,
+                             pseudo_principal_components,
+                             exps_start,
+                             continents,
+                             obs_types,
+                             outDIR)
     
 elif analysis == "luh2":
 

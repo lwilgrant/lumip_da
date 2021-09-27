@@ -196,8 +196,8 @@ def pca_plot(eof_dict,
     c_rect = [c_left, c_bottom, c_right, c_top]
     
     ax2 = f.add_subplot(gs2[0],projection=ccrs.PlateCarree()) # obs eof (cru)
-    ax3 = f.add_subplot(gs2[1],projection=ccrs.PlateCarree()) # delta eof
-    ax4 = f.add_subplot(gs2[2],projection=ccrs.PlateCarree()) # eof bias
+    ax3 = f.add_subplot(gs2[1],projection=ccrs.PlateCarree()) # hist eof
+    ax4 = f.add_subplot(gs2[2],projection=ccrs.PlateCarree()) # hist-nolu bias
     
     ax5 = f.add_subplot(gs2[3],projection=ccrs.PlateCarree()) # obs eof (cru)
     ax6 = f.add_subplot(gs2[4],projection=ccrs.PlateCarree()) # delta eof
@@ -465,6 +465,317 @@ def pca_plot(eof_dict,
 # =============================================================================
 #     f.savefig(outDIR+'/pca_analysis.png',bbox_inches='tight',dpi=400)
 # =============================================================================
+
+#%%==============================================================================   
+
+
+def pca_plot_continental(eof_dict,
+                         principal_components,
+                         pseudo_principal_components,
+                         exps_start,
+                         continents,
+                         obs_types,
+                         outDIR):
+
+    
+    ############################### general ##################################
+    
+    letters = ['a','b','c','d','e','f','g','h','i']
+    ls_types = ['-', # cru
+                '--'] # berkley
+    ls_types = {}
+    ls_types['cru'] = '-'
+    ls_types['berkley_earth'] = '--'
+    ls_types['pc'] = ':'
+    
+    cmap_brbg = plt.cm.get_cmap('BrBG')
+    cols={}
+    cols['hist-noLu'] = cmap_brbg(0.95)
+    cols['historical'] = cmap_brbg(0.05)
+    col_zero = 'gray'   # zero change color
+    
+    col_cbticlbl = '0'   # colorbar color of tick labels
+    col_cbtic = '0.5'   # colorbar color of ticks
+    col_cbedg = '0.9'   # colorbar color of edge
+    cb_ticlen = 3.5   # colorbar length of ticks
+    cb_ticwid = 0.4   # colorbar thickness of ticks
+    cb_edgthic = 0   # colorbar thickness of edges between colors
+    cblabel = 'corr'  # colorbar label
+    col_zero = 'gray'   # zero change color
+    sbplt_lw = 0.1   # linewidth on projection panels
+    cstlin_lw = 0.2   # linewidth for coastlines
+    
+    title_font = 12
+    cbtitle_font = 12
+    tick_font = 12
+    legend_font=12
+    
+    east = 180
+    west = -180
+    north = 80
+    south = -60
+    extent = [west,east,south,north]
+    
+    
+    ############################### legend ##################################
+    
+    # bbox
+    le_x0 = 1.05
+    le_y0 = 0.75
+    le_xlen = 0.15
+    le_ylen = 0.25
+    
+    # space between entries
+    legend_entrypad = 0.5
+    
+    # length per entry
+    legend_entrylen = 0.75
+    
+    # space between entries
+    legend_spacing = 1.5
+    
+    ############################### colormaps ##################################
+    
+    # identify colors for obs eof maps
+    cmap55 = cmap_brbg(0.01)
+    cmap50 = cmap_brbg(0.05)   #blue
+    cmap45 = cmap_brbg(0.1)
+    cmap40 = cmap_brbg(0.15)
+    cmap35 = cmap_brbg(0.2)
+    cmap30 = cmap_brbg(0.25)
+    cmap25 = cmap_brbg(0.3)
+    cmap20 = cmap_brbg(0.325)
+    cmap10 = cmap_brbg(0.4)
+    cmap5 = cmap_brbg(0.475)
+    cmap0 = col_zero
+    cmap_5 = cmap_brbg(0.525)
+    cmap_10 = cmap_brbg(0.6)
+    cmap_20 = cmap_brbg(0.625)
+    cmap_25 = cmap_brbg(0.7)
+    cmap_30 = cmap_brbg(0.75)
+    cmap_35 = cmap_brbg(0.8)
+    cmap_40 = cmap_brbg(0.85)
+    cmap_45 = cmap_brbg(0.9)
+    cmap_50 = cmap_brbg(0.95)  #red
+    cmap_55 = cmap_brbg(0.99)
+    
+    colors_brbg = [cmap_55,
+                   cmap_45,
+                   cmap_35,
+                   cmap_25,
+                   cmap_10,
+                   cmap0,
+                   cmap10,
+                   cmap25,
+                   cmap35,
+                   cmap45,
+                   cmap55]
+    
+    # declare list of colors for discrete colormap of colorbar
+    cmap_list_eof = mpl.colors.ListedColormap(colors_brbg,N=len(colors_brbg))
+    
+    # colorbar args
+    start = 0.020
+    inc = start/5
+    values_eof = [-1*start,
+                  -1*start+inc,
+                  -1*start+inc*2,
+                  -1*start+inc*3,
+                  -1*start+inc*4,
+                  -0.001,
+                  0.001,
+                  start-inc*4,
+                  start-inc*3,
+                  start-inc*2,
+                  start-inc,
+                  start]
+    
+    tick_locs_eof = [-1*start,
+                     -1*start+inc,
+                     -1*start+inc*2,
+                     -1*start+inc*3,
+                     -1*start+inc*4,
+                     0,
+                     start-inc*4,
+                     start-inc*3,
+                     start-inc*2,
+                     start-inc,
+                     start]
+    
+    tick_labels_eof = [str(-1*start),
+                       str(-1*start+inc),
+                       str(-1*start+inc*2),
+                       str(-1*start+inc*3),
+                       str(-1*start+inc*4),
+                       str(0),
+                       str(start-inc*4),
+                       str(start-inc*3),
+                       str(start-inc*2),
+                       str(start-inc),
+                       str(start)]
+    
+    norm_eof = mpl.colors.BoundaryNorm(values_eof,cmap_list_eof.N)
+    
+    cb_eof_x0 = 0.36  
+    cb_eof_y0 = -0.05   
+    cb_eof_xlen = 0.5
+    cb_eof_ylen = 0.015
+    
+    for c in continents.keys():
+    
+        ############################### panels ##################################
+        
+        x=22
+        y=10
+        f = plt.figure(figsize=(x,y))
+        
+        # time series rect, rect=[left, bottom, right, top]
+        t_left = 0.05
+        t_bottom = 0.65
+        t_right = 0.7
+        t_top = 1.0
+        t_rect = [t_left, t_bottom, t_right, t_top]
+        
+        # time series
+        gs1 = gridspec.GridSpec(1,1)
+        ax1 = f.add_subplot(gs1[0])    
+        
+        gs1.tight_layout(figure=f, rect=t_rect, h_pad=5)
+        
+        # maps of eof
+        gs2 = gridspec.GridSpec(2,3)
+            
+        # map panel rect, rect=[left, bottom, right, top]
+        c_left = 0
+        c_bottom = 0.0
+        c_right = 1.0
+        c_top = 0.6
+        c_rect = [c_left, c_bottom, c_right, c_top]
+        
+        ax2 = f.add_subplot(gs2[0],projection=ccrs.PlateCarree()) # obs eof (cru)
+        ax3 = f.add_subplot(gs2[1],projection=ccrs.PlateCarree()) # hist eof
+        ax4 = f.add_subplot(gs2[2],projection=ccrs.PlateCarree()) # hist-nolu bias
+        
+        ax5 = f.add_subplot(gs2[3],projection=ccrs.PlateCarree()) # obs eof (cru)
+        ax6 = f.add_subplot(gs2[4],projection=ccrs.PlateCarree()) # delta eof
+        ax7 = f.add_subplot(gs2[5],projection=ccrs.PlateCarree()) # eof bias
+        
+        map_axes = {}
+        map_axes['cru'] = [ax2,ax3,ax4]
+        map_axes['berkley_earth'] = [ax5,ax6,ax7]
+        
+        gs2.tight_layout(figure=f, rect=c_rect, h_pad=5)
+        
+        cbax_eof = f.add_axes([cb_eof_x0, 
+                            cb_eof_y0, 
+                            cb_eof_xlen, 
+                            cb_eof_ylen])
+        
+        ############################### timeseries ##################################
+        
+        # plot time series
+        for exp in exps_start:
+            for obs in obs_types:
+                data = pseudo_principal_components[obs][exp][c] - pseudo_principal_components[obs][exp][c].mean(dim='time')
+                data.plot(ax=ax1,
+                          add_legend=False,
+                          color=cols[exp],
+                          linestyle=ls_types[obs],
+                          linewidth=3,
+                          label=obs+' pseudo-PC ' +exp)
+                
+        ax1.legend(frameon=False,
+                   bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
+                   fontsize=legend_font,
+                   labelspacing=legend_spacing)
+        ax1.set_title(letters[0],
+                      fontweight='bold',
+                      loc='left')
+        
+        ############################### eof maps ##################################
+        
+        # eof loading maps
+        count = 0
+        for obs in obs_types:
+            # data = figure_data[obs]
+            for i,ax in enumerate(map_axes[obs]):
+                count += 1
+                if i == 0:
+                    eof_dict[obs][obs][c].plot(ax=ax,
+                                               transform=ccrs.PlateCarree(),
+                                               cmap=cmap_list_eof,
+                                               cbar_ax=cbax_eof,
+                                               center=0,
+                                               norm=norm_eof,
+                                               add_labels=False)
+                    if obs == 'cru':
+                        height = 0.5
+                    elif obs == 'berkley_earth':
+                        height = 0.3
+                    ax.text(-0.07,
+                            height,
+                            obs,
+                            fontsize=title_font,
+                            fontweight='bold',
+                            rotation='vertical',
+                            transform=ax.transAxes)
+                elif i > 0:
+                    for exp in exps_start:
+                        eof_dict[obs][exp][c].plot(ax=ax,
+                                                   transform=ccrs.PlateCarree(),
+                                                   cmap=cmap_list_eof,
+                                                   cbar_ax=cbax_eof,
+                                                   center=0,
+                                                   norm=norm_eof,
+                                                   add_labels=False)      
+                if obs == 'cru':
+                    if i == 0:
+                        ax.set_title('Obs EOF loading',
+                                     fontweight='bold',
+                                     loc='center',
+                                     fontsize=title_font)
+                    if i == 1:
+                        ax.set_title('hist EOF loading',
+                                    fontweight='bold',
+                                    loc='center',
+                                    fontsize=title_font)
+                    if i == 2:
+                        ax.set_title('hist-noLu EOF loading',
+                                    fontweight='bold',
+                                    loc='center',
+                                    fontsize=title_font)
+                ax.set_title(letters[count],
+                            fontweight='bold',
+                            loc='left')
+                ax.set_extent(extent,
+                            crs=ccrs.PlateCarree())
+                ax.coastlines(linewidth=cstlin_lw)
+        
+        # eof cb
+        cb_eof = mpl.colorbar.ColorbarBase(ax=cbax_eof, 
+                                        cmap=cmap_list_eof,
+                                        norm=norm_eof,
+                                        spacing='uniform',
+                                        orientation='horizontal',
+                                        extend='neither',
+                                        ticks=tick_locs_eof,
+                                        drawedges=False)
+        cb_eof.ax.xaxis.set_label_position('top')
+        cb_eof.ax.tick_params(labelcolor=col_cbticlbl,
+                            labelsize=tick_font,
+                            color=col_cbtic,
+                            length=cb_ticlen,
+                            width=cb_ticwid,
+                            direction='out'); 
+        cb_eof.ax.set_xticklabels(tick_labels_eof,
+                                rotation=45)
+        cb_eof.outline.set_edgecolor(col_cbedg)
+        cb_eof.outline.set_linewidth(cb_edgthic)
+        
+        os.chdir(outDIR)
+    # =============================================================================
+    #     f.savefig(outDIR+'/pca_analysis_continental_{}.png'.format(c),bbox_inches='tight',dpi=400)
+    # =============================================================================
 
 #%%==============================================================================   
 
