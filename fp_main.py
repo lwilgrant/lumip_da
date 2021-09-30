@@ -14,37 +14,9 @@ Created on Wed Jul  1 16:52:49 2020
 
 # PCA analysis
 
-# test effect of weighting on solver
+# tidy up functions by cutting repeated colorbar related code from numerous plotting functions
 
-# v2:
-    # addition of forest + crop cover maps for lu check
-    # option for pseudo pc from projecting "lu" onto forest and crop eof
-    
-# why isn't 'cru' being loaded? (solved)
-
-# change plotting for analysis="models":
-    # don't want diffrence in eofs but should rather just show hist and histno-lu
-
-# change plots to have mmm time series as one bold line and range as coming from all other mmms
-
-# add pc1
-
-# produce for all ar6 regions
-
-# is decreasing flank of forest pseudo-pcs because major axis of change is deforestation and mid century has reforestation?
-    # could i check this against 1900-1950 and 1950-2000 attempts?
-
-# option for standardized data:
-    # http://xarray.pydata.org/en/stable/examples/weather-data.html
-    # possibly important for comparins pseudo-pcs of "lu" against 
-        # (is scale difference in PC and pseudo-PCs due to data not being standardized?)
-        # can PCs be interpreted similarly as pseudo PCs?
-    # 
-
-# repeat latitudinal, continental etc options for luh2
-# pseudo-pcs differ for 2nd eof (proj obs onto hist vs histnolu)
-    # n-temperate hist has more cooling in NA, for example, but histnolu has more cooling in China
-    # project LU onto 2nd eof for historical vs hist-nolu?
+# 
 
 #%%==============================================================================
 # import
