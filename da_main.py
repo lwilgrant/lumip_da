@@ -14,28 +14,16 @@ Created on Wed Jul  1 16:52:49 2020
 
 # This script generates detection and attribution results on LUMIP data
 
-# v7: option for d&a on multi-model mean
-    # take ensemble mean of individual model mean forced response patterns
-# v7: option for unmasked data
+# New hydra version:
+    # chop into cells (main script and functions)
+    # chop into subroutines on other scripts
+    # for unmasked, use all land-based ar6 regions per continent (too much uncertainty for luh2 selection)
+    # add option for uniform grids (per obs)
+    # add d & a outputs per AR6 region, (latitudinally?)
+    # put current (sep 30) fp_main and da_main and funcs scripts on backup branch on github
 
-# v8: add Oceania/Australia as last continent
 
-# v9: first read in hist + hist-nolu, take ensemble means of these exps, then
-# get lu response pattern. do extraction of weighted_mean() on mmm (per model) 
-# then do aggregation across models
-
-# v9: figures_v2 to organize from here
-
-# June 16 fucked up the whole thing by assuming it was OK to take ensemble mean on
-# spatially distributed data arrays (which have diff lat/lon resolutions); 
-# have to infact do this after ar6 aggregation
-
-# v10: threshold via area; global scaling for agci poster
-
-# v11: changes for ensembles in box plots for tseries 
-# if getting runtime mean empty slice and then eigval warnings; CHECK THRESHOLD
-
-# =============================================================================
+#%%============================================================================
 # import
 # =============================================================================
 
@@ -55,26 +43,33 @@ from random import shuffle
 from matplotlib.lines import Line2D
 
 
-#==============================================================================
+#%%============================================================================
 # path
 #==============================================================================
 
 
-curDIR = '/home/luke/documents/lumip/d_a/'
+curDIR = '/theia/data/brussel/vo/000/bvo00012/vsc10116/lumip/d_a'
 os.chdir(curDIR)
 
+# # data input directories
+# obsDIR = os.path.join(curDIR, 'data/obs/final')
+# modDIR = os.path.join(curDIR, 'data/mod/final')
+# piDIR = os.path.join(curDIR, 'data/pi/final')
+# mapDIR = os.path.join(curDIR, 'data/map/final')
+# outDIR = os.path.join(curDIR, 'figures_v2')
+
 # data input directories
-obsDIR = os.path.join(curDIR, 'data/obs/final')
-modDIR = os.path.join(curDIR, 'data/mod/final')
-piDIR = os.path.join(curDIR, 'data/pi/final')
-mapDIR = os.path.join(curDIR, 'data/map/final')
-outDIR = os.path.join(curDIR, 'figures_v2')
+obsDIR = os.path.join(curDIR, 'obs')
+modDIR = os.path.join(curDIR, 'mod')
+piDIR = os.path.join(curDIR, 'pi')
+mapDIR = os.path.join(curDIR, 'map')
+outDIR = os.path.join(curDIR, 'figures')
 
 # bring in functions
-from da_funcs_v11 import *
+from da_funcs import *
 
 
-#==============================================================================
+#%%============================================================================
 # options - analysis
 #==============================================================================
 
@@ -97,7 +92,7 @@ flag_tres=3;    # 0: jja
 
 # << SELECT >>
 flag_analysis=1;  # 0: d&a on global scale (all chosen ar6 regions)
-                  # 1: d&a on continental scale (scaling factor per continent)
+                  # 1: d&a on continental scale (scaling factor per continent; continent represented by AR6 weighted means)
                   
 # << SELECT >>
 flag_lulcc=0;     # 0: forest loss
@@ -224,84 +219,25 @@ exps_start = ['historical',
 
 exps = ['hist-noLu',
         'lu']
+    
+continents = {}
+continents['North America'] = [1,2,3,4,5,6,7]
+continents['South America'] = [9,10,11,12,13,14,15]
+continents['Europe'] = [16,17,18,19]
+continents['Asia'] = [29,30,32,33,34,35,37,38]
+continents['Africa'] = [21,22,23,24,25,26]
+continents['Australia'] = [39,40,41,42]
 
-if lulcc_type == 'forest':
+continent_names = []
+for c in continents.keys():
+    continent_names.append(c)
 
-    continents = {}
-    continents['North America'] = [3,4,5,7]
-    continents['South America'] = [9,10,11,12,13,14]
-    continents['Europe'] = [17,18]
-    continents['Asia'] = [29,30,34,35,37,38]
-    continents['Africa'] = [21,22,23,24,26]
-    
-    labels = {}
-    labels['North America'] = ['WNA','CNA','ENA','SCA']
-    labels['South America'] = ['NWS','NSA','NES','SAM','SWS','SES']
-    labels['Europe'] = ['WCE','EEU']
-    labels['Asia'] = ['WSB','ESB','TIB','EAS','SAS','SEA']
-    labels['Africa'] = ['WAF','CAF','NEAF','SEAF','ESAF']
-    
-    continent_names = []
-    for c in continents.keys():
-        continent_names.append(c)
-        
-elif lulcc_type == 'crops':
-    
-    continents = {}
-    continents['North America'] = [3,4,5,6,7]
-    continents['South America'] = [9,11,12,14]
-    continents['Europe'] = [16,17,18,19]
-    continents['Asia'] = [29,30,32,35,37,38]
-    continents['Africa'] = [21,22,23,24,25,26]
-    
-    continent_names = []
-    for c in continents.keys():
-        continent_names.append(c)
-    
-    labels = {}
-    labels['North America'] = ['WNA','CNA','ENA','NCA','SCA']
-    labels['South America'] = ['NWS','NES','SAM','SES']
-    labels['Europe'] = ['NEU','WCE','EEU','MED']
-    labels['Asia'] = ['WSB','ESB','WCA','EAS','SAS','SEA']
-    labels['Africa'] = ['WAF','CAF','NEAF','SEAF','SWAF','ESAF']
-    
-elif lulcc_type == 'unmasked':
-    
-    continents = {}
-    continents['North America'] = [3,4,5,6,7]
-    continents['South America'] = [9,10,11,12,13,14]
-    continents['Europe'] = [16,17,18,19]
-    continents['Asia'] = [29,30,32,35,37]
-    continents['Africa'] = [21,22,23,24,25,26]
-    continents['Australia'] = [39,40,41,42]
-    
-    continent_names = []
-    for c in continents.keys():
-        continent_names.append(c)
-    
-    labels = {}
-    labels['North America'] = ['WNA','CNA','ENA','NCA','SCA']
-    labels['South America'] = ['NWS','NSA','NES','SAM','SES']
-    labels['Europe'] = ['NEU','WCE','EEU','MED']
-    labels['Asia'] = ['WSB','ESB','WCA','EAS','SAS']
-    labels['Africa'] = ['WAF','CAF','NEAF','SEAF','SWAF','ESAF']
-    labels['Australia'] = ['NAU','CAU','EAU','SAU']
-    
-if measure == 'all_pixels':
-    
-    continents = {}
-    continents['North America'] = [3,4,5,7]
-    continents['South America'] = [9,10,11,12,13,14]
-    continents['Europe'] = [16,17,18,19]
-    continents['Asia'] = [29,30,34,35,37,38]
-    continents['Africa'] = [21,22,23,24,26]
-    
-    labels = {}
-    labels['North America'] = ['WNA','CNA','ENA','SCA']
-    labels['South America'] = ['NWS','NSA','NES','SAM','SWS','SES']
-    labels['Europe'] = ['NEU','WCE','EEU','MED']
-    labels['Asia'] = ['WSB','ESB','TIB','EAS','SAS','SEA']
-    labels['Africa'] = ['WAF','CAF','NEAF','SEAF','ESAF']
+labels = {}
+labels['North America'] = ['WNA','CNA','ENA','SCA']
+labels['South America'] = ['NWS','NSA','NES','SAM','SWS','SES']
+labels['Europe'] = ['NEU','WCE','EEU','MED']
+labels['Asia'] = ['WSB','ESB','TIB','EAS','SAS','SEA']
+labels['Africa'] = ['WAF','CAF','NEAF','SEAF','ESAF']
     
 ns = 0
 for c in continents.keys():
@@ -309,7 +245,7 @@ for c in continents.keys():
         ns += 1
 
 
-#==============================================================================
+#%%============================================================================
 # get data 
 #==============================================================================
 
@@ -386,7 +322,7 @@ for mod in models:
             
         
 
-#==============================================================================
+#%%============================================================================
 
 # mod data
 os.chdir(modDIR)
@@ -649,7 +585,7 @@ for c in continents.keys():
     
 # TEST ALL FINGERPRINTS TO MAKE SURE THEY ARE TEMPORALLY CENTERED!!!! (FP AND FP_CONTINENTAL)
 
-#==============================================================================
+#%%============================================================================
 
 # pi data
 os.chdir(piDIR)
@@ -776,7 +712,7 @@ for c in continents.keys():
     ctl_data_continental['mmm'][c] = np.concatenate(ctl_list_c[c],
                                                     axis=0)
         
-#==============================================================================
+#%%============================================================================
 
 # obs data
 os.chdir(obsDIR)
@@ -887,7 +823,7 @@ for c in continents.keys():
                                                  obs_ens).flatten()
  
 
-#==============================================================================
+#%%============================================================================
 # detection & attribution 
 #==============================================================================
 
@@ -1091,23 +1027,23 @@ for mod in models:
                                             blow_med,
                                             pval_med]
                 
-#==============================================================================
+#%%============================================================================
 # plotting scaling factors
 #==============================================================================    
     
 if analysis == 'global':
     
-    plot_scaling(models,
-                 exps,
-                 var_fin,
-                 flag_svplt,
-                 outDIR,
-                 lulcc_type,
-                 t_ext,
-                 tres,
-                 freq,
-                 var,
-                 measure)
+    plot_scaling_global(models,
+                        exps,
+                        var_fin,
+                        flag_svplt,
+                        outDIR,
+                        lulcc_type,
+                        t_ext,
+                        tres,
+                        freq,
+                        var,
+                        measure)
 
 elif analysis == 'continental':
     
