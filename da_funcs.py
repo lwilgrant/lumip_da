@@ -33,6 +33,7 @@ from matplotlib.lines import Line2D
 # functions
 # =============================================================================
 
+#%%============================================================================
 
 def nc_read(file,
             y1,
@@ -80,7 +81,7 @@ def nc_read(file,
     
     return da
 
-#==============================================================================
+#%%============================================================================
 
 def ar6_mask(da):
     
@@ -92,7 +93,7 @@ def ar6_mask(da):
     
     return ar6_regs
 
-#==============================================================================
+#%%============================================================================
 
 def weighted_mean(continents,
                   da,
@@ -115,7 +116,7 @@ def weighted_mean(continents,
             
     return matrix
 
-#==============================================================================
+#%%============================================================================
 
 def temp_center(ns,
                 mod_ar6):
@@ -128,7 +129,7 @@ def temp_center(ns,
         
     return mod_ar6
 
-#==============================================================================
+#%%============================================================================
 
 def ensembler(data_list,
               ax=False):
@@ -144,7 +145,7 @@ def ensembler(data_list,
     
     return ens_mean,nx
 
-#==============================================================================
+#%%============================================================================
 
 def da_ensembler(data):
     
@@ -154,7 +155,7 @@ def da_ensembler(data):
     
     return mean
 
-#==============================================================================
+#%%============================================================================
 
 def eigvalvec(C):
     """
@@ -175,7 +176,7 @@ def eigvalvec(C):
     eigval = eigval1[dorder]
     return eigval, eigvec
 
-#==============================================================================
+#%%============================================================================
 
 def projfullrank(t, 
                  s):
@@ -194,7 +195,7 @@ def projfullrank(t,
         P[i:(t-1)*s:s, i:t*s:s] = eigvec
     return P
 
-#==============================================================================
+#%%============================================================================
 
 def regC(X):
     """
@@ -225,7 +226,7 @@ def regC(X):
     Cr = b2 * m / d2 * Ip + a2 / d2 * CE
     return Cr
 
-#==============================================================================
+#%%============================================================================
 
 def extract_Z2(NZ, 
                frac_Z2, 
@@ -255,7 +256,7 @@ def extract_Z2(NZ,
         print('Unknown sampling_name.')
     return Ind_Z2
 
-#==============================================================================
+#%%============================================================================
 
 def gke(d_H0, 
         d):
@@ -270,7 +271,7 @@ def gke(d_H0,
 
     return pv
 
-#==============================================================================
+#%%============================================================================
 
 def tls(X, 
         Y, 
@@ -397,7 +398,7 @@ def tls(X,
         beta_hat_sup += np.nan
     return beta_hat, beta_hat_inf, beta_hat_sup, d_cons, X_tilde, Y_tilde
 
-#==============================================================================
+#%%============================================================================
 
 def consist_mc_tls(Sigma, 
                    X0, 
@@ -460,7 +461,7 @@ def consist_mc_tls(Sigma,
 
     return d_cons_H0
 
-#==============================================================================
+#%%============================================================================
 
 def da_run(y,
            X,
@@ -591,7 +592,7 @@ def da_run(y,
     
     return beta,nb_runs_ctl,proj,U,yc,Z1c,Z2c,Xc,Cf1,Ft,beta_hat
 
-#==============================================================================
+#%%============================================================================
 
 def scale_take(array): #must take diff between b and sup/inf, store in separate lists
     b = array[1]
@@ -600,19 +601,19 @@ def scale_take(array): #must take diff between b and sup/inf, store in separate 
     p = array[3]
     return b,b_inf,b_sup,p
 
-#==============================================================================
+#%%============================================================================
 
-def plot_scaling(models,
-                 exps,
-                 var_fin,
-                 flag_svplt,
-                 outDIR,
-                 lulcc_type,
-                 t_ext,
-                 tres,
-                 freq,
-                 var,
-                 measure):
+def plot_scaling_global(models,
+                        exps,
+                        var_fin,
+                        flag_svplt,
+                        outDIR,
+                        lulcc_type,
+                        t_ext,
+                        tres,
+                        freq,
+                        var,
+                        measure):
     
     cmap_whole = plt.cm.get_cmap('PRGn')
     cols={}
@@ -754,14 +755,14 @@ def plot_scaling(models,
 # =============================================================================
 #             f.tight_layout()
 # =============================================================================
-            f.savefig(outDIR+'/'+var+'_'+tres+'_'+lulcc_type+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_global_v2_poster.png',bbox_inches='tight',dpi=200)     
+            f.savefig(outDIR+'/'+var+'_'+tres+'_'+lulcc_type+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_global.png',bbox_inches='tight',dpi=200)     
         if measure == 'all_pixels':
 # =============================================================================
 #             f.tight_layout()
 # =============================================================================
-            f.savefig(outDIR+'/'+var+'_'+tres+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_global_v2.png',dpi=200)     
+            f.savefig(outDIR+'/'+var+'_'+tres+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_global.png',dpi=200)     
 
-#==============================================================================    
+#%%============================================================================    
 
 def plot_scaling_continental(models,
                              exps,
@@ -1045,9 +1046,8 @@ def plot_scaling_continental(models,
         
         if flag_svplt == 1:
             if measure != 'all_pixels':
-                f.savefig(outDIR+'/'+mod+'_'+var+'_'+tres+'_'+lulcc_type+'_'+measure+'_'+t_ext+'_'+freq+'_tseries_scaling_continental_v2.png',dpi=200)     
+                f.savefig(outDIR+'/'+mod+'_'+var+'_'+tres+'_'+lulcc_type+'_'+measure+'_'+t_ext+'_'+freq+'_tseries_scaling_continental.png',dpi=200)     
             if measure == 'all_pixels':
-                f.savefig(outDIR+'/'+mod+'_'+var+'_'+tres+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_continental_v2.png',dpi=200)     
+                f.savefig(outDIR+'/'+mod+'_'+var+'_'+tres+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_continental.png',dpi=200)     
     
     
-#==============================================================================    
