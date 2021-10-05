@@ -29,6 +29,7 @@ Created on Wed Jul  1 16:52:49 2020
                     # change maps subroutine to, based on grid_type, produce ar6_land masks either at obs resolution or as dict for mod resolutions
                     # take grid type as input to file allocation subroutine
                     # tres can be removed: no longer required
+                    # based on need, can read in either ensmeans or individual realisations
     # add option for obs type; needs to be added to subroutine functions
     # add d & a outputs per AR6 region, (latitudinally?)
     # 
@@ -84,12 +85,6 @@ flag_svplt=1      # 0: do not save plot
                   # 1: save plot in picDIR
 
 # << SELECT >>
-flag_tres=3     # 0: jja
-                # 1: djf
-                # 2: annual
-                # 3: max month
-
-# << SELECT >>
 flag_analysis=0   # 0: d&a on global scale (all chosen ar6 regions)
                   # 1: d&a on continental scale (scaling factor per continent; continent represented by AR6 weighted means)
                   
@@ -110,10 +105,9 @@ flag_obs=0       # 0: cru
 thresh=-20
 
 # << SELECT >>
-flag_lulcc_measure=3    # 0: relative change
-                        # 1: absolute change
-                        # 2: area change
-                        # 3: all_pixels
+flag_lulcc_measure=1    # 0: absolute change
+                        # 1: area change
+                        # 2: all_pixels
 
 # << SELECT >>
 flag_y1=1         # 0: 1915
@@ -176,8 +170,7 @@ grids = ['model',
          'obs']
 obs_types = ['cru',
              'berkley_earth']
-measures = ['relative_change',
-            'absolute_change',
+measures = ['absolute_change',
             'area_change',
             'all_pixels']
 start_years = [1915,
@@ -200,7 +193,6 @@ shuffle_opts = ['no',
 bootstrap_reps = [0,50,100,500,1000]
 confidence_intervals = [0.8,0.9,0.95,0.99]
 
-tres = seasons[flag_tres]
 analysis = analyses[flag_analysis]
 lulcc_type = lulcc[flag_lulcc]
 grid_type = grids[flag_grid]
@@ -213,7 +205,7 @@ var = variables[flag_var]
 bs_reps = bootstrap_reps[flag_bs]
 ci_bnds = confidence_intervals[flag_ci_bnds]
 reg = regressions[flag_reg]
-cons_test = consistency_tests[flag_constest]
+cons_test = consistency_tegsts[flag_constest]
 formule_ic_tls = tls_cis[flag_ci_tls]
 
 # temporal extent of analysis data
@@ -227,11 +219,12 @@ models = ['CanESM5',
           'IPSL-CM6A-LR',
           'UKESM1-0-LL']
 
-exps_start = ['historical',
-              'hist-noLu']
-
-exps = ['hist-noLu',
+exps = ['historical',
+        'hist-noLu',
         'lu']
+
+exps_of = ['hist-noLu',
+           'lu']
     
 continents = {}
 continents['North America'] = [1,2,3,4,5,6,7]
