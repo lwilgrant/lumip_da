@@ -99,8 +99,10 @@ def weighted_mean(continents,
                   da,
                   ar6_regs,
                   nt,
-                  matrix):
+                  ns):
     
+    nt = len(da.time.values)
+    matrix = np.zeros(shape=(nt,ns))
     s = 0
     for c in continents.keys():
         for i in continents[c]:
@@ -113,6 +115,28 @@ def weighted_mean(continents,
                 da_i_t_w = da_i_t.weighted(weights).mean(('lon','lat')).values
                 matrix[t,s]= da_i_t_w
             s += 1
+            
+    return matrix
+
+
+#%%============================================================================
+
+def del_rows(matrix):
+    
+    # remove tsteps with nans (temporal x spatial shaped matrix)
+    del_rows = []
+    
+    for i,row in enumerate(matrix):
+        
+        nans = np.isnan(row)
+        
+        if True in nans:
+            
+            del_rows.append(i)
+            
+    matrix = np.delete(matrix,
+                       del_rows,
+                       axis=0)
             
     return matrix
 
