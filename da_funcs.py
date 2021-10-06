@@ -38,7 +38,7 @@ from matplotlib.lines import Line2D
 def nc_read(file,
             y1,
             var,
-            mod=False,
+            obs=False,
             freq=False,
             luh2=False,
             thresh=False):
@@ -56,7 +56,6 @@ def nc_read(file,
     
     ds = xr.open_dataset(file,decode_times=False)
     da = ds[var].squeeze()
-    
     units, reference_date = da.time.attrs['units'].split('since')
     reference_date = reference_date.replace(reference_date[1:5],str(y1))[1:]
     new_date = pd.date_range(start=reference_date, periods=da.sizes['time'], freq='YS')
@@ -64,20 +63,17 @@ def nc_read(file,
     
     if 'height' in da.coords:
         da = da.drop('height')
+    if obs == 'berkley_earth':
+        da = da.rename({'latitude':'lat','longitude':'lon'})
         
-    if mod:
-        da = da.resample(time=freq,
-                         closed='left',
-                         label='left').mean('time')
-        
-    if luh2:
-        if thresh < 0: # forest
-            #da = da.where(da <= thresh)
-            da = xr.where(da <= thresh,1,0).sum(dim='time')
-            da = xr.where(da >= 1,1,0)
-        elif thresh > 0: # crops + urban
-            da = xr.where(da >= thresh,1,0).sum(dim='time')
-            da = xr.where(da >= 1,1,0)
+    da = da.resample(time=freq,
+                     closed='left',
+                     label='left').mean('time') #this mean doesn't make sense for land cover maps
+    # keeping this commented out, but i don't think it is necessary with a "mod" argument        
+    # if mod:
+    #     da = da.resample(time=freq,
+    #                      closed='left',
+    #                      label='left').mean('time')
     
     return da
 

@@ -30,9 +30,9 @@ Created on Wed Jul  1 16:52:49 2020
                     # take grid type as input to file allocation subroutine
                     # tres can be removed: no longer required
                     # based on need, can read in either ensmeans or individual realisations
+                # no option exists for looking at area changes in the case of working at obs resolutions (map/*.nc files are all at mod resolution; will have to fix if I want to do this but not necessary now)
     # add option for obs type; needs to be added to subroutine functions
     # add d & a outputs per AR6 region, (latitudinally?)
-    # 
     # put current (sep 30) fp_main and da_main and funcs scripts on backup branch on github
 
 #%%============================================================================
@@ -91,10 +91,9 @@ flag_analysis=0   # 0: d&a on global scale (all chosen ar6 regions)
 # << SELECT >>
 flag_lulcc=0      # 0: forest loss
                   # 1: crop expansion
-                  # 2: urban
                   
 # << SELECT >>
-flag_grid=0       # 0: model grid resolution
+flag_grid=1       # 0: model grid resolution
                   # 1: uniform obs grid resolution
                   
 # << SELECT >>
@@ -125,7 +124,7 @@ flag_resample=0    # 0: 5 year block means
 flag_var=0   # 0: tasmax
 
 # << SELECT >> 
-flag_bs=0         # 0: No bootstrapping of covariance matrix build
+flag_bs=1         # 0: No bootstrapping of covariance matrix build
                   # 1: 50 (e.g. 50 reps of ROF, each with shuffled pichunks for Cov_matrices)
                   # 2: 100
                   # 3: 500
@@ -164,8 +163,7 @@ deforest_options = ['all',
                     'defor',
                     'ar6']
 lulcc = ['forest',
-         'crops',
-         'urban']
+         'crops']
 grids = ['model',
          'obs']
 obs_types = ['cru',
@@ -205,7 +203,7 @@ var = variables[flag_var]
 bs_reps = bootstrap_reps[flag_bs]
 ci_bnds = confidence_intervals[flag_ci_bnds]
 reg = regressions[flag_reg]
-cons_test = consistency_tegsts[flag_constest]
+cons_test = consistency_tests[flag_constest]
 formule_ic_tls = tls_cis[flag_ci_tls]
 
 # temporal extent of analysis data
@@ -255,12 +253,33 @@ for c in continents.keys():
 #==============================================================================
 
 #%%============================================================================
+from da_sr_file_alloc import *
+map_files,grid_files,fp_files,pi_files,obs_files = file_subroutine(mapDIR,
+                                                                   modDIR,
+                                                                   piDIR,
+                                                                   obsDIR,
+                                                                   grid_type,
+                                                                   obs_types,
+                                                                   lulcc,
+                                                                   y1,
+                                                                   y2,
+                                                                   t_ext,
+                                                                   models,
+                                                                   exps,
+                                                                   var)
+
+
+#%%============================================================================
 
 # luh2 maps and ar6 regions
+os.chdir(curDIR)
 from da_sr_maps import *
-maps,ar6_regs,ar6_land = map_subroutine(models,
+maps,ar6_regs,ar6_land = map_subroutine(map_files,
+                                        models,
                                         mapDIR,
                                         lulcc,
+                                        obs_types,
+                                        grid_type,
                                         y1,
                                         measure,
                                         freq,
@@ -269,6 +288,7 @@ maps,ar6_regs,ar6_land = map_subroutine(models,
 #%%============================================================================
 
 # mod ensembles
+os.chdir(curDIR)
 from da_sr_mod_ens import *
 mod_ens,mod_ts_ens,nt = ensemble_subroutine(modDIR,
                                             maps,

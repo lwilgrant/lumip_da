@@ -29,77 +29,123 @@ from da_funcs import *
 
 
 #%%============================================================================
-def map_subroutine(models,
+def map_subroutine(map_files,
+                   models,
                    mapDIR,
                    lulcc,
+                   obs_types,
+                   grid_type,
                    y1,
                    measure,
                    freq,
                    thresh):
+    
     # map data
-    maps_files = {}
+    os.chdir(mapDIR)
+    grid_area = {}
     maps = {}
-    gridarea = {}
     ar6_regs = {}
     ar6_land = {}
-
-    for mod in models:
+    
+    if grid_type == 'obs':
         
-        maps_files[mod] = {}
-        maps[mod] = {}
-
-        # maps of lulcc data
-        os.chdir(mapDIR)
-        gridarea[mod] = xr.open_dataset(mod+'_gridarea.nc',decode_times=False)['cell_area']
-        
-        i = 0
-        for lu in lulcc:
+        for obs in obs_types:
             
-            for file in [file for file in sorted(os.listdir(mapDIR))
-                        if mod in file
-                        and lu in file
-                        and str(y1) in file
-                        and 'absolute_change' in file]:
+            maps[obs] = {}
+            grid_area[obs] = xr.open_dataset('tasmax_obs_'+obs+'_gridarea.nc',decode_times=False)['cell_area']
+            if obs == 'berkley_earth':
+                grid_area[obs] = grid_area[obs].rename({'latitude':'lat','longitude':'lon'})
+            i = 0
+            
+            for lu in lulcc:
+                                    
+                # get ar6 from lat/lon of sample model res luh2 file
+                if i == 0:
+                    template = xr.open_dataset(map_files[obs][lu],decode_times=False).cell_area.isel(time=0).squeeze(drop=True)
+                    if 'height' in template.coords:
+                        template = template.drop('height')
+                    if obs == 'berkley_earth':
+                        template = template.rename({'latitude':'lat','longitude':'lon'})
+                    ar6_regs[obs] = ar6_mask(template)
+                    ar6_land[obs] = xr.where(ar6_regs[obs]>=0,1,0)
+                i += 1
+                    
 
-                    maps_files[mod][lu] = file
+                if measure == 'absolute_change':
                     
-                    # get ar6 from lat/lon of sample model res luh2 file
-                    if i == 0:
-                        template = xr.open_dataset(file,decode_times=False).cell_area.isel(time=0).squeeze(drop=True)
-                        if 'height' in template.coords:
-                            template = template.drop('height')
-                        ar6_regs[mod] = ar6_mask(template)
-                        ar6_land[mod] = xr.where(ar6_regs[mod]>=0,1,0)
-                    i += 1
-                
+                    maps[obs][lu] = nc_read(map_files[obs][lu],
+                                            y1,
+                                            var='cell_area',
+                                            obs=obs,
+                                            freq=freq)
+                    
+                elif measure == 'area_change':
+                    
+                    maps[obs][lu] = nc_read(map_files[obs][lu],
+                                            y1,
+                                            var='cell_area',
+                                            obs=obs,
+                                            freq=freq) * grid_area[obs] / 1e6
+                    
+                    if thresh < 0: # forest
+                    
+                        da = xr.where(maps[obs][lu] <= thresh,1,0).sum(dim='time')
+                        maps[obs][lu] = xr.where(da >= 1,1,0)
+                        
+                    elif thresh > 0: # crops + urban
+                    
+                        da = xr.where(maps[obs][lu] >= thresh,1,0).sum(dim='time')
+                        maps[obs][lu] = xr.where(da >= 1,1,0)
+                        
+                elif measure == 'all_pixels':
+                    
+                    maps[obs] = ar6_land[obs]
+    
+    elif grid_type == 'model':
 
-            if measure == 'absolute_change':
-                
-                maps[mod][lu] = nc_read(maps_files[mod][lu],
-                                        y1,
-                                        var='cell_area',
-                                        mod=True,
-                                        freq=freq)
-                
-            elif measure == 'area_change':
-                
-                maps[mod][lu] = nc_read(maps_files[mod][lu],
-                                        y1,
-                                        var='cell_area',
-                                        mod=True,
-                                        freq=freq) * gridarea[mod] / 1e6
-                if thresh < 0: # forest
-                
-                    da = xr.where(maps[mod][lu] <= thresh,1,0).sum(dim='time')
-                    maps[mod][lu] = xr.where(da >= 1,1,0)
+        for mod in models:
+            
+            grid_area[mod] = xr.open_dataset(mod+'_gridarea.nc',decode_times=False)['cell_area']
+            i = 0
+            
+            for lu in lulcc:
+                                    
+                # get ar6 from lat/lon of sample model res luh2 file
+                if i == 0:
+                    template = xr.open_dataset(map_files[mod][lu],decode_times=False).cell_area.isel(time=0).squeeze(drop=True)
+                    if 'height' in template.coords:
+                        template = template.drop('height')
+                    ar6_regs[mod] = ar6_mask(template)
+                    ar6_land[mod] = xr.where(ar6_regs[mod]>=0,1,0)
+                i += 1
                     
-                elif thresh > 0: # crops + urban
-                
-                    da = xr.where(maps[mod][lu] >= thresh,1,0).sum(dim='time')
-                    maps[mod][lu] = xr.where(da >= 1,1,0)
+
+                if measure == 'absolute_change':
                     
-            elif measure == 'all_pixels':
-                
-                maps[mod][lu] = ar6_land[mod]
+                    maps[mod][lu] = nc_read(map_files[mod][lu],
+                                            y1,
+                                            var='cell_area',
+                                            freq=freq)
+                    
+                elif measure == 'area_change':
+                    
+                    maps[mod][lu] = nc_read(map_files[mod][lu],
+                                            y1,
+                                            var='cell_area',
+                                            freq=freq) * grid_area[mod] / 1e6
+                    
+                    if thresh < 0: # forest
+                    
+                        da = xr.where(maps[mod][lu] < thresh,1,0).sum(dim='time')
+                        maps[mod][lu] = xr.where(da >= 1,1,0)
+                        
+                    elif thresh > 0: # crops + urban
+                    
+                        da = xr.where(maps[mod][lu] > thresh,1,0).sum(dim='time')
+                        maps[mod][lu] = xr.where(da >= 1,1,0)
+                        
+                elif measure == 'all_pixels':
+                    
+                    maps[mod] = ar6_land[mod]
             
     return maps,ar6_regs,ar6_land

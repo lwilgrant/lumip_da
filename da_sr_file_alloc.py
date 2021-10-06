@@ -34,16 +34,15 @@ def file_subroutine(mapDIR,
                     modDIR,
                     piDIR,
                     obsDIR,
-                    analysis,
                     grid_type,
                     obs_types,
-                    measure,
+                    lulcc,
                     y1,
+                    y2,
                     t_ext,
                     models,
                     exps,
-                    var,
-                    lulcc_type):
+                    var):
     
     map_files = {}
     grid_files = {}
@@ -54,28 +53,42 @@ def file_subroutine(mapDIR,
     #==============================================================================
             
     # map files
-    if measure == "all_pixels":
-        
-        pass
+    os.chdir(mapDIR)
     
-    elif measure != "all_pixels":
+    if grid_type == 'obs':
         
-        os.chdir(mapDIR)
-        
+        for obs in obs_types:
+            
+            map_files[obs] = {}
+            grid_files[obs] = 'tasmax_obs_' + obs + '_gridarea.nc' # won't need this since map files at obs res are already in area
+            
+            for lu in lulcc:
+            
+                for file in [file for file in sorted(os.listdir(mapDIR))
+                            if obs in file\
+                            and lu in file\
+                            and str(y1) in file\
+                            and str(y2) in file]:
+                    
+                    map_files[obs][lu] = file   
+    
+    elif grid_type == 'model':
+    
         for mod in models:
         
             map_files[mod] = {}
-
-            # maps of lulcc data
             grid_files[mod] = mod+'_gridarea.nc'
+            
+            for lu in lulcc:
                 
-            for file in [file for file in sorted(os.listdir(mapDIR))
-                        if mod in file\
-                        and lulcc_type in file\
-                        and str(y1) in file\
-                        and 'absolute_change' in file]:
+                for file in [file for file in sorted(os.listdir(mapDIR))
+                            if mod in file\
+                            and lu in file\
+                            and str(y1) in file\
+                            and str(y2) in file\
+                            and 'absolute_change' in file]:
 
-                    map_files[mod][lulcc_type] = file
+                        map_files[mod][lu] = file
 
     #==============================================================================
     
@@ -98,12 +111,12 @@ def file_subroutine(mapDIR,
                 
                     for file in [file for file in sorted(os.listdir(modDIR))\
                                 if var in file\
-                                    and mod in file\
-                                    and exp in file\
-                                    and t_ext in file\
-                                    and obs in file\
-                                    and 'unmasked' in file\
-                                    and not 'ensmean' in file]:
+                                and mod in file\
+                                and exp in file\
+                                and t_ext in file\
+                                and obs in file\
+                                and 'unmasked' in file\
+                                and not 'ensmean' in file]:
                         
                         fp_files[mod][exp][obs].append(file)
                     
@@ -113,13 +126,14 @@ def file_subroutine(mapDIR,
                 
                 for file in [file for file in sorted(os.listdir(modDIR))\
                             if var in file\
-                                and mod in file\
-                                and exp in file\
-                                and t_ext in file\
-                                and not obs in file\
-                                and 'unmasked' in file\
-                                and not 'ensmean' in file]:
-                    
+                            and mod in file\
+                            and exp in file\
+                            and t_ext in file\
+                            and not obs_types[0] in file\
+                            and not obs_types[1] in file\
+                            and 'unmasked' in file\
+                            and not 'ensmean' in file]:
+                        
                     fp_files[mod][exp].append(file)                
                     
     #==============================================================================
@@ -139,10 +153,10 @@ def file_subroutine(mapDIR,
         
                 for file in [file for file in sorted(os.listdir(piDIR))\
                             if var in file\
-                                and mod in file\
-                                and t_ext in file\
-                                and obs in file\
-                                and 'unmasked' in file]:
+                            and mod in file\
+                            and t_ext in file\
+                            and obs in file\
+                            and 'unmasked' in file]:
                     
                     pi_files[mod][obs].append(file)
                 
@@ -152,10 +166,11 @@ def file_subroutine(mapDIR,
         
             for file in [file for file in sorted(os.listdir(piDIR))\
                         if var in file\
-                            and mod in file\
-                            and t_ext in file\
-                            and not obs in file\
-                            and 'unmasked' in file]:
+                        and mod in file\
+                        and t_ext in file\
+                        and not obs_types[0] in file\
+                        and not obs_types[1] in file\
+                        and 'unmasked' in file]:
                 
                 pi_files[mod].append(file)
                 
@@ -170,11 +185,11 @@ def file_subroutine(mapDIR,
         
             for file in [file for file in sorted(os.listdir(obsDIR))\
                         if var in file\
-                            and 'obs' in file\
-                            and obs in file\
-                            and not '-res' in file\
-                            and 'unmasked' in file\
-                            and t_ext in file]:
+                        and 'obs' in file\
+                        and obs in file\
+                        and not '-res' in file\
+                        and 'unmasked' in file\
+                        and t_ext in file]:
                 
                 obs_files[obs] = file
             
@@ -190,11 +205,11 @@ def file_subroutine(mapDIR,
                 
                 for file in [file for file in sorted(os.listdir(obsDIR))\
                             if var in file\
-                                and 'obs' in file\
-                                and obs in file\
-                                and mod + '-res' in file\
-                                and 'unmasked' in file\
-                                and t_ext in file]:
+                            and 'obs' in file\
+                            and obs in file\
+                            and mod + '-res' in file\
+                            and 'unmasked' in file\
+                            and t_ext in file]:
                     
                     obs_files[obs][mod] = file
 
