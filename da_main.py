@@ -34,6 +34,10 @@ Created on Wed Jul  1 16:52:49 2020
     # add option for obs type; needs to be added to subroutine functions
     # add d & a outputs per AR6 region, (latitudinally?)
     # put current (sep 30) fp_main and da_main and funcs scripts on backup branch on github
+    # need solution for options in sr_mod_fp and sr_pi and sr_obs to:
+        # run fp on one experiment; e.g. separate runs for historical and hist-nolu (for "sr_mod_fp")
+        #  
+    # will always have 2 OF results for each obs type, but difference will be whether at model or obs grid
 
 #%%============================================================================
 # import
@@ -100,13 +104,19 @@ flag_grid=1       # 0: model grid resolution
 flag_obs=0       # 0: cru
                  # 1: berkley_earth
                   
-# << SELECT >>
-thresh=-20
+# << SELECT >> 
+thresh=-20       # flag_lulcc_measure == 0; threshold should be written as grid scale area fraction change of land cover type
+                 # flag_lulcc_measure == 1; threshold should be written as area change of land cover type (scatter plots showed +/- 20 km^2 is best)
+                 # flag_lulcc_measure == 2; doesn't mean anything if selecting all land pixels
 
 # << SELECT >>
-flag_lulcc_measure=1    # 0: absolute change
+flag_lulcc_measure=2    # 0: absolute change
                         # 1: area change
                         # 2: all_pixels
+                        
+# << SELECT >>
+flag_lu_technique=1         # 0: lu as mean of individual (historical - hist-nolu)
+                            # 1: lu as mean(historical) - mean(hist-nolu)
 
 # << SELECT >>
 flag_y1=1         # 0: 1915
@@ -114,7 +124,7 @@ flag_y1=1         # 0: 1915
 
 # << SELECT >>
 flag_len=0        # 0: 50
-                   # 1: 100
+                  # 1: 100
 
 # << SELECT >>
 flag_resample=0    # 0: 5 year block means
@@ -171,6 +181,8 @@ obs_types = ['cru',
 measures = ['absolute_change',
             'area_change',
             'all_pixels']
+lu_techniques = ['individual',
+                 'mean']
 start_years = [1915,
                1965]
 lengths = [50,
@@ -193,9 +205,10 @@ confidence_intervals = [0.8,0.9,0.95,0.99]
 
 analysis = analyses[flag_analysis]
 lulcc_type = lulcc[flag_lulcc]
-grid_type = grids[flag_grid]
+grid = grids[flag_grid]
 obs = obs_types[flag_obs]
 measure = measures[flag_lulcc_measure]
+lu_techn = lu_techniques[flag_lu_technique]
 y1 = start_years[flag_y1]
 length = lengths[flag_len]
 freq = resample[flag_resample]
@@ -258,7 +271,7 @@ map_files,grid_files,fp_files,pi_files,obs_files = file_subroutine(mapDIR,
                                                                    modDIR,
                                                                    piDIR,
                                                                    obsDIR,
-                                                                   grid_type,
+                                                                   grid,
                                                                    obs_types,
                                                                    lulcc,
                                                                    y1,
@@ -279,7 +292,7 @@ maps,ar6_regs,ar6_land = map_subroutine(map_files,
                                         mapDIR,
                                         lulcc,
                                         obs_types,
-                                        grid_type,
+                                        grid,
                                         y1,
                                         measure,
                                         freq,
@@ -292,16 +305,19 @@ os.chdir(curDIR)
 from da_sr_mod_ens import *
 mod_ens,mod_ts_ens,nt = ensemble_subroutine(modDIR,
                                             maps,
+                                            models,
                                             exps,
-                                            exps_start,
                                             var,
-                                            tres,
-                                            t_ext,
-                                            grid_type,
+                                            lu_techn,
+                                            measure,
+                                            lulcc_type,
+                                            y1,
+                                            grid,
                                             freq,
-                                            obs,
+                                            obs_types,
                                             continents,
                                             ns,
+                                            fp_files,
                                             ar6_regs)
 
 #%%============================================================================

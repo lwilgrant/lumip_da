@@ -34,7 +34,7 @@ def map_subroutine(map_files,
                    mapDIR,
                    lulcc,
                    obs_types,
-                   grid_type,
+                   grid,
                    y1,
                    measure,
                    freq,
@@ -47,12 +47,12 @@ def map_subroutine(map_files,
     ar6_regs = {}
     ar6_land = {}
     
-    if grid_type == 'obs':
+    if grid == 'obs':
         
         for obs in obs_types:
             
             maps[obs] = {}
-            grid_area[obs] = xr.open_dataset('tasmax_obs_'+obs+'_gridarea.nc',decode_times=False)['cell_area']
+            grid_area[obs] = xr.open_dataset(obs+'_gridarea.nc',decode_times=False)['cell_area']
             if obs == 'berkley_earth':
                 grid_area[obs] = grid_area[obs].rename({'latitude':'lat','longitude':'lon'})
             i = 0
@@ -70,7 +70,6 @@ def map_subroutine(map_files,
                     ar6_land[obs] = xr.where(ar6_regs[obs]>=0,1,0)
                 i += 1
                     
-
                 if measure == 'absolute_change':
                     
                     maps[obs][lu] = nc_read(map_files[obs][lu],
@@ -78,6 +77,16 @@ def map_subroutine(map_files,
                                             var='cell_area',
                                             obs=obs,
                                             freq=freq)
+                    
+                    if thresh < 0: # forest
+                    
+                        da = xr.where(maps[obs][lu] < thresh,1,0).sum(dim='time')
+                        maps[obs][lu] = xr.where(da >= 1,1,0)
+                        
+                    elif thresh > 0: # crops + urban
+                    
+                        da = xr.where(maps[obs][lu] > thresh,1,0).sum(dim='time')
+                        maps[obs][lu] = xr.where(da >= 1,1,0)
                     
                 elif measure == 'area_change':
                     
@@ -89,19 +98,19 @@ def map_subroutine(map_files,
                     
                     if thresh < 0: # forest
                     
-                        da = xr.where(maps[obs][lu] <= thresh,1,0).sum(dim='time')
+                        da = xr.where(maps[obs][lu] < thresh,1,0).sum(dim='time')
                         maps[obs][lu] = xr.where(da >= 1,1,0)
                         
                     elif thresh > 0: # crops + urban
                     
-                        da = xr.where(maps[obs][lu] >= thresh,1,0).sum(dim='time')
+                        da = xr.where(maps[obs][lu] > thresh,1,0).sum(dim='time')
                         maps[obs][lu] = xr.where(da >= 1,1,0)
                         
                 elif measure == 'all_pixels':
                     
                     maps[obs] = ar6_land[obs]
     
-    elif grid_type == 'model':
+    elif grid == 'model':
 
         for mod in models:
             
@@ -119,13 +128,22 @@ def map_subroutine(map_files,
                     ar6_land[mod] = xr.where(ar6_regs[mod]>=0,1,0)
                 i += 1
                     
-
                 if measure == 'absolute_change':
                     
                     maps[mod][lu] = nc_read(map_files[mod][lu],
                                             y1,
                                             var='cell_area',
                                             freq=freq)
+                    
+                    if thresh < 0: # forest
+                    
+                        da = xr.where(maps[mod][lu] < thresh,1,0).sum(dim='time')
+                        maps[mod][lu] = xr.where(da >= 1,1,0)
+                        
+                    elif thresh > 0: # crops + urban
+                    
+                        da = xr.where(maps[mod][lu] > thresh,1,0).sum(dim='time')
+                        maps[mod][lu] = xr.where(da >= 1,1,0)
                     
                 elif measure == 'area_change':
                     

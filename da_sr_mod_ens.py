@@ -13,8 +13,15 @@ Created on Wed Jul  1 16:52:49 2020
 
 
 # This subroutine script generates:
-    # model ensembles for d&a
-    # model t-series as ar6-weighted matrices of rows for tsteps and columns for ar6 regions
+    # model ensemble means for OF (mod_ens)
+    # model t-series as ar6-weighted matrices of rows for tsteps and columns for ar6 regions (mod_ts_ens)
+        # axis 0 for realisations (realisations x tstep_rows x ar6_columns)
+        # these t-series are for box plot data; not used for OF 
+        
+# To check:
+    # check that maps for all cases have 1's for desired locations and 0 otherwise:
+        # absoute change, area change and all pixels versions
+        # make sure it is working for different observation types
 
 
 #%%============================================================================
@@ -32,146 +39,162 @@ from da_funcs import *
 # mod data
 def ensemble_subroutine(modDIR,
                         maps,
+                        models,
                         exps,
-                        exps_start,
                         var,
-                        tres,
-                        t_ext,
-                        grid_type,
+                        lu_techn,
+                        measure,
+                        lulcc_type,
+                        y1,
+                        grid,
                         freq,
-                        obs,
+                        obs_types,
                         continents,
                         ns,
+                        fp_files,
                         ar6_regs):
-    os.chdir(modDIR)
 
-    fp_files = {}
+    os.chdir(modDIR)
     mod_data = {}
     mod_ens = {}
-    mod_ens['mmm'] = {}
     mod_ts_ens = {}
     mod_ts_ens['mmm'] = {}
-    for exp in exps:
-        mod_ts_ens['mmm'][exp] = []
         
-
-    # individual model ensembles and lu extraction
-    for mod in models:
-        
-        fp_files[mod] = {}
-        mod_data[mod] = {}
-        mod_ens[mod] = {}
-        
-        for exp in exps_start:
-            
-            fp_files[mod][exp] = []
-            mod_data[mod][exp] = []
-            
-            if grid_type == 'obs':
-                
-                for file in [file for file in sorted(os.listdir(modDIR))\
-                            if var in file\
-                                and mod in file\
-                                and exp in file\
-                                and tres in file\
-                                and 'unmasked' in file\
-                                and t_ext in file\
-                                and obs in file]:
-                    
-                    fp_files[mod][exp].append(file)
-                    
-            elif grid_type == 'model':
-                
-                for file in [file for file in sorted(os.listdir(modDIR))\
-                            if var in file\
-                                and mod in file\
-                                and exp in file\
-                                and tres in file\
-                                and 'unmasked' in file\
-                                and t_ext in file\
-                                and not obs in file]:
-                    
-                    fp_files[mod][exp].append(file)                
-                
-            for file in fp_files[mod][exp]:
-            
-                # mod data and coords for ar6 
-                da = nc_read(file,
-                             y1,
-                             var,
-                             mod=True,
-                             freq=freq)
-                
-                mod_data[mod][exp].append(da.where(maps[mod][lulcc_type] == 1))
-                
-            mod_ens[mod][exp] = da_ensembler(mod_data[mod][exp])
-        
-        mod_ens[mod]['lu'] = mod_ens[mod]['historical'] - mod_ens[mod]['hist-noLu']
-        
-        mod_ts_ens[mod] = {}
+    # observation resolution data
+    if grid == 'obs':
         
         for exp in exps:
             
-            fp_files[mod][exp] = []
-            mod_ts_ens[mod][exp] = []
-        
-            if grid_type == 'obs':
-                
-                for file in [file for file in sorted(os.listdir(modDIR))\
-                            if var in file\
-                                and mod in file\
-                                and exp in file\
-                                and tres in file\
-                                and 'unmasked' in file\
-                                and t_ext in file\
-                                and obs in file]:
-                    
-                    fp_files[mod][exp].append(file)
-                    
-            elif grid_type == 'model':
-                
-                for file in [file for file in sorted(os.listdir(modDIR))\
-                            if var in file\
-                                and mod in file\
-                                and exp in file\
-                                and tres in file\
-                                and 'unmasked' in file\
-                                and t_ext in file\
-                                and not obs in file]:
-                    
-                    fp_files[mod][exp].append(file)  
-                
-            for file in fp_files[mod][exp]:
+            mod_ts_ens['mmm'][exp] = {}
             
-                # mod data and coords for ar6 mask
-                da = nc_read(file,
-                            y1,
-                            var,
-                            mod=True,
-                            freq=freq)
+            for obs in obs_types:
                 
-                nt = len(da.time.values)
-                
-                # weighted mean
-                mod_ar6 = weighted_mean(continents,
-                                        da.where(maps[mod][lulcc_type] == 1),
-                                        ar6_regs[mod],
-                                        nt,
-                                        ns)
-                        
-                # remove tsteps with nans (temporal x spatial shaped matrix)
-                mod_ar6 = del_rows(mod_ar6)
-                            
-                # temporal centering
-                mod_ar6_center = temp_center(ns,
-                                             mod_ar6)
-                mod_ts_ens[mod][exp].append(mod_ar6_center)
-                mod_ts_ens['mmm'][exp].append(mod_ar6_center)
-                
+                mod_ts_ens['mmm'][exp][obs] = []
         
-            mod_ts_ens[mod][exp] = np.stack(mod_ts_ens[mod][exp],axis=0)
-
-    for exp in exps:        
-        mod_ts_ens['mmm'][exp] = np.stack(mod_ts_ens['mmm'][exp],axis=0)
+        i = 0
+        
+        for mod in models:
+            
+            mod_data[mod] = {}
+            mod_ens[mod] = {}
+            mod_ts_ens[mod] = {}
+            
+            for exp in exps:
+                
+                mod_data[mod][exp] = {}    
+                mod_ens[mod][exp] = {}
+                mod_ts_ens[mod][exp] = {}
+                
+                for obs in obs_types:
+                    
+                    mod_data[mod][exp][obs] = []    
+                    mod_ts_ens[mod][exp][obs] = []
+                    
+                    if measure == 'area_change':
+                        
+                        lc = maps[obs][lulcc_type]
+                        
+                    elif measure == 'all_pixels':
+                        
+                        lc = maps[obs]
+                
+                    for file in fp_files[mod][exp][obs]:
+                    
+                        da = nc_read(file,
+                                     y1,
+                                     var,
+                                     obs=obs,
+                                     freq=freq)
+                        da = da.where(lc == 1)
+                        if i == 0:
+                            nt = len(da.time.values)
+                        i += 1
+                        mod_ar6 = weighted_mean(continents,
+                                                da,
+                                                ar6_regs[obs],
+                                                nt,
+                                                ns)
+                        mod_ar6 = del_rows(mod_ar6)
+                        mod_ar6_center = temp_center(ns,
+                                                     mod_ar6)
+                        mod_ts_ens[mod][exp][obs].append(mod_ar6_center)
+                        mod_ts_ens['mmm'][exp][obs].append(mod_ar6_center)
+                        mod_data[mod][exp][obs].append(da)
+                    
+                    mod_ts_ens[mod][exp][obs] = np.stack(mod_ts_ens[mod][exp][obs],axis=0)
+                    mod_ens[mod][exp][obs] = da_ensembler(mod_data[mod][exp][obs])
+            
+            if lu_techn == 'mean': 
+            
+                for obs in obs_types:
+                    
+                    mod_ens[mod]['lu'][obs] = mod_ens[mod]['historical'][obs] - mod_ens[mod]['hist-noLu'][obs]
+                
+        for exp in exps:
+            
+            for obs in obs_types:
+            
+                mod_ts_ens['mmm'][exp][obs] = np.stack(mod_ts_ens['mmm'][exp][obs],axis=0)
+    
+    # model resolution data
+    elif grid == 'model':
+        
+        for exp in exps:
+            
+            mod_ts_ens['mmm'][exp] = []
+        
+        i = 0
+        
+        for mod in models:
+            
+            mod_data[mod] = {}
+            mod_ens[mod] = {}
+            mod_ts_ens[mod] = {}
+            
+            if measure == 'area_change':
+                
+                lc = maps[mod][lulcc_type]
+                
+            elif measure == 'all_pixels':
+                
+                lc = maps[mod]
+            
+            for exp in exps:
+                
+                mod_data[mod][exp] = []    
+                mod_ts_ens[mod][exp] = []
+                
+                for file in fp_files[mod][exp]:
+                
+                    da = nc_read(file,
+                                 y1,
+                                 var,
+                                 freq=freq)
+                    da = da.where(lc == 1)
+                    if i == 0:
+                        nt = len(da.time.values)
+                    i += 1
+                    mod_ar6 = weighted_mean(continents,
+                                            da,
+                                            ar6_regs[mod],
+                                            nt,
+                                            ns)
+                    mod_ar6 = del_rows(mod_ar6)
+                    mod_ar6_center = temp_center(ns,
+                                                 mod_ar6)
+                    mod_ts_ens[mod][exp].append(mod_ar6_center)
+                    mod_ts_ens['mmm'][exp].append(mod_ar6_center)
+                    mod_data[mod][exp].append(da)
+                
+                mod_ts_ens[mod][exp] = np.stack(mod_ts_ens[mod][exp],axis=0)
+                mod_ens[mod][exp] = da_ensembler(mod_data[mod][exp])
+            
+            if lu_techn == 'mean':
+            
+                mod_ens[mod]['lu'] = mod_ens[mod]['historical'] - mod_ens[mod]['hist-noLu']
+                
+        for exp in exps:
+            
+            mod_ts_ens['mmm'][exp] = np.stack(mod_ts_ens['mmm'][exp],axis=0)
         
     return mod_ens,mod_ts_ens,nt

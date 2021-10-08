@@ -39,9 +39,7 @@ def nc_read(file,
             y1,
             var,
             obs=False,
-            freq=False,
-            luh2=False,
-            thresh=False):
+            freq=False):
     
     """ Read in netcdfs based on variable and set time.
     
@@ -69,11 +67,6 @@ def nc_read(file,
     da = da.resample(time=freq,
                      closed='left',
                      label='left').mean('time') #this mean doesn't make sense for land cover maps
-    # keeping this commented out, but i don't think it is necessary with a "mod" argument        
-    # if mod:
-    #     da = da.resample(time=freq,
-    #                      closed='left',
-    #                      label='left').mean('time')
     
     return da
 

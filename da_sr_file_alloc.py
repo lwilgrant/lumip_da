@@ -14,7 +14,7 @@ Created on Wed Jul  1 16:52:49 2020
 
 # This subroutine script generates:
     # dictionaries containing keyed ties to files for models, pichunks and obs
-    # based on grid_type and obs
+    # based on grid and obs
 
 
 #%%============================================================================
@@ -34,7 +34,7 @@ def file_subroutine(mapDIR,
                     modDIR,
                     piDIR,
                     obsDIR,
-                    grid_type,
+                    grid,
                     obs_types,
                     lulcc,
                     y1,
@@ -55,12 +55,12 @@ def file_subroutine(mapDIR,
     # map files
     os.chdir(mapDIR)
     
-    if grid_type == 'obs':
+    if grid == 'obs':
         
         for obs in obs_types:
             
             map_files[obs] = {}
-            grid_files[obs] = 'tasmax_obs_' + obs + '_gridarea.nc' # won't need this since map files at obs res are already in area
+            grid_files[obs] = obs + '_gridarea.nc' # won't need this since map files at obs res are already in area
             
             for lu in lulcc:
             
@@ -68,11 +68,12 @@ def file_subroutine(mapDIR,
                             if obs in file\
                             and lu in file\
                             and str(y1) in file\
-                            and str(y2) in file]:
+                            and str(y2) in file\
+                            and 'absolute_change' in file]:
                     
                     map_files[obs][lu] = file   
     
-    elif grid_type == 'model':
+    elif grid == 'model':
     
         for mod in models:
         
@@ -101,7 +102,7 @@ def file_subroutine(mapDIR,
         
         for exp in exps:
             
-            if grid_type == 'obs':
+            if grid == 'obs':
                 
                 fp_files[mod][exp] = {}
                 
@@ -120,7 +121,7 @@ def file_subroutine(mapDIR,
                         
                         fp_files[mod][exp][obs].append(file)
                     
-            elif grid_type == 'model':
+            elif grid == 'model':
                 
                 fp_files[mod][exp] = []
                 
@@ -143,7 +144,7 @@ def file_subroutine(mapDIR,
 
     for mod in models:
         
-        if grid_type == 'obs':
+        if grid == 'obs':
             
             pi_files[mod] = {}
         
@@ -160,7 +161,7 @@ def file_subroutine(mapDIR,
                     
                     pi_files[mod][obs].append(file)
                 
-        if grid_type == 'model':
+        if grid == 'model':
             
             pi_files[mod] = []
         
@@ -179,7 +180,7 @@ def file_subroutine(mapDIR,
     # obs files
     os.chdir(obsDIR)            
     
-    if grid_type == 'obs':
+    if grid == 'obs':
         
         for obs in obs_types:
         
@@ -193,7 +194,7 @@ def file_subroutine(mapDIR,
                 
                 obs_files[obs] = file
             
-    elif grid_type == 'model':
+    elif grid == 'model':
         
         obs_files = {}
 
