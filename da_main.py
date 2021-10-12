@@ -349,19 +349,20 @@ fp,fp_continental,fp_ar6,nx = fingerprint_subroutine(obs_types,
 
 # pi data
 from da_sr_pi import *
-ctl_data,ctl_data_continental = picontrol_subroutine(piDIR,
-                                                     models,
-                                                     continents,
-                                                     continent_names,
-                                                     var,
-                                                     tres,
-                                                     t_ext,
-                                                     y1,
-                                                     freq,
-                                                     maps,
-                                                     ar6_regs,
-                                                     ns,
-                                                     nt)
+ctl_data,ctl_data_continental,ctl_data_ar6 = picontrol_subroutine(piDIR,
+                                                                  pi_files,
+                                                                  grid,
+                                                                  models,
+                                                                  obs_types,
+                                                                  continents,
+                                                                  continent_names,
+                                                                  var,
+                                                                  y1,
+                                                                  freq,
+                                                                  maps,
+                                                                  ar6_regs,
+                                                                  ns,
+                                                                  nt)
 
 #%%============================================================================
 
