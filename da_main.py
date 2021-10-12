@@ -36,7 +36,7 @@ Created on Wed Jul  1 16:52:49 2020
     # put current (sep 30) fp_main and da_main and funcs scripts on backup branch on github
     # need solution for options in sr_mod_fp and sr_pi and sr_obs to:
         # run fp on one experiment; e.g. separate runs for historical and hist-nolu (for "sr_mod_fp")
-        #  
+        # can a function take fp_data_* objects and 
     # will always have 2 OF results for each obs type, but difference will be whether at model or obs grid
 
 #%%============================================================================
@@ -91,14 +91,20 @@ flag_svplt=1      # 0: do not save plot
 # << SELECT >>
 flag_analysis=0   # 0: d&a on global scale (all chosen ar6 regions)
                   # 1: d&a on continental scale (scaling factor per continent; continent represented by AR6 weighted means)
+                  # 2: d&a on ar6 scale (scaling factor per ar6 region)
                   
 # << SELECT >>
 flag_lulcc=0      # 0: forest loss
                   # 1: crop expansion
                   
 # << SELECT >>
-flag_grid=1       # 0: model grid resolution
+flag_grid=0       # 0: model grid resolution
                   # 1: uniform obs grid resolution
+                  
+# << SELECT >>
+flag_factor=0     # 0: 2-factor -> hist-noLu and lu
+                  # 1: 1-factor -> historical
+                  # 2: 1-factor -> hist-noLu
                   
 # << SELECT >>
 flag_obs=0       # 0: cru
@@ -115,8 +121,8 @@ flag_lulcc_measure=2    # 0: absolute change
                         # 2: all_pixels
                         
 # << SELECT >>
-flag_lu_technique=1         # 0: lu as mean of individual (historical - hist-nolu)
-                            # 1: lu as mean(historical) - mean(hist-nolu)
+flag_lu_technique=1     # 0: lu as mean of individual (historical - hist-nolu)
+                        # 1: lu as mean(historical) - mean(hist-nolu)
 
 # << SELECT >>
 flag_y1=1         # 0: 1915
@@ -168,7 +174,8 @@ seasons = ['jja',
            'annual',
            'max']
 analyses = ['global',
-            'continental']
+            'continental',
+            'ar6']
 deforest_options = ['all',
                     'defor',
                     'ar6']
@@ -176,6 +183,9 @@ lulcc = ['forest',
          'crops']
 grids = ['model',
          'obs']
+factors = [['hist-noLu','lu'],
+           ['historical'],
+           ['hist-noLu']]
 obs_types = ['cru',
              'berkley_earth']
 measures = ['absolute_change',
@@ -206,6 +216,7 @@ confidence_intervals = [0.8,0.9,0.95,0.99]
 analysis = analyses[flag_analysis]
 lulcc_type = lulcc[flag_lulcc]
 grid = grids[flag_grid]
+exp_list = factors[flag_factor]
 obs = obs_types[flag_obs]
 measure = measures[flag_lulcc_measure]
 lu_techn = lu_techniques[flag_lu_technique]
@@ -233,9 +244,6 @@ models = ['CanESM5',
 exps = ['historical',
         'hist-noLu',
         'lu']
-
-exps_of = ['hist-noLu',
-           'lu']
     
 continents = {}
 continents['North America'] = [1,2,3,4,5,6,7]
@@ -323,15 +331,19 @@ mod_ens,mod_ts_ens,nt = ensemble_subroutine(modDIR,
 #%%============================================================================
 
 # mod fingerprint (nx is dummy var not used in OLS OF)
+os.chdir(curDIR)
 from da_sr_mod_fp import *
-fp,fp_continental,nx = fingerprint_subroutine(ns,
-                                              nt,
-                                              mod_ens,
-                                              exps,
-                                              models,
-                                              ar6_regs,
-                                              continents,
-                                              continent_names)
+fp,fp_continental,fp_ar6,nx = fingerprint_subroutine(obs_types,
+                                                     grid,
+                                                     ns,
+                                                     nt,
+                                                     mod_ens,
+                                                     exps,
+                                                     models,
+                                                     ar6_regs,
+                                                     continents,
+                                                     continent_names,
+                                                     exp_list)
 
 #%%============================================================================
 

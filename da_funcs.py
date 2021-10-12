@@ -21,12 +21,12 @@ import regionmask as rm
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import pickle as pk
-import copy as cp
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import regionmask as rm
 from random import shuffle
 from matplotlib.lines import Line2D
+from copy import deepcopy
 
 
 # =============================================================================

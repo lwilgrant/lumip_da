@@ -31,6 +31,7 @@ Created on Wed Jul  1 16:52:49 2020
 
 import os
 import xarray as xr
+from copy import deepcopy
 from da_funcs import *
 
 
@@ -115,8 +116,9 @@ def ensemble_subroutine(modDIR,
                                                 nt,
                                                 ns)
                         mod_ar6 = del_rows(mod_ar6)
+                        input_mod_ar6 = deepcopy(mod_ar6)
                         mod_ar6_center = temp_center(ns,
-                                                     mod_ar6)
+                                                     input_mod_ar6)
                         mod_ts_ens[mod][exp][obs].append(mod_ar6_center)
                         mod_ts_ens['mmm'][exp][obs].append(mod_ar6_center)
                         mod_data[mod][exp][obs].append(da)
@@ -180,8 +182,9 @@ def ensemble_subroutine(modDIR,
                                             nt,
                                             ns)
                     mod_ar6 = del_rows(mod_ar6)
+                    input_mod_ar6 = deepcopy(mod_ar6)
                     mod_ar6_center = temp_center(ns,
-                                                 mod_ar6)
+                                                 input_mod_ar6)
                     mod_ts_ens[mod][exp].append(mod_ar6_center)
                     mod_ts_ens['mmm'][exp].append(mod_ar6_center)
                     mod_data[mod][exp].append(da)
