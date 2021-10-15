@@ -38,6 +38,8 @@ Created on Wed Jul  1 16:52:49 2020
         # run fp on one experiment; e.g. separate runs for historical and hist-nolu (for "sr_mod_fp")
         # can a function take fp_data_* objects and 
     # will always have 2 OF results for each obs type, but difference will be whether at model or obs grid
+    # first establish working results for obs vs mod res, global vs continental vs ar6 results,
+        # then establish historical vs hist-nolu single factor runs
 
 #%%============================================================================
 # import
@@ -348,6 +350,7 @@ fp,fp_continental,fp_ar6,nx = fingerprint_subroutine(obs_types,
 #%%============================================================================
 
 # pi data
+os.chdir(curDIR)
 from da_sr_pi import *
 ctl_data,ctl_data_continental,ctl_data_ar6 = picontrol_subroutine(piDIR,
                                                                   pi_files,

@@ -182,7 +182,8 @@ def fingerprint_subroutine(obs_types,
 
                     for ar6 in continents[c]:
 
-                        ens = np.mean(mmm_ar6[exp][ar6][obs],axis=0)
+                        ens = np.mean(mmm_ar6[exp][ar6][obs],
+                                      axis=0)
                         ens_center = ens - np.mean(ens)
                         fp_data_ar6['mmm'][exp][obs][ar6] = ens_center.flatten()
         
@@ -331,7 +332,8 @@ def fingerprint_subroutine(obs_types,
 
                 for ar6 in continents[c]:
                     
-                    ens = np.mean(mmm_ar6[exp][ar6],axis=0)
+                    ens = np.mean(mmm_ar6[exp][ar6],
+                                  axis=0)
                     ens_center = ens - np.mean(ens)
                     fp_data_ar6['mmm'][exp][ar6] = ens_center.flatten()
                     
