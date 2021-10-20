@@ -45,13 +45,62 @@ def obs_subroutine(obsDIR,
                    nt,
                    ns):
 
+    os.chdir(obsDIR)
+
     if grid == 'obs':
         
-        pass
+        obs_data = {}
+        obs_data_continental = {}
+        obs_data_ar6 = {}
+        obs_ts = {}
+            
+        for obs in obs_types:
+            
+            obs_data_continental[obs] = {}
+            obs_data_ar6[obs] = {}
+            da = nc_read(obs_files[obs],
+                         y1,
+                         var,
+                         freq=freq).where(maps[obs] == 1)
+            obs_ar6 = weighted_mean(continents,
+                                    da,
+                                    ar6_regs[obs],
+                                    nt,
+                                    ns)
+            obs_ar6 = del_rows(obs_ar6)
+            input_obs_ar6 = deepcopy(obs_ar6)
+            obs_ar6_center = temp_center(ns,
+                                         input_obs_ar6)
+            obs_ts[obs] = obs_ar6_center
+            obs_data[obs] = obs_ar6_center.flatten()
+            obs_data_continental[obs] = {}
+            obs_data_ar6[obs] = {}
+            
+            for c in continents.keys():
+                
+                cnt_idx = continent_names.index(c)
+                
+                if cnt_idx == 0:
+                    
+                    strt_idx = 0
+                    
+                else:
+                    
+                    strt_idx = 0
+                    idxs = np.arange(0,cnt_idx)
+                    
+                    for i in idxs:
+                        strt_idx += len(continents[continent_names[i]])
+                        
+                n = len(continents[c])
+                obs_data_continental[obs][c] = obs_ar6_center[:,strt_idx:strt_idx+n].flatten()
+                
+                for ar6, i in zip(continents[c], range(strt_idx,strt_idx+n)):
+
+                    obs_data_ar6[obs][ar6] = obs_ar6_center[:, i].flatten() 
 
     elif grid == 'model':
         
-        os.chdir(obsDIR)
         obs_data = {}
         obs_data_continental = {}
         obs_data_ar6 = {}
@@ -83,7 +132,6 @@ def obs_subroutine(obsDIR,
                 da = nc_read(obs_files[obs][mod],
                              y1,
                              var,
-                             obs=obs,
                              freq=freq).where(maps[mod] == 1)
                 obs_ar6 = weighted_mean(continents,
                                         da,
@@ -118,38 +166,35 @@ def obs_subroutine(obsDIR,
                             
                     n = len(continents[c])
                     obs_mmm_c[obs][c].append(obs_ar6[:,strt_idx:strt_idx+n])
-                    obs_data_continental[obs][mod][c] = obs_ar6[:,strt_idx:strt_idx+n].flatten()
+                    obs_data_continental[obs][mod][c] = obs_ar6_center[:,strt_idx:strt_idx+n].flatten()
                     
                     for ar6, i in zip(continents[c], range(strt_idx,strt_idx+n)):
 
-                        obs_mmm_ar6[obs][ar6].append(obs_ar6[:, i]) # again, take uncentered/unflattened version for ensembling
-                        obs_data_ar6[obs][mod][ar6] = obs_ar6_center[:, i].flatten() # is this flattening unnecessary or negatively impactful? already 1D (check this)
+                        obs_mmm_ar6[obs][ar6].append(obs_ar6[:, i]) 
+                        obs_data_ar6[obs][mod][ar6] = obs_ar6_center[:, i].flatten() 
 
-            # mmm of individual obs series for global + continental
-            for obs in obs_types:
-            
-                obs_ens,_ = ensembler(obs_mmm[obs],
-                                      ax=0)
-                obs_ts[obs]['mmm'] = temp_center(ns,
-                                                 obs_ens)
-                obs_data[obs]['mmm'] = temp_center(ns,
-                                                   obs_ens).flatten()
-                obs_data_continental[obs]['mmm'] = {}
-                obs_data_ar6[obs]['mmm'] = {}
+            # mmm of individual obs series for global + continental + ar6
+            obs_ens,_ = ensembler(obs_mmm[obs],
+                                    ax=0)
+            obs_ts[obs]['mmm'] = temp_center(ns,
+                                                obs_ens)
+            obs_data[obs]['mmm'] = obs_ens.flatten()
+            obs_data_continental[obs]['mmm'] = {}
+            obs_data_ar6[obs]['mmm'] = {}
 
-                for c in continents.keys():
+            for c in continents.keys():
+                
+                obs_ens,_ = ensembler(obs_mmm_c[obs][c],
+                                        ax=0)
+                n = len(continents[c])
+                obs_data_continental[obs]['mmm'][c] = temp_center(n,
+                                                                    obs_ens).flatten()
+                
+                for ar6 in continents[c]:
                     
-                    obs_ens,_ = ensembler(obs_mmm_c[obs][c],
-                                          ax=0)
-                    n = len(continents[c])
-                    obs_data_continental[obs]['mmm'][c] = temp_center(n,
-                                                                      obs_ens).flatten()
-                    
-                    for ar6 in continents[c]:
-                        
-                        obs_ens = np.mean(obs_mmm_ar6[obs][ar6],
-                                          axis=0)
-                        obs_ens_center = obs_ens - np.mean(obs_ens)
-                        obs_data_ar6[obs]['mmm'][ar6] = obs_ens_center.flatten()
+                    obs_ens = np.mean(obs_mmm_ar6[obs][ar6],
+                                        axis=0)
+                    obs_ens_center = obs_ens - np.mean(obs_ens)
+                    obs_data_ar6[obs]['mmm'][ar6] = obs_ens_center.flatten()
             
-    return obs_data,obs_data_continental,obs_ar6,obs_ts
+    return obs_data,obs_data_continental,obs_data_ar6,obs_ts

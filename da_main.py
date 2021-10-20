@@ -87,7 +87,7 @@ flag_pickle=1     # 0: do not pickle objects
                   # 1: pickle objects after sections 'read' and 'analyze'
 
 # << SELECT >>
-flag_svplt=1      # 0: do not save plot
+flag_svplt=0      # 0: do not save plot
                   # 1: save plot in picDIR
 
 # << SELECT >>
@@ -371,17 +371,20 @@ ctl_data,ctl_data_continental,ctl_data_ar6 = picontrol_subroutine(piDIR,
 
 # obs data
 from da_sr_obs import *
-obs_data,obs_data_continental,obs_ts = obs_subroutine(obsDIR,
-                                                      continents,
-                                                      continent_names,
-                                                      models,
-                                                      var,
-                                                      tres,
-                                                      t_ext,
-                                                      freq,
-                                                      maps,
-                                                      nt,
-                                                      ns)
+obs_data,obs_data_continental,obs_data_ar6,obs_ts = obs_subroutine(obsDIR,
+                                                                   grid,
+                                                                   obs_files,
+                                                                   continents,
+                                                                   continent_names,
+                                                                   obs_types,
+                                                                   models,
+                                                                   y1,
+                                                                   var,
+                                                                   maps,
+                                                                   ar6_regs,
+                                                                   freq,
+                                                                   nt,
+                                                                   ns)
 
 
 #%%============================================================================
@@ -404,13 +407,17 @@ beta_hat,\
 var_fin = of_subroutine(models,
                         nx,
                         analysis,
-                        exps,
+                        exp_list,
+                        obs_types,
                         obs_data,
                         obs_data_continental,
+                        obs_data_ar6,
                         fp,
                         fp_continental,
+                        fp_ar6,
                         ctl_data,
                         ctl_data_continental,
+                        ctl_data_ar6,
                         bs_reps,
                         nt,
                         reg,

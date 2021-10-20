@@ -147,7 +147,7 @@ def fingerprint_subroutine(obs_types,
                         for ar6, i in zip(continents[c], range(strt_idx,strt_idx+n)):
 
                             mmm_ar6[exp][ar6][obs].append(mod_ar6[:, i]) # again, take uncentered/unflattened version for ensembling
-                            fp_data_ar6[mod][exp][obs][ar6] = mod_ar6_center[:, i].flatten() # is this flattening unnecessary or negatively impactful? already 1D (check this)
+                            fp_data_ar6[mod][exp][obs][ar6] = mod_ar6_center[:, i].flatten() 
 
         fp_data['mmm'] = {}
         fp_data_continental['mmm'] = {}
@@ -302,7 +302,7 @@ def fingerprint_subroutine(obs_types,
                     for ar6, i in zip(continents[c], range(strt_idx, strt_idx+n)):
 
                         mmm_ar6[exp][ar6].append(mod_ar6[:, i]) # again, take uncentered/unflattened version for ensembling
-                        fp_data_ar6[mod][exp][ar6] = mod_ar6_center[:,i].flatten() # is this flattening unnecessary or negatively impactful? already 1D (check this)
+                        fp_data_ar6[mod][exp][ar6] = mod_ar6_center[:,i].flatten()
 
         # mmm of individual model means for global + continental
         fp_data['mmm'] = {}
