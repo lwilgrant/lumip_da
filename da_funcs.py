@@ -20,6 +20,7 @@ import os
 import regionmask as rm
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import matplotlib as mpl
 import pickle as pk
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
@@ -27,6 +28,9 @@ import regionmask as rm
 from random import shuffle
 from matplotlib.lines import Line2D
 from copy import deepcopy
+import pickle as pk
+import geopandas as gp
+import mapclassify as mc
 
 
 # =============================================================================
@@ -607,6 +611,25 @@ def da_run(y,
 
 #%%============================================================================
 
+def det_finder(list):
+    hi = list[0]
+    low = list[2]
+    if all(i > 0 for i in list[:3]):
+        # detection
+        k = 1
+        
+        if ((list[0] > 1) and (list[2] < 1)):
+            
+            k = 2
+            
+    elif any(i < 0 for i in list[:3]):
+        
+        k = 3
+        
+    return k
+
+#%%============================================================================
+
 def scale_take(array): #must take diff between b and sup/inf, store in separate lists
     b = array[1]
     b_inf = b - array[0]
@@ -1061,6 +1084,209 @@ def plot_scaling_continental(models,
             if measure != 'all_pixels':
                 f.savefig(outDIR+'/'+mod+'_'+var+'_'+tres+'_'+lulcc_type+'_'+measure+'_'+t_ext+'_'+freq+'_tseries_scaling_continental.png',dpi=200)     
             if measure == 'all_pixels':
-                f.savefig(outDIR+'/'+mod+'_'+var+'_'+tres+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_continental.png',dpi=200)     
+                f.savefig(outDIR+'/'+mod+'_'+var+'_'+tres+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_continental.png',dpi=200) 
+                
+                
+#%%============================================================================
+                
+def plot_scaling_map_continental(sfDIR,
+                                 obs_types,
+                                 models,
+                                 exp_list,
+                                 continents,
+                                 var_fin,
+                                 grid,
+                                 letters,
+                                 outDIR):
     
+    data = var_fin
+    os.chdir(sfDIR)
+    gpd_continents = gp.read_file('IPCC_WGII_continental_regions.shp')
+    gpd_continents = gpd_continents[(gpd_continents.Region != 'Antarctica')&(gpd_continents.Region != 'Small Islands')]
+
+    add_cols = []
+    for obs in obs_types:
+        for mod in models:
+            for exp in exp_list:
+                gpd_continents['{}-grid {} {}'.format(obs,mod,exp)] = [1] * len(gpd_continents.Region)
+    gpd_continents.at[4,'Region'] = 'South America'
+    gpd_continents.at[5,'Region'] = 'Australia'
+
+    for obs in obs_types:
+        for mod in models:
+            for exp in exp_list:
+                for c in continents.keys():
+                    index = gpd_continents.index[gpd_continents['Region'] == c]
+                    gpd_continents.at[index,'{}-grid {} {}'.format(obs,mod,exp)] = det_finder(data[obs][mod][exp][c])
+                        
+    gpd_continents = gpd_continents.dropna()
+
+    cmap_whole = plt.cm.get_cmap('PRGn')
+    hnolu_det = cmap_whole(0.40)
+    hnolu_att = cmap_whole(0.20)
+    lu_det = cmap_whole(0.65)
+    lu_att = cmap_whole(0.85)     
+    colors_lu = [lu_det,lu_att,'lightgrey']
+    colors_hnolu = [hnolu_det,hnolu_att,'lightgrey']      
+    cmaps = {}
+    cmaps['lu'] = mpl.colors.ListedColormap(colors_lu,N=len(colors_lu))
+    cmaps['hist-noLu'] = mpl.colors.ListedColormap(colors_hnolu,N=len(colors_hnolu))
+
+    for obs in obs_types:
+        f, axes = plt.subplots(nrows=len(models),ncols=len(exp_list),figsize=(8,10))
+        j = 0
+        l = 0
+        for row,mod in zip(axes,models):
+            i = 0
+            for ax,exp in zip(row,exp_list):
+                gpd_continents.plot(ax=ax,
+                                    column='{}-grid {} {}'.format(obs,mod,exp),
+                                    categorical=True,
+                                    k=3,
+                                    cmap=cmaps[exp],
+                                    edgecolor='black',
+                                    linewidth=0.3)
+                gpd_continents.boundary.plot(ax=ax,
+                                             edgecolor='black',
+                                             linewidth=0.3)
+                                            #  style_kwds={'edgecolor':'black','linewidth':0.3})
+                ax.set_yticks([])
+                ax.set_xticks([])
+                ax.set_title(letters[l],
+                             loc='left',
+                             fontweight='bold',
+                             fontsize=10)
+                if j == 0:
+                    ax.set_title(exp,
+                                 loc='center',
+                                 fontweight='bold',
+                                 fontsize=10)
+                if i == 0:
+                    ax.text(-0.07, 0.55, 
+                            mod, 
+                            va='bottom', 
+                            ha='center',# # create legend with patche for hsitnolu and lu det/att levels
+                            fontweight='bold',
+                            rotation='vertical', 
+                            rotation_mode='anchor',
+                            transform=ax.transAxes)
+                i += 1
+                l += 1
+            j += 1
+        f.savefig(outDIR+'/continental_attribution_{}_{}-grid.png'.format(obs,grid),bbox_inches='tight',dpi=500)
+                
+#%%============================================================================
+                
+def plot_scaling_map_ar6(sfDIR,
+                         obs_types,
+                         models,
+                         exp_list,
+                         continents,
+                         var_fin,
+                         grid,
+                         letters,
+                         outDIR):
     
+    data = var_fin
+    os.chdir(sfDIR)
+    regions = gp.read_file('IPCC-WGI-reference-regions-v4.shp')
+    gpd_continents = gp.read_file('IPCC_WGII_continental_regions.shp')
+    values = [1] * len(gpd_continents.Region)
+    gpd_continents['values'] = values
+    gpd_continents = gpd_continents[gpd_continents.Region != 'Antarctica'].dissolve(by='values')
+
+    add_cols = []
+    for obs in obs_types:
+        for mod in models:
+            for exp in exp_list:
+                add_cols.append('{}-grid {} {}'.format(obs,mod,exp))
+    regions = pd.concat([regions,pd.DataFrame(columns=add_cols)])
+
+    for obs in obs_types:
+        for mod in models:
+            for exp in exp_list:
+                for c in continents.keys():
+                    for ar6 in continents[c]:
+                        # place model/location/obs detection result in table
+                        regions.at[ar6,'{}-grid {} {}'.format(obs,mod,exp)] = det_finder(data[obs][mod][exp][ar6])
+                        
+    regions = regions.dropna()
+    regions = gp.clip(regions,gpd_continents)
+
+    cmap_whole = plt.cm.get_cmap('PRGn')
+    hnolu_det = cmap_whole(0.40)
+    hnolu_att = cmap_whole(0.20)
+    lu_det = cmap_whole(0.65)
+    lu_att = cmap_whole(0.85)     
+    colors_lu = [lu_det,lu_att,'lightgrey']
+    colors_hnolu = [hnolu_det,hnolu_att,'lightgrey']      
+    cmaps = {}
+    cmaps['lu'] = mpl.colors.ListedColormap(colors_lu,N=len(colors_lu))
+    cmaps['hist-noLu'] = mpl.colors.ListedColormap(colors_hnolu,N=len(colors_hnolu))
+
+    for obs in obs_types:
+        f, axes = plt.subplots(nrows=len(models),ncols=len(exp_list),figsize=(8,10))
+        j = 0
+        l = 0
+        for row,mod in zip(axes,models):
+            i = 0
+            for ax,exp in zip(row,exp_list):
+                regions.plot(ax=ax,
+                            column='{}-grid {} {}'.format(obs,mod,exp),
+                            categorical=True,
+                            k=3,
+                            cmap=cmaps[exp],
+                            edgecolor='black',
+                            linewidth=0.3)
+                gpd_continents.boundary.plot(ax=ax,
+                                            edgecolor='black',
+                                            linewidth=0.3)
+                                            #  style_kwds={'edgecolor':'black','linewidth':0.3})
+                ax.set_yticks([])
+                ax.set_xticks([])
+                ax.set_title(letters[l],
+                            loc='left',
+                            fontweight='bold',
+                            fontsize=10)
+                if j == 0:
+                    ax.set_title(exp,
+                                loc='center',
+                                fontweight='bold',
+                                fontsize=10)
+                if i == 0:
+                    ax.text(-0.07, 0.55, 
+                            mod, 
+                            va='bottom', 
+                            ha='center',# # create legend with patche for hsitnolu and lu det/att levels
+                            fontweight='bold',
+                            rotation='vertical', 
+                            rotation_mode='anchor',
+                            transform=ax.transAxes)
+                i += 1
+                l += 1
+            j += 1
+        f.savefig(outDIR+'/ar6_attribution_{}_{}-grid.png'.format(obs,grid),bbox_inches='tight',dpi=500)
+    
+
+# # create legend with patche for hsitnolu and lu det/att levels
+#     # include markers for  
+
+# import pickle as pk
+# import geopandas as gp
+# import mapclassify as mc
+# os.chdir('/home/luke/documents/lumip/d_a/')
+# pkl_file = open('var_fin_ar6_v2.pkl','rb')
+# data = pk.load(pkl_file)
+# pkl_file.close()
+
+# for obs in obs_types:
+#     print('')
+#     print(obs)
+#     for mod in models:
+#         print('')
+#         print(mod)
+#         for c in continents.keys():
+#             for ar6 in continents[c]:
+#                 print(ar6)
+#                 print('{} decomp for {} is: histnolu {} to {}, lu {} to {}'.format(obs,mod,var_fin[obs][mod]['hist-noLu'][ar6][2],var_fin[obs][mod]['hist-noLu'][ar6][0],var_fin[obs][mod]['lu'][ar6][2],var_fin[obs][mod]['lu'][ar6][0]))
+#                 print('')

@@ -40,6 +40,11 @@ Created on Wed Jul  1 16:52:49 2020
     # will always have 2 OF results for each obs type, but difference will be whether at model or obs grid
     # first establish working results for obs vs mod res, global vs continental vs ar6 results,
         # then establish historical vs hist-nolu single factor runs
+    # continental map of detection results needs tweeks:
+        # greenland shouldn't be part of eu; south american extent shouldn't include central america
+        # mmm colors were wrong when all areas had valueof 3; seems that categories weren't established; double check
+        # to avoid continental inclusion of regions not consisreed in the continents analysis via ar6, 
+            # perhaps i shouldn't use continental shapefiles directly but rather merge shapefiles for ar6 regions (clipped by continents for land only)
 
 #%%============================================================================
 # import
@@ -49,6 +54,7 @@ import sys
 import os
 import numpy as np
 import pickle as pk
+import pandas as pd
 import matplotlib.pyplot as plt
 import copy as cp
 import matplotlib.gridspec as gridspec
@@ -71,6 +77,7 @@ obsDIR = os.path.join(curDIR, 'obs')
 modDIR = os.path.join(curDIR, 'mod')
 piDIR = os.path.join(curDIR, 'pi')
 mapDIR = os.path.join(curDIR, 'map')
+sfDIR = os.path.join(curDIR, 'shapefiles')
 outDIR = os.path.join(curDIR, 'figures')
 
 # bring in functions
@@ -91,7 +98,7 @@ flag_svplt=0      # 0: do not save plot
                   # 1: save plot in picDIR
 
 # << SELECT >>
-flag_analysis=0   # 0: d&a on global scale (all chosen ar6 regions)
+flag_analysis=2   # 0: d&a on global scale (all chosen ar6 regions)
                   # 1: d&a on continental scale (scaling factor per continent; continent represented by AR6 weighted means)
                   # 2: d&a on ar6 scale (scaling factor per ar6 region)
                   
@@ -251,7 +258,7 @@ continents = {}
 continents['North America'] = [1,2,3,4,5,6,7]
 continents['South America'] = [9,10,11,12,13,14,15]
 continents['Europe'] = [16,17,18,19]
-continents['Asia'] = [29,30,32,33,34,35,37,38]
+continents['Asia'] = [28,29,30,31,32,33,34,35,37,38]
 continents['Africa'] = [21,22,23,24,25,26]
 continents['Australia'] = [39,40,41,42]
 
@@ -270,6 +277,16 @@ ns = 0
 for c in continents.keys():
     for i in continents[c]:
         ns += 1
+        
+letters = ['a', 'b', 'c',
+           'd', 'e', 'f',
+           'g', 'h', 'i',
+           'j', 'k', 'l',
+           'm', 'n', 'o',
+           'p', 'q', 'r',
+           's', 't', 'u',
+           'v', 'w', 'x',
+           'y', 'z']
 
 #==============================================================================
 # get data 
@@ -370,6 +387,7 @@ ctl_data,ctl_data_continental,ctl_data_ar6 = picontrol_subroutine(piDIR,
 #%%============================================================================
 
 # obs data
+os.chdir(curDIR)
 from da_sr_obs import *
 obs_data,obs_data_continental,obs_data_ar6,obs_ts = obs_subroutine(obsDIR,
                                                                    grid,
@@ -392,6 +410,7 @@ obs_data,obs_data_continental,obs_data_ar6,obs_ts = obs_subroutine(obsDIR,
 #==============================================================================
 
 # optimal fingerprinting
+os.chdir(curDIR)
 from da_sr_of import *
 var_sfs,\
 var_ctlruns,\
@@ -404,28 +423,30 @@ Xc,\
 Cf1,\
 Ft,\
 beta_hat,\
-var_fin = of_subroutine(models,
-                        nx,
-                        analysis,
-                        exp_list,
-                        obs_types,
-                        obs_data,
-                        obs_data_continental,
-                        obs_data_ar6,
-                        fp,
-                        fp_continental,
-                        fp_ar6,
-                        ctl_data,
-                        ctl_data_continental,
-                        ctl_data_ar6,
-                        bs_reps,
-                        nt,
-                        reg,
-                        cons_test,
-                        formule_ic_tls,
-                        trunc,
-                        ci_bnds,
-                        continents)
+var_fin,\
+models = of_subroutine(grid,
+                       models,
+                       nx,
+                       analysis,
+                       exp_list,
+                       obs_types,
+                       obs_data,
+                       obs_data_continental,
+                       obs_data_ar6,
+                       fp,
+                       fp_continental,
+                       fp_ar6,
+                       ctl_data,
+                       ctl_data_continental,
+                       ctl_data_ar6,
+                       bs_reps,
+                       nt,
+                       reg,
+                       cons_test,
+                       formule_ic_tls,
+                       trunc,
+                       ci_bnds,
+                       continents)
            
 #%%============================================================================
 # plotting scaling factors
@@ -462,8 +483,28 @@ elif analysis == 'continental':
                              freq,
                              measure,
                              var)
+    
+    plot_scaling_map_continental(sfDIR,
+                                 obs_types,
+                                 models,
+                                 exp_list,
+                                 continents,
+                                 var_fin,
+                                 grid,
+                                 letters,
+                                 outDIR)
 
-                  
+elif analysis == 'ar6':
+    
+    plot_scaling_map_ar6(sfDIR,
+                         obs_types,
+                         models,
+                         exp_list,
+                         continents,
+                         var_fin,
+                         grid,
+                         letters,
+                         outDIR)              
     
     
          

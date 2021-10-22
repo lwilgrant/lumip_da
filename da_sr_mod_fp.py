@@ -220,6 +220,7 @@ def fingerprint_subroutine(obs_types,
             fp['mmm'][obs] = np.stack(fp_stack,
                                       axis=0)
             fp_continental['mmm'][obs] = {}
+            fp_ar6['mmm'][obs] = {}
 
             for c in continents.keys():
 
@@ -230,8 +231,8 @@ def fingerprint_subroutine(obs_types,
                 for ar6 in continents[c]:
                     
                     fp_stack = [fp_data_ar6['mmm'][exp][obs][ar6] for exp in fp_data_ar6['mmm'].keys() if exp in exp_list]
-                    fp_ar6['mmm'][ar6] = np.stack(fp_stack,
-                                                  axis=0)    
+                    fp_ar6['mmm'][obs][ar6] = np.stack(fp_stack,
+                                                       axis=0)    
 
     # model resolution data
     if grid == 'model':
