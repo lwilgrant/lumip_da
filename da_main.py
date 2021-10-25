@@ -98,7 +98,7 @@ flag_svplt=0      # 0: do not save plot
                   # 1: save plot in picDIR
 
 # << SELECT >>
-flag_analysis=2   # 0: d&a on global scale (all chosen ar6 regions)
+flag_analysis=1   # 0: d&a on global scale (all chosen ar6 regions)
                   # 1: d&a on continental scale (scaling factor per continent; continent represented by AR6 weighted means)
                   # 2: d&a on ar6 scale (scaling factor per ar6 region)
                   
@@ -447,6 +447,12 @@ models = of_subroutine(grid,
                        trunc,
                        ci_bnds,
                        continents)
+# save OF results
+pickler(curDIR,
+        var_fin,
+        analysis,
+        grid,
+        t_ext)
            
 #%%============================================================================
 # plotting scaling factors

@@ -611,6 +611,19 @@ def da_run(y,
 
 #%%============================================================================
 
+def pickler(curDIR,
+            var_fin,
+            analysis,
+            grid,
+            t_ext):
+    
+    os.chdir(curDIR)
+    pkl_file = open('var_fin_{}_{}_{}.pkl'.format(analysis,grid,t_ext),'wb')
+    pk.dump(var_fin,pkl_file)
+    pkl_file.close()
+
+#%%============================================================================
+
 def det_finder(list):
     hi = list[0]
     low = list[2]
