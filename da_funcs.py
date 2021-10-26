@@ -628,16 +628,16 @@ def det_finder(list):
     hi = list[0]
     low = list[2]
     if all(i > 0 for i in list[:3]):
-        # detection
-        k = 1
+    
+        k = 1 # detection
         
         if ((list[0] > 1) and (list[2] < 1)):
             
-            k = 2
+            k = 2 # attribution
             
     elif any(i < 0 for i in list[:3]):
         
-        k = 3
+        k = 3 # none
         
     return k
 
@@ -804,12 +804,12 @@ def plot_scaling_global(models,
 # =============================================================================
 #             f.tight_layout()
 # =============================================================================
-            f.savefig(outDIR+'/'+var+'_'+tres+'_'+lulcc_type+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_global.png',bbox_inches='tight',dpi=200)     
+            f.savefig(outDIR+'/'+var+'_'+lulcc_type+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_global.png',bbox_inches='tight',dpi=200)     
         if measure == 'all_pixels':
 # =============================================================================
 #             f.tight_layout()
 # =============================================================================
-            f.savefig(outDIR+'/'+var+'_'+tres+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_global.png',dpi=200)     
+            f.savefig(outDIR+'/'+var+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_global.png',dpi=200)     
 
 #%%============================================================================    
 
@@ -824,7 +824,6 @@ def plot_scaling_continental(models,
                              outDIR,
                              lulcc_type,
                              t_ext,
-                             tres,
                              freq,
                              measure,
                              var):
@@ -1095,9 +1094,9 @@ def plot_scaling_continental(models,
         
         if flag_svplt == 1:
             if measure != 'all_pixels':
-                f.savefig(outDIR+'/'+mod+'_'+var+'_'+tres+'_'+lulcc_type+'_'+measure+'_'+t_ext+'_'+freq+'_tseries_scaling_continental.png',dpi=200)     
+                f.savefig(outDIR+'/'+mod+'_'+var+'_'+'_'+lulcc_type+'_'+measure+'_'+t_ext+'_'+freq+'_tseries_scaling_continental.png',dpi=200)     
             if measure == 'all_pixels':
-                f.savefig(outDIR+'/'+mod+'_'+var+'_'+tres+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_continental.png',dpi=200) 
+                f.savefig(outDIR+'/'+mod+'_'+var+'_'+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_continental.png',dpi=200) 
                 
                 
 #%%============================================================================
@@ -1114,25 +1113,33 @@ def plot_scaling_map_continental(sfDIR,
     
     data = var_fin
     os.chdir(sfDIR)
+    
+    #test for merging ar6 into desired continent extents
+    regions = gp.read_file('IPCC-WGI-reference-regions-v4.shp')
     gpd_continents = gp.read_file('IPCC_WGII_continental_regions.shp')
     gpd_continents = gpd_continents[(gpd_continents.Region != 'Antarctica')&(gpd_continents.Region != 'Small Islands')]
+    regions = gp.clip(regions,gpd_continents)
+    regions['keep'] = [0]*len(regions.Acronym)
+    
+    for c in continents.keys():
+        for ar6 in continents[c]:
+            regions.at[ar6,'Continent'] = c
+            regions.at[ar6,'keep'] = 1
+    
+    regions = regions[regions.keep!=0]  
+    regions = regions.drop(columns='keep')
+    ar6_continents = regions.dissolve(by='Continent')
 
-    add_cols = []
     for obs in obs_types:
         for mod in models:
             for exp in exp_list:
-                gpd_continents['{}-grid {} {}'.format(obs,mod,exp)] = [1] * len(gpd_continents.Region)
-    gpd_continents.at[4,'Region'] = 'South America'
-    gpd_continents.at[5,'Region'] = 'Australia'
+                ar6_continents['{}-grid {} {}'.format(obs,mod,exp)] = [1] * len(ar6_continents.Acronym)
 
     for obs in obs_types:
         for mod in models:
             for exp in exp_list:
                 for c in continents.keys():
-                    index = gpd_continents.index[gpd_continents['Region'] == c]
-                    gpd_continents.at[index,'{}-grid {} {}'.format(obs,mod,exp)] = det_finder(data[obs][mod][exp][c])
-                        
-    gpd_continents = gpd_continents.dropna()
+                    ar6_continents.loc[c,'{}-grid {} {}'.format(obs,mod,exp)] = det_finder(data[obs][mod][exp][c])
 
     cmap_whole = plt.cm.get_cmap('PRGn')
     hnolu_det = cmap_whole(0.40)
@@ -1144,6 +1151,9 @@ def plot_scaling_map_continental(sfDIR,
     cmaps = {}
     cmaps['lu'] = mpl.colors.ListedColormap(colors_lu,N=len(colors_lu))
     cmaps['hist-noLu'] = mpl.colors.ListedColormap(colors_hnolu,N=len(colors_hnolu))
+    color_mapping = {}
+    color_mapping['lu'] = {1:lu_det,2:lu_att,3:'lightgrey'}
+    color_mapping['hist-noLu'] = {1:hnolu_det,2:hnolu_att,3:'lightgrey'}
 
     for obs in obs_types:
         f, axes = plt.subplots(nrows=len(models),ncols=len(exp_list),figsize=(8,10))
@@ -1152,17 +1162,13 @@ def plot_scaling_map_continental(sfDIR,
         for row,mod in zip(axes,models):
             i = 0
             for ax,exp in zip(row,exp_list):
-                gpd_continents.plot(ax=ax,
-                                    column='{}-grid {} {}'.format(obs,mod,exp),
-                                    categorical=True,
-                                    k=3,
-                                    cmap=cmaps[exp],
+                ar6_continents.plot(ax=ax,
+                                    color=ar6_continents['{}-grid {} {}'.format(obs,mod,exp)].map(color_mapping[exp]),
                                     edgecolor='black',
                                     linewidth=0.3)
                 gpd_continents.boundary.plot(ax=ax,
                                              edgecolor='black',
                                              linewidth=0.3)
-                                            #  style_kwds={'edgecolor':'black','linewidth':0.3})
                 ax.set_yticks([])
                 ax.set_xticks([])
                 ax.set_title(letters[l],
@@ -1231,11 +1237,12 @@ def plot_scaling_map_ar6(sfDIR,
     hnolu_att = cmap_whole(0.20)
     lu_det = cmap_whole(0.65)
     lu_att = cmap_whole(0.85)     
-    colors_lu = [lu_det,lu_att,'lightgrey']
-    colors_hnolu = [hnolu_det,hnolu_att,'lightgrey']      
     cmaps = {}
     cmaps['lu'] = mpl.colors.ListedColormap(colors_lu,N=len(colors_lu))
     cmaps['hist-noLu'] = mpl.colors.ListedColormap(colors_hnolu,N=len(colors_hnolu))
+    color_mapping = {}
+    color_mapping['lu'] = {1:lu_det,2:lu_att,3:'lightgrey'}
+    color_mapping['hist-noLu'] = {1:hnolu_det,2:hnolu_att,3:'lightgrey'}
 
     for obs in obs_types:
         f, axes = plt.subplots(nrows=len(models),ncols=len(exp_list),figsize=(8,10))
@@ -1245,16 +1252,12 @@ def plot_scaling_map_ar6(sfDIR,
             i = 0
             for ax,exp in zip(row,exp_list):
                 regions.plot(ax=ax,
-                            column='{}-grid {} {}'.format(obs,mod,exp),
-                            categorical=True,
-                            k=3,
-                            cmap=cmaps[exp],
-                            edgecolor='black',
-                            linewidth=0.3)
+                             color=regions['{}-grid {} {}'.format(obs,mod,exp)].map(color_mapping[exp]),
+                             edgecolor='black',
+                             linewidth=0.3)
                 gpd_continents.boundary.plot(ax=ax,
-                                            edgecolor='black',
-                                            linewidth=0.3)
-                                            #  style_kwds={'edgecolor':'black','linewidth':0.3})
+                                             edgecolor='black',
+                                             linewidth=0.3)
                 ax.set_yticks([])
                 ax.set_xticks([])
                 ax.set_title(letters[l],

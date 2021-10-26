@@ -69,7 +69,8 @@ from matplotlib.lines import Line2D
 # path
 #==============================================================================
 
-curDIR = '/theia/data/brussel/vo/000/bvo00012/vsc10116/lumip/d_a'
+# curDIR = '/theia/data/brussel/vo/000/bvo00012/vsc10116/lumip/d_a'
+curDIR = '/Users/Luke/Documents/PHD/lumip/da'
 os.chdir(curDIR)
 
 # data input directories
@@ -485,7 +486,6 @@ elif analysis == 'continental':
                              outDIR,
                              lulcc_type,
                              t_ext,
-                             tres,
                              freq,
                              measure,
                              var)
