@@ -69,8 +69,9 @@ from matplotlib.lines import Line2D
 # path
 #==============================================================================
 
-# curDIR = '/theia/data/brussel/vo/000/bvo00012/vsc10116/lumip/d_a'
-curDIR = '/Users/Luke/Documents/PHD/lumip/da'
+# curDIR = '/home/luke/documents/lumip/d_a/'
+curDIR = '/theia/data/brussel/vo/000/bvo00012/vsc10116/lumip/d_a'
+# curDIR = '/Users/Luke/Documents/PHD/lumip/da'
 os.chdir(curDIR)
 
 # data input directories
@@ -99,7 +100,7 @@ flag_svplt=0      # 0: do not save plot
                   # 1: save plot in picDIR
 
 # << SELECT >>
-flag_analysis=1   # 0: d&a on global scale (all chosen ar6 regions)
+flag_analysis=2   # 0: d&a on global scale (all chosen ar6 regions)
                   # 1: d&a on continental scale (scaling factor per continent; continent represented by AR6 weighted means)
                   # 2: d&a on ar6 scale (scaling factor per ar6 region)
                   
@@ -112,7 +113,7 @@ flag_grid=0       # 0: model grid resolution
                   # 1: uniform obs grid resolution
                   
 # << SELECT >>
-flag_factor=0     # 0: 2-factor -> hist-noLu and lu
+flag_factor=2     # 0: 2-factor -> hist-noLu and lu
                   # 1: 1-factor -> historical
                   # 2: 1-factor -> hist-noLu
                   
@@ -347,6 +348,11 @@ mod_ens,mod_ts_ens,nt = ensemble_subroutine(modDIR,
                                             ns,
                                             fp_files,
                                             ar6_regs)
+ts_pickler(curDIR,
+           mod_ts_ens,
+           grid,
+           t_ext,
+           obs_mod='model')
 
 #%%============================================================================
 
@@ -405,6 +411,11 @@ obs_data,obs_data_continental,obs_data_ar6,obs_ts = obs_subroutine(obsDIR,
                                                                    nt,
                                                                    ns)
 
+ts_pickler(curDIR,
+           obs_ts,
+           grid,
+           t_ext,
+           obs_mod='obs')
 
 #%%============================================================================
 # detection & attribution 
@@ -441,6 +452,7 @@ models = of_subroutine(grid,
                        ctl_data_continental,
                        ctl_data_ar6,
                        bs_reps,
+                       ns,
                        nt,
                        reg,
                        cons_test,
@@ -453,25 +465,44 @@ pickler(curDIR,
         var_fin,
         analysis,
         grid,
-        t_ext)
+        t_ext,
+        exp_list)
            
 #%%============================================================================
 # plotting scaling factors
 #==============================================================================    
+
+os.chdir(curDIR)    
+if len(exp_list) == 2:
     
+    pass
+
+elif len(exp_list) == 1:
+    
+    start_exp = deepcopy(exp_list[0])
+    if start_exp == 'historical':
+        second_exp = 'hist-noLu'
+    elif start_exp == 'hist-noLu':
+        second_exp = 'historical'
+    pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}.pkl'.format(second_exp,grid,analysis,t_ext),'rb')
+    var_fin_2 = pk.load(pkl_file)
+    pkl_file.close()
+    
+    for obs in obs_types:
+        for mod in models:
+            var_fin[obs][mod][second_exp] = var_fin_2[obs][mod].pop(second_exp)
+            
+    exp_list = ['historical', 'hist-noLu']
+
 if analysis == 'global':
     
     plot_scaling_global(models,
-                        exps,
+                        grid,
+                        obs_types,
+                        exp_list,
                         var_fin,
                         flag_svplt,
-                        outDIR,
-                        lulcc_type,
-                        t_ext,
-                        tres,
-                        freq,
-                        var,
-                        measure)
+                        outDIR)
 
 elif analysis == 'continental':
     
@@ -516,3 +547,5 @@ elif analysis == 'ar6':
          
     
     
+
+# %%

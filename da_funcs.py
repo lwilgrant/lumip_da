@@ -611,14 +611,35 @@ def da_run(y,
 
 #%%============================================================================
 
+def ts_pickler(curDIR,
+               ts,
+               grid,
+               t_ext,
+               obs_mod):
+    
+    os.chdir(curDIR)
+    if obs_mod == 'model':
+        pkl_file = open('mod_ts_{}-grid_{}.pkl'.format(grid,t_ext),'wb')
+    elif obs_mod == 'obs':
+        pkl_file = open('obs_ts_{}-grid_{}.pkl'.format(grid,t_ext),'wb')
+    pk.dump(ts,pkl_file)
+    pkl_file.close()
+
+#%%============================================================================
+
 def pickler(curDIR,
             var_fin,
             analysis,
             grid,
-            t_ext):
+            t_ext,
+            exp_list):
     
     os.chdir(curDIR)
-    pkl_file = open('var_fin_{}_{}_{}.pkl'.format(analysis,grid,t_ext),'wb')
+    if len(exp_list) == 2:
+        pkl_file = open('var_fin_2-factor_{}-grid_{}_{}.pkl'.format(grid,analysis,t_ext),'wb')
+    elif len(exp_list) == 1:
+        exp = exp_list[0]
+        pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}.pkl'.format(exp,grid,analysis,t_ext),'wb')
     pk.dump(var_fin,pkl_file)
     pkl_file.close()
 
@@ -653,24 +674,32 @@ def scale_take(array): #must take diff between b and sup/inf, store in separate 
 #%%============================================================================
 
 def plot_scaling_global(models,
-                        exps,
+                        grid,
+                        obs_types,
+                        exp_list,
                         var_fin,
                         flag_svplt,
-                        outDIR,
-                        lulcc_type,
-                        t_ext,
-                        tres,
-                        freq,
-                        var,
-                        measure):
+                        outDIR):
     
-    cmap_whole = plt.cm.get_cmap('PRGn')
-    cols={}
-    median_cols={}
-    cols['hist-noLu'] = cmap_whole(0.25)
-    cols['lu'] = cmap_whole(0.75)
-    median_cols['hist-noLu'] = cmap_whole(0.05)
-    median_cols['lu'] = cmap_whole(0.95)
+    if exp_list == ['hist-noLu','lu']:
+        
+        cmap_whole = plt.cm.get_cmap('PRGn')
+        cols={}
+        median_cols={}
+        cols['hist-noLu'] = cmap_whole(0.25)
+        cols['lu'] = cmap_whole(0.75)
+        median_cols['hist-noLu'] = cmap_whole(0.05)
+        median_cols['lu'] = cmap_whole(0.95)
+        
+    elif exp_list == ['historical','hist-noLu']:
+    
+        cmap_whole = plt.cm.get_cmap('BrBG')
+        cols={}
+        median_cols={}
+        cols['historical'] = cmap_whole(0.25)
+        cols['hist-noLu'] = cmap_whole(0.75)
+        median_cols['historical'] = cmap_whole(0.05)
+        median_cols['hist-noLu'] = cmap_whole(0.95)
     
     letters=['a','b','c','d','e','f','g']
         
@@ -687,11 +716,6 @@ def plot_scaling_global(models,
     yticks_OF = np.arange(-0.5,2.5,0.5)
     ytick_labels_OF = [None, '0', None, '1', None, '2']
     
-    f,(ax1,ax2,ax3,ax4,ax5) = plt.subplots(nrows=1,
-                                       ncols=5,
-                                       figsize=(x,y),
-                                       sharey=True)
-    
     # OF data prep
     b = {}
     b_inf = {}
@@ -699,117 +723,167 @@ def plot_scaling_global(models,
     p = {}
     err = {}
     
-    for mod in models:
-        b[mod] = {}
-        b_inf[mod] = {}
-        b_sup[mod] = {}
-        p[mod] = {}
-        err[mod] = {}
-        for exp in exps:
-            b[mod][exp],\
-            b_inf[mod][exp],\
-            b_sup[mod][exp],\
-            p[mod][exp] = scale_take(var_fin[mod][exp])
-            err[mod][exp] = np.stack([[b_inf[mod][exp]],
-                                      [b_sup[mod][exp]]],
-                                     axis=0)
+    for obs in obs_types:
     
-    
-    count = 0
-    for ax,mod in zip((ax1,ax2,ax3,ax4,ax5),models):
-    
-        ax.errorbar(x=b[mod]['hist-noLu'],
-                    y=b[mod]['lu'],
-                    xerr=err[mod]['hist-noLu'],
-                    fmt='o',
-                    markersize=3,
-                    ecolor=cols['hist-noLu'],
-                    markerfacecolor=median_cols['hist-noLu'],
-                    mec=cols['lu'],
-                    capsize=5,
-                    elinewidth=4,
-                    markeredgewidth=1)
+        f,(ax1,ax2,ax3,ax4,ax5) = plt.subplots(nrows=1,
+                                        ncols=5,
+                                        figsize=(x,y),
+                                        sharey=True)
         
-        ax.errorbar(x=b[mod]['hist-noLu'],
-                    y=b[mod]['lu'],
-                    yerr=err[mod]['lu'],
-                    fmt='o',
-                    markersize=3,
-                    ecolor=cols['lu'],
-                    markerfacecolor=median_cols['lu'],
-                    mec=cols['lu'],
-                    capsize=5,
-                    elinewidth=4,
-                    markeredgewidth=1)
+        # OF data prep
+        b[obs] = {}
+        b_inf[obs] = {}
+        b_sup[obs] = {}
+        p[obs] = {}
+        err[obs] = {}
         
-        ax.set_title(letters[count],
-                     loc='left',
-                     fontweight='bold',
-                     fontsize=inset_font)
+        for mod in models:
+            b[obs][mod] = {}
+            b_inf[obs][mod] = {}
+            b_sup[obs][mod] = {}
+            p[obs][mod] = {}
+            err[obs][mod] = {}
+            for exp in exp_list:
+                b[obs][mod][exp],\
+                b_inf[obs][mod][exp],\
+                b_sup[obs][mod][exp],\
+                p[obs][mod][exp] = scale_take(var_fin[obs][mod][exp])
+                err[obs][mod][exp] = np.stack([[b_inf[obs][mod][exp]],
+                                              [b_sup[obs][mod][exp]]],
+                                              axis=0)
         
-        ax.set_title(mod,
-                     loc='center',
-                     fontweight='bold',
-                     fontsize=inset_font)
         
-        count += 1
+        count = 0
+        for ax,mod in zip((ax1,ax2,ax3,ax4,ax5),models):
+            
+            if exp_list == ['hist-noLu','lu']:
         
-        ax.hlines(y=1,
-                  xmin=-1,
-                  xmax=2,
-                  colors='k',
-                  linestyle='dashed',
-                  linewidth=1)
-        ax.hlines(y=0,
-                  xmin=-1,
-                  xmax=2,
-                  colors='k',
-                  linestyle='solid',
-                  linewidth=0.25)
+                ax.errorbar(x=b[obs][mod]['hist-noLu'],
+                            y=b[obs][mod]['lu'],
+                            xerr=err[obs][mod]['hist-noLu'],
+                            fmt='o',
+                            markersize=3,
+                            ecolor=cols['hist-noLu'],
+                            markerfacecolor=median_cols['hist-noLu'],
+                            mec=cols['lu'],
+                            capsize=5,
+                            elinewidth=4,
+                            markeredgewidth=1)
+                
+                ax.errorbar(x=b[obs][mod]['hist-noLu'],
+                            y=b[obs][mod]['lu'],
+                            yerr=err[obs][mod]['lu'],
+                            fmt='o',
+                            markersize=3,
+                            ecolor=cols['lu'],
+                            markerfacecolor=median_cols['lu'],
+                            mec=cols['lu'],
+                            capsize=5,
+                            elinewidth=4,
+                            markeredgewidth=1)
+                
+            elif exp_list == ['historical','hist-noLu']:
+                
+                ax.errorbar(x=b[obs][mod]['hist-noLu'],
+                            y=b[obs][mod]['historical'],
+                            xerr=err[obs][mod]['hist-noLu'],
+                            fmt='o',
+                            markersize=3,
+                            ecolor=cols['hist-noLu'],
+                            markerfacecolor=median_cols['hist-noLu'],
+                            mec=cols['historical'],
+                            capsize=5,
+                            elinewidth=4,
+                            markeredgewidth=1)
+                
+                ax.errorbar(x=b[obs][mod]['hist-noLu'],
+                            y=b[obs][mod]['historical'],
+                            yerr=err[obs][mod]['historical'],
+                            fmt='o',
+                            markersize=3,
+                            ecolor=cols['historical'],
+                            markerfacecolor=median_cols['historical'],
+                            mec=cols['historical'],
+                            capsize=5,
+                            elinewidth=4,
+                            markeredgewidth=1)
+            
+            ax.set_title(letters[count],
+                        loc='left',
+                        fontweight='bold',
+                        fontsize=inset_font)
+            
+            ax.set_title(mod,
+                        loc='center',
+                        fontweight='bold',
+                        fontsize=inset_font)
+            
+            count += 1
+            
+            ax.hlines(y=1,
+                    xmin=-1,
+                    xmax=2,
+                    colors='k',
+                    linestyle='dashed',
+                    linewidth=1)
+            ax.hlines(y=0,
+                    xmin=-1,
+                    xmax=2,
+                    colors='k',
+                    linestyle='solid',
+                    linewidth=0.25)
+            
+            ax.vlines(x=1,
+                    ymin=-1,
+                    ymax=2,
+                    colors='k',
+                    linestyle='dashed',
+                    linewidth=1)
+            ax.vlines(x=0,
+                    ymin=-1,
+                    ymax=2,
+                    colors='k',
+                    linestyle='solid',
+                    linewidth=0.25)
+            
+            ax.tick_params(axis="x",
+                        direction="in", 
+                        left="off",
+                        labelleft="on")
+            ax.tick_params(axis="y",
+                        direction="in")
+            
+            ax.set_xlabel(r'$\beta_{hist-noLu}$',
+                        fontsize=20,
+                        color=median_cols['hist-noLu'],
+                        fontweight='bold')
+            
+        if exp_list == ['hist-noLu','lu']:
         
-        ax.vlines(x=1,
-                  ymin=-1,
-                  ymax=2,
-                  colors='k',
-                  linestyle='dashed',
-                  linewidth=1)
-        ax.vlines(x=0,
-                  ymin=-1,
-                  ymax=2,
-                  colors='k',
-                  linestyle='solid',
-                  linewidth=0.25)
+            ax1.set_ylabel(r'$\beta_{lu}$',
+                        fontsize=20,
+                        color=median_cols['lu'],
+                        fontweight='bold')
+            
+        elif exp_list == ['historical','hist-noLu']:
+            
+            ax1.set_ylabel(r'$\beta_{historical}$',
+                        fontsize=20,
+                        color=median_cols['historical'],
+                        fontweight='bold')
         
-        ax.tick_params(axis="x",
-                       direction="in", 
-                       left="off",
-                       labelleft="on")
-        ax.tick_params(axis="y",
-                       direction="in")
-        
-        ax.set_xlabel(r'$\beta_{hist-noLu}$',
-                      fontsize=20,
-                      color=median_cols['hist-noLu'],
-                      fontweight='bold')
-    
-    ax1.set_ylabel(r'$\beta_{lu}$',
-                   fontsize=20,
-                   color=median_cols['lu'],
-                   fontweight='bold')
-    
-    if flag_svplt == 0:
-        pass
-    elif flag_svplt == 1:
-        if measure != 'all_pixels':
-# =============================================================================
-#             f.tight_layout()
-# =============================================================================
-            f.savefig(outDIR+'/'+var+'_'+lulcc_type+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_global.png',bbox_inches='tight',dpi=200)     
-        if measure == 'all_pixels':
-# =============================================================================
-#             f.tight_layout()
-# =============================================================================
-            f.savefig(outDIR+'/'+var+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_global.png',dpi=200)     
+        if flag_svplt == 0:
+            pass
+        elif flag_svplt == 1:
+            
+            if exp_list == ['hist-noLu','lu']:
+                
+                f.savefig(outDIR+'/global_attribution_2-factor_{}_{}-grid.png'.format(obs,grid),bbox_inches='tight',dpi=200)     
+                
+            elif exp_list == ['historical','hist-noLu']:
+                
+                f.savefig(outDIR+'/global_attribution_1-factor_{}_{}-grid.png'.format(obs,grid),bbox_inches='tight',dpi=200)     
+  
 
 #%%============================================================================    
 
@@ -1141,19 +1215,27 @@ def plot_scaling_map_continental(sfDIR,
                 for c in continents.keys():
                     ar6_continents.loc[c,'{}-grid {} {}'.format(obs,mod,exp)] = det_finder(data[obs][mod][exp][c])
 
-    cmap_whole = plt.cm.get_cmap('PRGn')
-    hnolu_det = cmap_whole(0.40)
-    hnolu_att = cmap_whole(0.20)
-    lu_det = cmap_whole(0.65)
-    lu_att = cmap_whole(0.85)     
-    colors_lu = [lu_det,lu_att,'lightgrey']
-    colors_hnolu = [hnolu_det,hnolu_att,'lightgrey']      
-    cmaps = {}
-    cmaps['lu'] = mpl.colors.ListedColormap(colors_lu,N=len(colors_lu))
-    cmaps['hist-noLu'] = mpl.colors.ListedColormap(colors_hnolu,N=len(colors_hnolu))
-    color_mapping = {}
-    color_mapping['lu'] = {1:lu_det,2:lu_att,3:'lightgrey'}
-    color_mapping['hist-noLu'] = {1:hnolu_det,2:hnolu_att,3:'lightgrey'}
+    if exp_list == ['hist-noLu', 'lu']:
+        
+        cmap_whole = plt.cm.get_cmap('PRGn')
+        hnolu_det = cmap_whole(0.40)
+        hnolu_att = cmap_whole(0.20)
+        lu_det = cmap_whole(0.65)
+        lu_att = cmap_whole(0.85)     
+        color_mapping = {}
+        color_mapping['lu'] = {1:lu_det,2:lu_att,3:'lightgrey'}
+        color_mapping['hist-noLu'] = {1:hnolu_det,2:hnolu_att,3:'lightgrey'}
+        
+    elif exp_list == ['historical','hist-noLu']:
+        
+        cmap_whole = plt.cm.get_cmap('BrBG')
+        hist_det = cmap_whole(0.40)
+        hist_att = cmap_whole(0.20)
+        hnolu_det = cmap_whole(0.65)
+        hnolu_att = cmap_whole(0.85)     
+        color_mapping = {}
+        color_mapping['historical'] = {1:hist_det,2:hist_att,3:'lightgrey'}
+        color_mapping['hist-noLu'] = {1:hnolu_det,2:hnolu_att,3:'lightgrey'}
 
     for obs in obs_types:
         f, axes = plt.subplots(nrows=len(models),ncols=len(exp_list),figsize=(8,10))
@@ -1192,7 +1274,14 @@ def plot_scaling_map_continental(sfDIR,
                 i += 1
                 l += 1
             j += 1
-        f.savefig(outDIR+'/continental_attribution_{}_{}-grid.png'.format(obs,grid),bbox_inches='tight',dpi=500)
+            
+        if exp_list == ['hist-noLu', 'lu']:
+            
+            f.savefig(outDIR+'/continental_attribution_2-factor_{}_{}-grid.png'.format(obs,grid),bbox_inches='tight',dpi=500)
+            
+        elif exp_list == ['historical','hist-noLu']:
+            
+            f.savefig(outDIR+'/continental_attribution_1-factor_{}_{}-grid.png'.format(obs,grid),bbox_inches='tight',dpi=500)
                 
 #%%============================================================================
                 
@@ -1232,17 +1321,27 @@ def plot_scaling_map_ar6(sfDIR,
     regions = regions.dropna()
     regions = gp.clip(regions,gpd_continents)
 
-    cmap_whole = plt.cm.get_cmap('PRGn')
-    hnolu_det = cmap_whole(0.40)
-    hnolu_att = cmap_whole(0.20)
-    lu_det = cmap_whole(0.65)
-    lu_att = cmap_whole(0.85)     
-    cmaps = {}
-    cmaps['lu'] = mpl.colors.ListedColormap(colors_lu,N=len(colors_lu))
-    cmaps['hist-noLu'] = mpl.colors.ListedColormap(colors_hnolu,N=len(colors_hnolu))
-    color_mapping = {}
-    color_mapping['lu'] = {1:lu_det,2:lu_att,3:'lightgrey'}
-    color_mapping['hist-noLu'] = {1:hnolu_det,2:hnolu_att,3:'lightgrey'}
+    if exp_list == ['hist-noLu', 'lu']:
+        
+        cmap_whole = plt.cm.get_cmap('PRGn')
+        hnolu_det = cmap_whole(0.40)
+        hnolu_att = cmap_whole(0.20)
+        lu_det = cmap_whole(0.65)
+        lu_att = cmap_whole(0.85)     
+        color_mapping = {}
+        color_mapping['lu'] = {1:lu_det,2:lu_att,3:'lightgrey'}
+        color_mapping['hist-noLu'] = {1:hnolu_det,2:hnolu_att,3:'lightgrey'}
+        
+    elif exp_list == ['historical','hist-noLu']:
+        
+        cmap_whole = plt.cm.get_cmap('BrBG')
+        hist_det = cmap_whole(0.40)
+        hist_att = cmap_whole(0.20)
+        hnolu_det = cmap_whole(0.65)
+        hnolu_att = cmap_whole(0.85)     
+        color_mapping = {}
+        color_mapping['historical'] = {1:hist_det,2:hist_att,3:'lightgrey'}
+        color_mapping['hist-noLu'] = {1:hnolu_det,2:hnolu_att,3:'lightgrey'}
 
     for obs in obs_types:
         f, axes = plt.subplots(nrows=len(models),ncols=len(exp_list),figsize=(8,10))
@@ -1281,7 +1380,13 @@ def plot_scaling_map_ar6(sfDIR,
                 i += 1
                 l += 1
             j += 1
-        f.savefig(outDIR+'/ar6_attribution_{}_{}-grid.png'.format(obs,grid),bbox_inches='tight',dpi=500)
+        if exp_list == ['hist-noLu', 'lu']:
+            
+            f.savefig(outDIR+'/ar6_attribution_2-factor_{}_{}-grid.png'.format(obs,grid),bbox_inches='tight',dpi=500)
+            
+        elif exp_list == ['historical','hist-noLu']:
+            
+            f.savefig(outDIR+'/ar6_attribution_1-factor_{}_{}-grid.png'.format(obs,grid),bbox_inches='tight',dpi=500)
     
 
 # # create legend with patche for hsitnolu and lu det/att levels
@@ -1306,3 +1411,4 @@ def plot_scaling_map_ar6(sfDIR,
 #                 print(ar6)
 #                 print('{} decomp for {} is: histnolu {} to {}, lu {} to {}'.format(obs,mod,var_fin[obs][mod]['hist-noLu'][ar6][2],var_fin[obs][mod]['hist-noLu'][ar6][0],var_fin[obs][mod]['lu'][ar6][2],var_fin[obs][mod]['lu'][ar6][0]))
 #                 print('')
+# %%
