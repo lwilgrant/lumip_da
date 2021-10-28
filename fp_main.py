@@ -74,15 +74,25 @@ from eofs.xarray import Eof
 #================================================================================
 
 
-curDIR = '/home/luke/documents/lumip/d_a/'
+# curDIR = '/home/luke/documents/lumip/d_a/'
+# curDIR = '/theia/data/brussel/vo/000/bvo00012/vsc10116/lumip/d_a'
+curDIR = '/Users/Luke/Documents/PHD/lumip/da'
 os.chdir(curDIR)
 
 # data input directories
-obsDIR = os.path.join(curDIR, 'data/obs/final')
-modDIR = os.path.join(curDIR, 'data/mod/obs_grid')
+obsDIR = os.path.join(curDIR, 'obs/final')
+modDIR = os.path.join(curDIR, 'mod/final')
 # piDIR = os.path.join(curDIR, 'data/pi/final')
-mapDIR = os.path.join(curDIR, 'data/map/final')
-outDIR = os.path.join(curDIR, 'figures_pca')
+mapDIR = os.path.join(curDIR, 'map/final')
+outDIR = os.path.join(curDIR, 'figures')
+
+# # data input directories
+# obsDIR = os.path.join(curDIR, 'obs')
+# modDIR = os.path.join(curDIR, 'mod')
+# piDIR = os.path.join(curDIR, 'pi')
+# mapDIR = os.path.join(curDIR, 'map')
+# sfDIR = os.path.join(curDIR, 'shapefiles')
+# outDIR = os.path.join(curDIR, 'figures')
 
 # bring in functions
 from fp_funcs import *
@@ -221,7 +231,7 @@ continents = {}
 continents['North America'] = [1,2,3,4,5,6,7]
 continents['South America'] = [9,10,11,12,13,14,15]
 continents['Europe'] = [16,17,18,19]
-continents['Asia'] = [29,30,32,33,34,35,37,38]
+continents['Asia'] = [28,29,30,31,32,33,34,35,37,38]
 continents['Africa'] = [21,22,23,24,25,26]
 continents['Australia'] = [39,40,41,42]
 
@@ -503,12 +513,12 @@ if analysis == "models":
                     mod_slice = mod_slice.sel(lat=lat_ranges[ltr])
                     solver_dict[obs][exp][ltr] = Eof(mod_slice,
                                                      weights=weighted_arr[obs].sel(lat=lat_ranges[ltr]))
-                    eof_dict[obs][exp][ltr] = solver_dict[obs][exp][ltr].eofs(neofs=2)
-                    principal_components[obs][exp][ltr] = solver_dict[obs][exp][ltr].pcs(npcs=2)
+                    eof_dict[obs][exp][ltr] = solver_dict[obs][exp][ltr].eofs(neofs=1)
+                    principal_components[obs][exp][ltr] = solver_dict[obs][exp][ltr].pcs(npcs=1)
                     obs_slice = obs_data[obs].where(mod_msk[obs][lc] == 1)
                     obs_slice = obs_slice.sel(lat=lat_ranges[ltr])
                     pseudo_principal_components[obs][exp][ltr] = solver_dict[obs][exp][ltr].projectField(obs_slice,
-                                                                                                         neofs=2)
+                                                                                                         neofs=1)
                     
             solver_dict[obs][obs] = {}
             eof_dict[obs][obs] = {}
@@ -519,7 +529,7 @@ if analysis == "models":
                 obs_slice = obs_slice.sel(lat=lat_ranges[ltr])
                 solver_dict[obs][obs][ltr] = Eof(obs_slice,
                                                  weights=weighted_arr[obs].sel(lat=lat_ranges[ltr]))
-                eof_dict[obs][obs][ltr] = solver_dict[obs][obs][ltr].eofs(neofs=2)
+                eof_dict[obs][obs][ltr] = solver_dict[obs][obs][ltr].eofs(neofs=1)
 
         # continental pca            
         elif scale == 'continental':
@@ -567,34 +577,32 @@ if analysis == "models":
                 principal_components[obs][exp] = {}
                 pseudo_principal_components[obs][exp] = {}
                 
-                # for c in continents.keys():
-                c = "South America"
+                for c in continents.keys():
                     
-                for i in continents[c]:
-                
-                    mod_slice = mod_data[obs]['mmm'][exp].where(mod_msk[obs][lc]==1)
-                    mod_slice = mod_slice.where(ar6[obs] == i)
-                    solver_dict[obs][exp][i] = Eof(mod_slice,
-                                                        weights=weighted_arr[obs].where(ar6[obs] == i))
-                    eof_dict[obs][exp][i] = solver_dict[obs][exp][i].eofs(neofs=1)
-                    principal_components[obs][exp][i] = solver_dict[obs][exp][i].pcs(npcs=1)
-                    obs_slice = obs_data[obs].where(mod_msk[obs][lc] == 1)
-                    obs_slice = obs_slice.where(ar6[obs] == i)
-                    pseudo_principal_components[obs][exp][i] = solver_dict[obs][exp][i].projectField(obs_slice,
-                                                                                                            neofs=1)
+                    for i in continents[c]:
+                    
+                        mod_slice = mod_data[obs]['mmm'][exp].where(mod_msk[obs][lc]==1)
+                        mod_slice = mod_slice.where(ar6[obs] == i)
+                        solver_dict[obs][exp][i] = Eof(mod_slice,
+                                                            weights=weighted_arr[obs].where(ar6[obs] == i))
+                        eof_dict[obs][exp][i] = solver_dict[obs][exp][i].eofs(neofs=1)
+                        principal_components[obs][exp][i] = solver_dict[obs][exp][i].pcs(npcs=1)
+                        obs_slice = obs_data[obs].where(mod_msk[obs][lc] == 1)
+                        obs_slice = obs_slice.where(ar6[obs] == i)
+                        pseudo_principal_components[obs][exp][i] = solver_dict[obs][exp][i].projectField(obs_slice,
+                                                                                                         neofs=1)
             solver_dict[obs][obs] = {}
             eof_dict[obs][obs] = {}
             
-            # for c in continents.keys():
-            c = "South America"
+            for c in continents.keys():
                 
-            for i in continents[c]:        
-            
-                obs_slice = obs_data[obs].where(mod_msk[obs][lc] == 1)
-                obs_slice = obs_slice.where(ar6[obs] == i)
-                solver_dict[obs][obs][i] = Eof(obs_slice,
-                                                weights=weighted_arr[obs].where(ar6[obs] == i))
-                eof_dict[obs][obs][i] = solver_dict[obs][obs][i].eofs(neofs=1)
+                for i in continents[c]:        
+                
+                    obs_slice = obs_data[obs].where(mod_msk[obs][lc] == 1)
+                    obs_slice = obs_slice.where(ar6[obs] == i)
+                    solver_dict[obs][obs][i] = Eof(obs_slice,
+                                                    weights=weighted_arr[obs].where(ar6[obs] == i))
+                    eof_dict[obs][obs][i] = solver_dict[obs][obs][i].eofs(neofs=1)
 
 # projection of mmm lu onto luh2 fps   
 elif analysis == "luh2":
@@ -761,14 +769,8 @@ elif analysis == "luh2":
 
 if analysis == "models":
 
-
-# scale_opts = ['global',
-#               'latitudinal',
-#               'continental',
-#               'ar6']
     if scale == 'global':
         
-        # projecting obs onto hist and hist-nolu fingerprints
         pca_plot(eof_dict,
                 principal_components,
                 pseudo_principal_components,
@@ -778,7 +780,6 @@ if analysis == "models":
 
     elif scale == 'latitudinal':
         
-        # projecting obs onto hist and hist-nolu fingerprints
         pca_plot_latitudinal(eof_dict,
                              principal_components,
                              pseudo_principal_components,
@@ -789,7 +790,6 @@ if analysis == "models":
         
     elif scale == 'continental':
         
-        # projecting obs onto hist and hist-nolu fingerprints
         pca_plot_continental(eof_dict,
                              principal_components,
                              pseudo_principal_components,
@@ -800,7 +800,6 @@ if analysis == "models":
         
     elif scale == 'ar6':
         
-        # projecting NOT YET READY
         pca_plot_ar6(eof_dict,
                      principal_components,
                      pseudo_principal_components,

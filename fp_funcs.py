@@ -1111,7 +1111,7 @@ def pca_plot_continental(eof_dict,
 
 
 #%%==============================================================================   
-# NOT YET READY
+
 def pca_plot_ar6(eof_dict,
                  principal_components,
                  pseudo_principal_components,
@@ -1257,14 +1257,13 @@ def pca_plot_ar6(eof_dict,
                        str(start-inc),
                        str(start)]
     
-    norm_eof = mpl.colors.BoundaryNorm(values_eof,cmap_list_eof.N)
     
     cb_eof_x0 = 0.36  
     cb_eof_y0 = -0.05   
     cb_eof_xlen = 0.5
     cb_eof_ylen = 0.015
     
-    for c in continents.keys():
+    for c in continents.keys():; for ar6 in continents[c]:
     
         ############################### panels ##################################
         
@@ -1336,6 +1335,57 @@ def pca_plot_ar6(eof_dict,
                       loc='left')
         
         ############################### eof maps ##################################
+        
+        q_samples = []
+        
+        for obs in obs_types:        
+            q_samples.append(np.abs(eof_dict[obs][obs][c].quantile(0.95).item()))
+            q_samples.append(np.abs(eof_dict[obs][obs][c].quantile(0.05).item()))
+            for exp in exps_start:
+                q_samples.append(np.abs(eof_dict[obs][exp][c].quantile(0.95).item()))
+                q_samples.append(np.abs(eof_dict[obs][exp][c].quantile(0.05).item()))
+            
+        # colorbar args
+        start = np.around(np.max(q_samples),decimals=4)
+        inc = start/5
+        values_eof = [-1*start,
+                    -1*start+inc,
+                    -1*start+inc*2,
+                    -1*start+inc*3,
+                    -1*start+inc*4,
+                    -0.001,
+                    0.001,
+                    start-inc*4,
+                    start-inc*3,
+                    start-inc*2,
+                    start-inc,
+                    start]
+        
+        tick_locs_eof = [-1*start,
+                        -1*start+inc,
+                        -1*start+inc*2,
+                        -1*start+inc*3,
+                        -1*start+inc*4,
+                        0,
+                        start-inc*4,
+                        start-inc*3,
+                        start-inc*2,
+                        start-inc,
+                        start]
+        
+        tick_labels_eof = [str(np.around(-1*start,decimals=4)),
+                        str(np.around(-1*start+inc,decimals=4)),
+                        str(np.around(-1*start+inc*2,decimals=4)),
+                        str(np.around(-1*start+inc*3,decimals=4)),
+                        str(np.around(-1*start+inc*4)),
+                        str(0),
+                        str(np.around(start-inc*4,decimals=4)),
+                        str(np.around(start-inc*3,decimals=4)),
+                        str(np.around(start-inc*2,decimals=4)),
+                        str(np.around(start-inc,decimals=4)),
+                        str(start)]
+        
+        norm_eof = mpl.colors.BoundaryNorm(values_eof,cmap_list_eof.N)
         
         # eof loading maps
         count = 0
