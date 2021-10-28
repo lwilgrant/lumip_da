@@ -45,6 +45,7 @@ def of_subroutine(grid,
                   ctl_data_continental,
                   ctl_data_ar6,
                   bs_reps,
+                  ns,
                   nt,
                   reg,
                   cons_test,
@@ -370,9 +371,9 @@ def of_subroutine(grid,
                                 blow_med = np.median(blow[obs][mod][exp][ar6])
                                 pval_med = np.median(pval[obs][mod][exp][ar6])
                                 var_fin[obs][mod][exp][ar6] = [bhi_med,
-                                                            b_med,
-                                                            blow_med,
-                                                            pval_med]
+                                                               b_med,
+                                                               blow_med,
+                                                               pval_med]
 
 
     elif grid == 'model':
@@ -428,8 +429,8 @@ def of_subroutine(grid,
                         
                         # shuffle rows of ctl
                         ctl = np.take(ctl,
-                                    np.random.permutation(ctl.shape[0]),
-                                    axis=0)
+                                      np.random.permutation(ctl.shape[0]),
+                                      axis=0)
                         
                         # run detection and attribution
                         var_sfs[obs][mod],\
@@ -525,8 +526,8 @@ def of_subroutine(grid,
                             
                             # shuffle rows of ctl
                             ctl = np.take(ctl,
-                                        np.random.permutation(ctl.shape[0]),
-                                        axis=0)
+                                          np.random.permutation(ctl.shape[0]),
+                                          axis=0)
                             
                             # run detection and attribution
                             var_sfs[obs][mod][c],\
@@ -540,16 +541,16 @@ def of_subroutine(grid,
                             Cf1[obs][mod][c],\
                             Ft[obs][mod][c],\
                             beta_hat[obs][mod][c] = da_run(y,
-                                                        X,
-                                                        ctl,
-                                                        nb_runs_x,
-                                                        ns,
-                                                        nt,
-                                                        reg,
-                                                        cons_test,
-                                                        formule_ic_tls,
-                                                        trunc,
-                                                        ci_bnds)
+                                                           X,
+                                                           ctl,
+                                                           nb_runs_x,
+                                                           ns,
+                                                           nt,
+                                                           reg,
+                                                           cons_test,
+                                                           formule_ic_tls,
+                                                           trunc,
+                                                           ci_bnds)
                             
                             # [yc,Z1c,Z2c,Xc,Cf1,Ft,beta_hat]
                             for i,exp in enumerate(exp_list):
