@@ -148,7 +148,7 @@ flag_standardize=0;  # 0: no (standardization before input to PCA and projection
                      # 1: yes, standardize 
                      
 # << SELECT >>
-flag_scale=3;         # 0: global
+flag_scale=1;         # 0: global
                       # 1: latitudinal
                       # 2: continental
                       # 3: ar6 regions
