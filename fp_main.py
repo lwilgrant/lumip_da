@@ -76,14 +76,16 @@ from eofs.xarray import Eof
 
 # curDIR = '/home/luke/documents/lumip/d_a/'
 # curDIR = '/theia/data/brussel/vo/000/bvo00012/vsc10116/lumip/d_a'
-curDIR = '/Users/Luke/Documents/PHD/lumip/da'
+# curDIR = '/Users/Luke/Documents/PHD/lumip/da'
+# curDIR = '//wsl$/Ubuntu//home//luke//mnt//c//Users//lgrant//documents//repos//lumip_da'
+curDIR = 'C:/Users/lgrant/Documents/repos/lumip_da'
 os.chdir(curDIR)
 
 # data input directories
-obsDIR = os.path.join(curDIR, 'obs/final')
-modDIR = os.path.join(curDIR, 'mod/final')
+obsDIR = os.path.join(curDIR, 'obs')
+modDIR = os.path.join(curDIR, 'mod')
 # piDIR = os.path.join(curDIR, 'data/pi/final')
-mapDIR = os.path.join(curDIR, 'map/final')
+mapDIR = os.path.join(curDIR, 'map')
 outDIR = os.path.join(curDIR, 'figures')
 
 # # data input directories
@@ -110,7 +112,7 @@ flag_pickle=1     # 0: do not pickle objects
                   # 1: pickle objects after sections 'read' and 'analyze'
 
 # << SELECT >>
-flag_svplt=0;     # 0: do not save plot
+flag_svplt=1;     # 0: do not save plot
                   # 1: save plot in picDIR
 
 # << SELECT >>
@@ -148,7 +150,7 @@ flag_standardize=0;  # 0: no (standardization before input to PCA and projection
                      # 1: yes, standardize 
                      
 # << SELECT >>
-flag_scale=1;         # 0: global
+flag_scale=0;         # 0: global
                       # 1: latitudinal
                       # 2: continental
                       # 3: ar6 regions
@@ -261,6 +263,7 @@ lat_ranges['temperate_north'] = slice(24.5,50.5)
 
 mod_files = {}
 mod_data = {}
+obs_files = {}
 obs_data = {}
 luh2_data = {}
 ar6 = {}
@@ -272,6 +275,7 @@ for obs in obs_types:
     os.chdir(modDIR)
     mod_files[obs] = {}
     mod_data[obs] = {}
+    obs_files[obs] = []
     
     # mod data
     for mod in models:
@@ -297,7 +301,7 @@ for obs in obs_types:
                 
                 mod_data[obs][mod][exp] = nc_read(mod_files[obs][mod][exp],
                                                   y1,
-                                                    var,
+                                                  var,
                                                   obs)
             
                 ar6_regs = ar6_mask(mod_data[obs][mod][exp],
@@ -353,10 +357,12 @@ for obs in obs_types:
     for file in [file for file in sorted(os.listdir(obsDIR))\
                  if var in file\
                      and 'obs' in file\
-                     and obs in file\
+                     and obs+'-res' in file\
                      and 'unmasked' in file\
                      and t_ext in file]:
-        
+
+        obs_files[obs].append(file)
+
         obs_data[obs] = nc_read(file,
                                 y1,
                                 var,
@@ -383,8 +389,7 @@ for obs in obs_types:
     for lc in landcover_types:
         
         for file in [file for file in sorted(os.listdir(mapDIR))\
-                     if obs in file\
-                         and 'grid' in file\
+                     if obs+'_grid' in file\
                          and lc in file\
                          and '191501_201412' in file]:
             
