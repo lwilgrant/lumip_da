@@ -70,8 +70,9 @@ from matplotlib.lines import Line2D
 #==============================================================================
 
 # curDIR = '/home/luke/documents/lumip/d_a/'
-curDIR = '/theia/data/brussel/vo/000/bvo00012/vsc10116/lumip/d_a'
+# curDIR = '/theia/data/brussel/vo/000/bvo00012/vsc10116/lumip/d_a'
 # curDIR = '/Users/Luke/Documents/PHD/lumip/da'
+curDIR = 'C:/Users/lgrant/Documents/repos/lumip_da'
 os.chdir(curDIR)
 
 # data input directories
@@ -100,7 +101,7 @@ flag_svplt=0      # 0: do not save plot
                   # 1: save plot in picDIR
 
 # << SELECT >>
-flag_analysis=2   # 0: d&a on global scale (all chosen ar6 regions)
+flag_analysis=1   # 0: d&a on global scale (all chosen ar6 regions)
                   # 1: d&a on continental scale (scaling factor per continent; continent represented by AR6 weighted means)
                   # 2: d&a on ar6 scale (scaling factor per ar6 region)
                   
@@ -113,7 +114,7 @@ flag_grid=0       # 0: model grid resolution
                   # 1: uniform obs grid resolution
                   
 # << SELECT >>
-flag_factor=2     # 0: 2-factor -> hist-noLu and lu
+flag_factor=0     # 0: 2-factor -> hist-noLu and lu
                   # 1: 1-factor -> historical
                   # 2: 1-factor -> hist-noLu
                   
@@ -505,6 +506,20 @@ if analysis == 'global':
                         outDIR)
 
 elif analysis == 'continental':
+    
+    mod_ts_pkl = open('mod_ts_model-grid_196501-201412.pkl','rb')
+    mod_ts_ens = pk.load(mod_ts_pkl)
+    mod_ts_pkl.close()
+    
+    obs_ts_pkl = open('obs_ts_model-grid_196501-201412.pkl','rb')
+    obs_ts_ens = pk.load(obs_ts_pkl)
+    obs_ts_pkl.close()
+    
+    var_fin_pkl = open('var_fin_2-factor_model-grid_continental_196501-201412.pkl','rb')
+    var_fin = pk.load(var_fin_pkl)
+    var_fin_pkl.close()
+    
+    
     
     plot_scaling_continental(models,
                              exps,

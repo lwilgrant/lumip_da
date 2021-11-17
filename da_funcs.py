@@ -900,7 +900,8 @@ def plot_scaling_continental(models,
                              t_ext,
                              freq,
                              measure,
-                             var):
+                             var,
+                             obs_types):
     
     cmap_whole = plt.cm.get_cmap('PRGn')
     cols={}
@@ -948,7 +949,7 @@ def plot_scaling_continental(models,
     time_og = np.arange(1920,2020,step)
     
     widths = [3,1]
-    heights = [1,1,1,1,1]
+    heights = [1,1,1,1,1,1]
     gs_kw = dict(width_ratios=widths, height_ratios=heights)
     
     # OF data prep
@@ -958,219 +959,228 @@ def plot_scaling_continental(models,
     p = {}
     err = {}
     
-    for mod in models:
+    for obs in obs_types:
         
-        f,((ax1,ax2),
-           (ax3,ax4),
-           (ax5,ax6),
-           (ax7,ax8),
-           (ax9,ax10)) = plt.subplots(nrows=5,\
-                                      ncols=2,\
-                                      figsize=(x,y),\
-                                      gridspec_kw=gs_kw)
-        # time series plots
-        for ax,c in zip((ax1,ax3,ax5,ax7,ax9),continents.keys()):
+        b[obs] = {}
+        b_inf[obs] = {}
+        b_sup[obs] = {}
+        p[obs] = {}
+        err[obs] = {}
+        
+        for mod in models:
             
-            cnt_idx = continent_names.index(c)
-            if cnt_idx == 0:
-                strt_idx = 0
-            else:
-                strt_idx = 0
-                idxs = np.arange(0,cnt_idx)
-                for i in idxs:
-                    strt_idx += len(continents[continent_names[i]])
-            n = len(continents[c])
+            f,((ax1,ax2),
+            (ax3,ax4),
+            (ax5,ax6),
+            (ax7,ax8),
+            (ax9,ax10),
+            (ax11,ax12)) = plt.subplots(nrows=6,\
+                                        ncols=2,\
+                                        figsize=(x,y),\
+                                        gridspec_kw=gs_kw)
+            # time series plots
+            for ax,c in zip((ax1,ax3,ax5,ax7,ax9,ax11),continents.keys()):
+                
+                cnt_idx = continent_names.index(c)
+                if cnt_idx == 0:
+                    strt_idx = 0
+                else:
+                    strt_idx = 0
+                    idxs = np.arange(0,cnt_idx)
+                    for i in idxs:
+                        strt_idx += len(continents[continent_names[i]])
+                n = len(continents[c])
+                
+                for exp in exps:
+                    
+                    n_t = np.shape(mod_ts[mod][exp])[1]
+                    time = time_og[len(time_og)-n_t:]
+                    data = []
+                    obs_data = []
+                    
+                    for t in np.arange(n_t):
+                        
+                        data_tstep = mod_ts[mod][exp][:,t,strt_idx:strt_idx+n].flatten()
+                        data.append(data_tstep)
+                        obs_data_tstep = obs_ts[obs][mod][t,strt_idx:strt_idx+n].flatten()
+                        obs_data.append(obs_data_tstep)
+                        
+                    ax.boxplot(data,
+                            whis=0,
+                            widths=0.85,
+                            showcaps=False,
+                            showfliers=False,
+                            showbox=True,
+                            patch_artist=True,
+                            boxprops=dict(facecolor=cols[exp],
+                                            linewidth=0,
+                                            alpha=0.5),
+                            medianprops=dict(color=median_cols[exp]))
+                    ax.boxplot(obs_data,
+                            whis=0,
+                            widths=0.85,
+                            showcaps=False,
+                            showfliers=False,
+                            showbox=False,
+                            patch_artist=True,
+                            medianprops=dict(color='k',
+                                                linewidth=2))
+
+                ax.tick_params(axis="x",
+                            direction="in", 
+                            left="off",
+                            labelleft="on")
+                ax.tick_params(axis="y",
+                            direction="in")
+                
+                ax.set_xticks(np.arange(1,n_t+1))
+                        
+                ax.xaxis.set_ticklabels([])
+                ax.spines['right'].set_visible(False)
+                ax.spines['top'].set_visible(False)
+                
+                if c == 'Europe':
+                    ax.set_ylabel(var+' anomaly [°C]',
+                                fontsize=12)
+                
+                if c == 'Australia':
+                    ax.xaxis.set_ticklabels(time)
+                    if freq == '10Y':
+                        ax.set_xlabel('Decades',
+                                    fontsize=12)
+                    elif freq == '5Y':
+                        ax.set_xlabel('Years',
+                                    fontsize=12)
+                    
+            
+            # scaling factor plots
+            b[obs][mod] = {}
+            b_inf[obs][mod] = {}
+            b_sup[obs][mod] = {}
+            p[obs][mod] = {}
+            err[obs][mod] = {}
             
             for exp in exps:
                 
-                n_t = np.shape(mod_ts[mod][exp])[1]
-                time = time_og[len(time_og)-n_t:]
-                data = []
-                obs_data = []
+                b[obs][mod][exp] = {}
+                b_inf[obs][mod][exp] = {}
+                b_sup[obs][mod][exp] = {}
+                p[obs][mod][exp] = {}
+                err[obs][mod][exp] = {}
                 
-                for t in np.arange(n_t):
+                for c in continents.keys():
                     
-                    data_tstep = mod_ts[mod][exp][:,t,strt_idx:strt_idx+n].flatten()
-                    data.append(data_tstep)
-                    obs_data_tstep = obs_ts[mod][t,strt_idx:strt_idx+n].flatten()
-                    obs_data.append(obs_data_tstep)
-                    
-                ax.boxplot(data,
-                           whis=0,
-                           widths=0.85,
-                           showcaps=False,
-                           showfliers=False,
-                           showbox=True,
-                           patch_artist=True,
-                           boxprops=dict(facecolor=cols[exp],
-                                         linewidth=0,
-                                         alpha=0.5),
-                           medianprops=dict(color=median_cols[exp]))
-                ax.boxplot(obs_data,
-                           whis=0,
-                           widths=0.85,
-                           showcaps=False,
-                           showfliers=False,
-                           showbox=False,
-                           patch_artist=True,
-                           medianprops=dict(color='k',
-                                            linewidth=2))
-
-            ax.tick_params(axis="x",
-                           direction="in", 
-                           left="off",
-                           labelleft="on")
-            ax.tick_params(axis="y",
-                           direction="in")
+                    b[obs][mod][exp][c],\
+                    b_inf[obs][mod][exp][c],\
+                    b_sup[obs][mod][exp][c],\
+                    p[obs][mod][exp][c] = scale_take(var_fin[obs][mod][exp][c])
+                    err[obs][mod][exp][c] = np.stack([[b_inf[obs][mod][exp][c]],
+                                                [b_sup[obs][mod][exp][c]]],
+                                                axis=0)
+        
+            for ax,c in zip((ax2,ax4,ax6,ax8,ax10,ax12),continents.keys()):
             
-            ax.set_xticks(np.arange(1,n_t+1))
-                    
-            ax.xaxis.set_ticklabels([])
-            ax.spines['right'].set_visible(False)
-            ax.spines['top'].set_visible(False)
-            
-            if c == 'Europe':
-                ax.set_ylabel(var+' anomaly [°C]',
-                              fontsize=12)
-            
-            if c == 'Africa':
-                ax.xaxis.set_ticklabels(time)
-                if freq == '10Y':
-                    ax.set_xlabel('Decades',
-                                  fontsize=12)
-                elif freq == '5Y':
-                    ax.set_xlabel('Years',
-                                  fontsize=12)
+                ax.errorbar(x=b[obs][mod]['hist-noLu'][c],
+                            y=b[obs][mod]['lu'][c],
+                            xerr=err[obs][mod]['hist-noLu'][c],
+                            fmt='o',
+                            markersize=3,
+                            ecolor=cols['hist-noLu'],
+                            markerfacecolor=median_cols['hist-noLu'],
+                            mec=cols['lu'],
+                            capsize=5,
+                            elinewidth=4,
+                            markeredgewidth=1)
                 
-        
-        # scaling factor plots
-        b[mod] = {}
-        b_inf[mod] = {}
-        b_sup[mod] = {}
-        p[mod] = {}
-        err[mod] = {}
-        
-        for exp in exps:
-            
-            b[mod][exp] = {}
-            b_inf[mod][exp] = {}
-            b_sup[mod][exp] = {}
-            p[mod][exp] = {}
-            err[mod][exp] = {}
-            
-            for c in continents.keys():
+                ax.errorbar(x=b[obs][mod]['hist-noLu'][c],
+                            y=b[obs][mod]['lu'][c],
+                            yerr=err[obs][mod]['lu'][c],
+                            fmt='o',
+                            markersize=3,
+                            ecolor=cols['lu'],
+                            markerfacecolor=median_cols['lu'],
+                            mec=cols['lu'],
+                            capsize=5,
+                            elinewidth=4,
+                            markeredgewidth=1)
                 
-                b[mod][exp][c],\
-                b_inf[mod][exp][c],\
-                b_sup[mod][exp][c],\
-                p[mod][exp][c] = scale_take(var_fin[mod][exp][c])
-                err[mod][exp][c] = np.stack([[b_inf[mod][exp][c]],
-                                             [b_sup[mod][exp][c]]],
-                                            axis=0)
-    
-        for ax,c in zip((ax2,ax4,ax6,ax8,ax10),continents.keys()):
+                ax.hlines(y=1,
+                        xmin=-1,
+                        xmax=2,
+                        colors='k',
+                        linestyle='dashed',
+                        linewidth=1)
+                ax.hlines(y=0,
+                        xmin=-1,
+                        xmax=2,
+                        colors='k',
+                        linestyle='solid',
+                        linewidth=0.25)
+                
+                ax.vlines(x=1,
+                        ymin=-1,
+                        ymax=2,
+                        colors='k',
+                        linestyle='dashed',
+                        linewidth=1)
+                ax.vlines(x=0,
+                        ymin=-1,
+                        ymax=2,
+                        colors='k',
+                        linestyle='solid',
+                        linewidth=0.25)
+                
+                ax.set_xticks(np.arange(-2,2.5))
+                ax.set_yticks(np.arange(-2,2.5))
+                ax.xaxis.set_ticklabels([])
+                ax.yaxis.set_ticklabels([None,-1,0,1,None])
+                
+                ax.tick_params(axis="x",
+                            direction="in")
+                ax.tick_params(axis="y",
+                            direction="in",
+                            labelleft=False,
+                            labelright=True)
         
-            ax.errorbar(x=b[mod]['hist-noLu'][c],
-                        y=b[mod]['lu'][c],
-                        xerr=err[mod]['hist-noLu'][c],
-                        fmt='o',
-                        markersize=3,
-                        ecolor=cols['hist-noLu'],
-                        markerfacecolor=median_cols['hist-noLu'],
-                        mec=cols['lu'],
-                        capsize=5,
-                        elinewidth=4,
-                        markeredgewidth=1)
+                ax.set_ylabel(r'$\beta_{lu}$',
+                            fontsize=18,
+                            color=median_cols['lu'],
+                            fontweight='bold')
+                ax.yaxis.set_label_position("right")
+                ax.set_title(c,
+                            fontweight='bold',
+                            loc='right')
+                
+                
+                
+            for i,ax in enumerate((ax1,ax2,ax3,ax4,ax5,ax6,ax7,ax8,ax9,ax10,ax11,ax12)):
+                ax.set_title(letters[i],
+                            fontweight='bold',
+                            loc='left')
             
-            ax.errorbar(x=b[mod]['hist-noLu'][c],
-                        y=b[mod]['lu'][c],
-                        yerr=err[mod]['lu'][c],
-                        fmt='o',
-                        markersize=3,
-                        ecolor=cols['lu'],
-                        markerfacecolor=median_cols['lu'],
-                        mec=cols['lu'],
-                        capsize=5,
-                        elinewidth=4,
-                        markeredgewidth=1)
+            ax12.xaxis.set_ticklabels([None,-1,0,1,None])
+            ax12.set_xlabel(r'$\beta_{hist-noLu}$',
+                            fontsize=18,
+                            color=median_cols['hist-noLu'],
+                            fontweight='bold')
+            ax1.legend(handles, 
+                    labels, 
+                    bbox_to_anchor=(x0, y0, xlen, ylen), 
+                    loc=3,   #bbox: (x, y, width, height)
+                    ncol=3, 
+                    mode="expand", 
+                    borderaxespad=0.,\
+                    frameon=False, 
+                    columnspacing=0.05, 
+                    fontsize=12,
+                    handlelength=legend_entrylen, 
+                    handletextpad=legend_entrypad)
             
-            ax.hlines(y=1,
-                      xmin=-1,
-                      xmax=2,
-                      colors='k',
-                      linestyle='dashed',
-                      linewidth=1)
-            ax.hlines(y=0,
-                      xmin=-1,
-                      xmax=2,
-                      colors='k',
-                      linestyle='solid',
-                      linewidth=0.25)
-            
-            ax.vlines(x=1,
-                      ymin=-1,
-                      ymax=2,
-                      colors='k',
-                      linestyle='dashed',
-                      linewidth=1)
-            ax.vlines(x=0,
-                      ymin=-1,
-                      ymax=2,
-                      colors='k',
-                      linestyle='solid',
-                      linewidth=0.25)
-            
-            ax.set_xticks(np.arange(-2,2.5))
-            ax.set_yticks(np.arange(-2,2.5))
-            ax.xaxis.set_ticklabels([])
-            ax.yaxis.set_ticklabels([None,-1,0,1,None])
-            
-            ax.tick_params(axis="x",
-                           direction="in")
-            ax.tick_params(axis="y",
-                           direction="in",
-                           labelleft=False,
-                           labelright=True)
-    
-            ax.set_ylabel(r'$\beta_{lu}$',
-                           fontsize=18,
-                           color=median_cols['lu'],
-                           fontweight='bold')
-            ax.yaxis.set_label_position("right")
-            ax.set_title(c,
-                         fontweight='bold',
-                         loc='right')
-            
-            
-            
-        for i,ax in enumerate((ax1,ax2,ax3,ax4,ax5,ax6,ax7,ax8,ax9,ax10)):
-            ax.set_title(letters[i],
-                         fontweight='bold',
-                         loc='left')
-        
-        ax10.xaxis.set_ticklabels([None,-1,0,1,None])
-        ax10.set_xlabel(r'$\beta_{hist-noLu}$',
-                        fontsize=18,
-                        color=median_cols['hist-noLu'],
-                        fontweight='bold')
-        ax1.legend(handles, 
-                   labels, 
-                   bbox_to_anchor=(x0, y0, xlen, ylen), 
-                   loc=3,   #bbox: (x, y, width, height)
-                   ncol=3, 
-                   mode="expand", 
-                   borderaxespad=0.,\
-                   frameon=False, 
-                   columnspacing=0.05, 
-                   fontsize=12,
-                   handlelength=legend_entrylen, 
-                   handletextpad=legend_entrypad)
-        
-        if flag_svplt == 1:
-            if measure != 'all_pixels':
-                f.savefig(outDIR+'/'+mod+'_'+var+'_'+'_'+lulcc_type+'_'+measure+'_'+t_ext+'_'+freq+'_tseries_scaling_continental.png',dpi=200)     
-            if measure == 'all_pixels':
-                f.savefig(outDIR+'/'+mod+'_'+var+'_'+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_continental.png',dpi=200) 
+            if flag_svplt == 1:
+                if measure != 'all_pixels':
+                    f.savefig(outDIR+'/'+mod+'_'+var+'_'+'_'+lulcc_type+'_'+measure+'_'+t_ext+'_'+freq+'_tseries_scaling_continental.png',dpi=200)     
+                if measure == 'all_pixels':
+                    f.savefig(outDIR+'/'+mod+'_'+ obs +'_'+var+'_'+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_continental.png',dpi=200) 
                 
                 
 #%%============================================================================
