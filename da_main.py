@@ -14,37 +14,6 @@ Created on Wed Jul  1 16:52:49 2020
 
 # This script generates detection and attribution results on LUMIP data
 
-# New hydra version:
-    # chop into cells (main script and functions) (done)
-    # chop into subroutines on other scripts (done)
-    # for unmasked, use all land-based ar6 regions per continent (too much uncertainty for luh2 selection) (done)
-    # add option for uniform grids (per obs)
-        # if statements before list comprehension to gather files
-        # BETTER IDEA:
-            # subroutine for all file extraction:
-                # use flags as input; return things such as pi files, obs files and fp_files
-                # use directories as input
-                # currently, maps subroutine generates ar6_land maps to select grid cells
-                    # but I no longer want to do that. 
-                    # change maps subroutine to, based on grid_type, produce ar6_land masks either at obs resolution or as dict for mod resolutions
-                    # take grid type as input to file allocation subroutine
-                    # tres can be removed: no longer required
-                    # based on need, can read in either ensmeans or individual realisations
-                # no option exists for looking at area changes in the case of working at obs resolutions (map/*.nc files are all at mod resolution; will have to fix if I want to do this but not necessary now)
-    # add option for obs type; needs to be added to subroutine functions
-    # add d & a outputs per AR6 region, (latitudinally?)
-    # put current (sep 30) fp_main and da_main and funcs scripts on backup branch on github
-    # need solution for options in sr_mod_fp and sr_pi and sr_obs to:
-        # run fp on one experiment; e.g. separate runs for historical and hist-nolu (for "sr_mod_fp")
-        # can a function take fp_data_* objects and 
-    # will always have 2 OF results for each obs type, but difference will be whether at model or obs grid
-    # first establish working results for obs vs mod res, global vs continental vs ar6 results,
-        # then establish historical vs hist-nolu single factor runs
-    # continental map of detection results needs tweeks:
-        # greenland shouldn't be part of eu; south american extent shouldn't include central america
-        # mmm colors were wrong when all areas had valueof 3; seems that categories weren't established; double check
-        # to avoid continental inclusion of regions not consisreed in the continents analysis via ar6, 
-            # perhaps i shouldn't use continental shapefiles directly but rather merge shapefiles for ar6 regions (clipped by continents for land only)
 
 #%%============================================================================
 # import
@@ -70,9 +39,9 @@ from matplotlib.lines import Line2D
 #==============================================================================
 
 # curDIR = '/home/luke/documents/lumip/d_a/'
-# curDIR = '/theia/data/brussel/vo/000/bvo00012/vsc10116/lumip/d_a'
+curDIR = '/theia/data/brussel/vo/000/bvo00012/vsc10116/lumip/d_a'
 # curDIR = '/Users/Luke/Documents/PHD/lumip/da'
-curDIR = 'C:/Users/lgrant/Documents/repos/lumip_da'
+# curDIR = 'C:/Users/lgrant/Documents/repos/lumip_da'
 os.chdir(curDIR)
 
 # data input directories
@@ -97,7 +66,7 @@ flag_pickle=1     # 0: do not pickle objects
                   # 1: pickle objects after sections 'read' and 'analyze'
 
 # << SELECT >>
-flag_svplt=0      # 0: do not save plot
+flag_svplt=1      # 0: do not save plot
                   # 1: save plot in picDIR
 
 # << SELECT >>
@@ -353,7 +322,7 @@ ts_pickler(curDIR,
            mod_ts_ens,
            grid,
            t_ext,
-           obs_mod='model')
+           obs_mod='mod')
 
 #%%============================================================================
 
@@ -377,20 +346,26 @@ fp,fp_continental,fp_ar6,nx = fingerprint_subroutine(obs_types,
 # pi data
 os.chdir(curDIR)
 from da_sr_pi import *
-ctl_data,ctl_data_continental,ctl_data_ar6 = picontrol_subroutine(piDIR,
-                                                                  pi_files,
-                                                                  grid,
-                                                                  models,
-                                                                  obs_types,
-                                                                  continents,
-                                                                  continent_names,
-                                                                  var,
-                                                                  y1,
-                                                                  freq,
-                                                                  maps,
-                                                                  ar6_regs,
-                                                                  ns,
-                                                                  nt)
+ctl_data,ctl_data_continental,ctl_data_ar6,pi_ts_ens = picontrol_subroutine(piDIR,
+                                                                            pi_files,
+                                                                            grid,
+                                                                            models,
+                                                                            obs_types,
+                                                                            continents,
+                                                                            continent_names,
+                                                                            var,
+                                                                            y1,
+                                                                            freq,
+                                                                            maps,
+                                                                            ar6_regs,
+                                                                            ns,
+                                                                            nt)
+
+ts_pickler(curDIR,
+           pi_ts_ens,
+           grid,
+           t_ext,
+           obs_mod='pic')
 
 #%%============================================================================
 
@@ -461,6 +436,7 @@ models = of_subroutine(grid,
                        trunc,
                        ci_bnds,
                        continents)
+
 # save OF results
 pickler(curDIR,
         var_fin,
@@ -508,25 +484,25 @@ if analysis == 'global':
 elif analysis == 'continental':
     
     mod_ts_pkl = open('mod_ts_model-grid_196501-201412.pkl','rb')
-    mod_ts_ens = pk.load(mod_ts_pkl)
+    mod_ts = pk.load(mod_ts_pkl)
     mod_ts_pkl.close()
     
     obs_ts_pkl = open('obs_ts_model-grid_196501-201412.pkl','rb')
-    obs_ts_ens = pk.load(obs_ts_pkl)
+    obs_ts = pk.load(obs_ts_pkl)
     obs_ts_pkl.close()
     
     var_fin_pkl = open('var_fin_2-factor_model-grid_continental_196501-201412.pkl','rb')
     var_fin = pk.load(var_fin_pkl)
     var_fin_pkl.close()
     
-    
+    exps_2f = ['hist-noLu','lu']
     
     plot_scaling_continental(models,
-                             exps,
+                             exps_2f,
                              var_fin,
                              continents,
                              continent_names,
-                             mod_ts_ens,
+                             mod_ts,
                              obs_ts,
                              flag_svplt,
                              outDIR,
@@ -534,7 +510,8 @@ elif analysis == 'continental':
                              t_ext,
                              freq,
                              measure,
-                             var)
+                             var,
+                             obs_types)
     
     plot_scaling_map_continental(sfDIR,
                                  obs_types,

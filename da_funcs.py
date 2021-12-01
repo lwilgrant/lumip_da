@@ -618,10 +618,12 @@ def ts_pickler(curDIR,
                obs_mod):
     
     os.chdir(curDIR)
-    if obs_mod == 'model':
+    if obs_mod == 'mod':
         pkl_file = open('mod_ts_{}-grid_{}.pkl'.format(grid,t_ext),'wb')
     elif obs_mod == 'obs':
         pkl_file = open('obs_ts_{}-grid_{}.pkl'.format(grid,t_ext),'wb')
+    elif obs_mod == 'pic':
+        pkl_file = open('pic_ts_{}-grid_{}.pkl'.format(grid,t_ext),'wb')
     pk.dump(ts,pkl_file)
     pkl_file.close()
 
@@ -1180,7 +1182,7 @@ def plot_scaling_continental(models,
                 if measure != 'all_pixels':
                     f.savefig(outDIR+'/'+mod+'_'+var+'_'+'_'+lulcc_type+'_'+measure+'_'+t_ext+'_'+freq+'_tseries_scaling_continental.png',dpi=200)     
                 if measure == 'all_pixels':
-                    f.savefig(outDIR+'/'+mod+'_'+ obs +'_'+var+'_'+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_continental.png',dpi=200) 
+                    f.savefig(outDIR+'/'+mod+'_'+ obs +'_'+var+'_'+measure+'_'+t_ext+'_'+freq+'_scaling_continental.png',dpi=200) 
                 
                 
 #%%============================================================================

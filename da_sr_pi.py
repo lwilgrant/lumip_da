@@ -15,6 +15,7 @@ Created on Wed Jul  1 16:52:49 2020
 # This subroutine script generates:
     # picontrol series for detection and attribution
 
+# nov 29 note: moved lines 159-201 back one indent to get proper min_pi_samp
 
 #%%============================================================================
 # import
@@ -53,20 +54,32 @@ def picontrol_subroutine(piDIR,
     ctl_data = {}
     ctl_data_continental = {}
     ctl_data_ar6 = {}
+    pi_ts_ens = {}
     
     if grid == 'obs':
         
         len_list = []
+        pi_ts_ens['mmm'] = {}
+        
+        for obs in obs_types:
+            
+            pi_ts_ens['mmm'][obs] = []
 
         for mod in models:
             
             len_list.append(len(pi_files[mod][obs_types[0]]))
+            
+        min_pi_samp = np.min(len_list)
+            
+        for mod in models:
+            
             pi_data[mod] = {}
             pi_data_continental[mod] = {}
             pi_data_ar6[mod] = {}
             ctl_data[mod] = {}
             ctl_data_continental[mod] = {}
             ctl_data_ar6[mod] = {}
+            pi_ts_ens[mod] = {}
             
             for obs in obs_types:
                 
@@ -75,6 +88,7 @@ def picontrol_subroutine(piDIR,
                 pi_data_ar6[mod][obs] = {}
                 ctl_data_continental[mod][obs] = {}
                 ctl_data_ar6[mod][obs] = {}
+                pi_ts_ens[mod][obs] = []
             
                 for c in continents.keys():
                     
@@ -86,6 +100,7 @@ def picontrol_subroutine(piDIR,
                 
                 shuffle(pi_files[mod][obs])
                 
+                picm = 0
                 for file in pi_files[mod][obs]:
                     
                     # mod data and coords for ar6 mask
@@ -103,7 +118,14 @@ def picontrol_subroutine(piDIR,
                     input_pi_ar6 = deepcopy(pi_ar6) # temporal centering
                     pi_ar6 = temp_center(ns,
                                          input_pi_ar6)
+                    pi_ts_ens[mod][obs].append(pi_ar6)
+                    
+                    if picm <= min_pi_samp:
+                        
+                        pi_ts_ens['mmm'][obs].append(pi_ar6)
+                        
                     pi_data[mod][obs].append(pi_ar6.flatten()) # 1-D pi array to go into pi-chunks for DA
+                    picm += 1
                     
                     # 1-D pi array per continent
                     for c in continents.keys():
@@ -141,63 +163,74 @@ def picontrol_subroutine(piDIR,
                         
                         ctl_data_ar6[mod][obs][ar6] = np.stack(pi_data_ar6[mod][obs][ar6],
                                                                axis=0)
+                        
+                # pi tseries data
+                pi_ts_ens[mod][obs] = np.stack(pi_ts_ens[mod][obs],axis=0)
                     
-            # collect all pi data for mmm approach (balance contribution of noise data from each model with taking minimum # samples)
-            min_pi_samp = np.min(len_list)
-            ctl_list = []
+        # collect all pi data for mmm approach (balance contribution of noise data from each model with taking minimum # samples)
+        ctl_list = []
 
-            for mod in models:
-                
-                ctl_list.append(ctl_data[mod][obs][:min_pi_samp])
-                
-            ctl_data['mmm'] = np.concatenate(ctl_list,
-                                             axis=0)
-            ctl_list_c = {}
-            ctl_list_ar6 = {}
-            ctl_data_continental['mmm'] = {}
-            ctl_data_ar6['mmm'] = {}
+        for mod in models:
             
-            for obs in obs_types:
-                
-                ctl_list_c[obs] = {}
-                ctl_list_ar6[obs] = {}
-                ctl_data_continental['mmm'][obs] = {}
-                ctl_data_ar6['mmm'][obs] = {}
+            ctl_list.append(ctl_data[mod][obs][:min_pi_samp])
+            
+        ctl_data['mmm'] = np.concatenate(ctl_list,
+                                            axis=0)
+        ctl_list_c = {}
+        ctl_list_ar6 = {}
+        ctl_data_continental['mmm'] = {}
+        ctl_data_ar6['mmm'] = {}
+        
+        for obs in obs_types:
+            
+            ctl_list_c[obs] = {}
+            ctl_list_ar6[obs] = {}
+            ctl_data_continental['mmm'][obs] = {}
+            ctl_data_ar6['mmm'][obs] = {}
 
-                for c in continents.keys():
+            for c in continents.keys():
+                
+                ctl_list_c[obs][c] = []
+                
+                for mod in models:
                     
-                    ctl_list_c[obs][c] = []
+                    ctl_list_c[obs][c].append(ctl_data_continental[mod][obs][c][:min_pi_samp])
+                    
+                ctl_data_continental['mmm'][obs][c] = np.concatenate(ctl_list_c[obs][c],
+                                                                        axis=0)
+                
+                for ar6 in continents[c]:
+                    
+                    ctl_list_ar6[obs][ar6] = []
                     
                     for mod in models:
                         
-                        ctl_list_c[obs][c].append(ctl_data_continental[mod][obs][c][:min_pi_samp])
+                        ctl_list_ar6[obs][ar6].append(ctl_data_ar6[mod][obs][ar6][:min_pi_samp])
                         
-                    ctl_data_continental['mmm'][obs][c] = np.concatenate(ctl_list_c[obs][c],
-                                                                         axis=0)
+                    ctl_data_ar6['mmm'][obs][ar6] = np.concatenate(ctl_list_ar6[obs][ar6],
+                                                                    axis=0)
                     
-                    for ar6 in continents[c]:
-                        
-                        ctl_list_ar6[obs][ar6] = []
-                        
-                        for mod in models:
-                            
-                            ctl_list_ar6[obs][ar6].append(ctl_data_ar6[mod][obs][ar6][:min_pi_samp])
-                            
-                        ctl_data_ar6['mmm'][obs][ar6] = np.concatenate(ctl_list_ar6[obs][ar6],
-                                                                       axis=0)
+            pi_ts_ens['mmm'][obs] = np.stack(pi_ts_ens['mmm'][obs],axis=0)
     
     elif grid == 'model':
 
         len_list = []
+        pi_ts_ens['mmm'] = []
 
         for mod in models:
             
             len_list.append(len(pi_files[mod]))
+            
+        min_pi_samp = np.min(len_list)
+            
+        for mod in  models:
+            
             pi_data[mod] = []
             pi_data_continental[mod] = {}
             pi_data_ar6[mod] = {}
             ctl_data_continental[mod] = {}
             ctl_data_ar6[mod] = {}
+            pi_ts_ens[mod] = []
             
             for c in continents.keys():
                 
@@ -209,6 +242,7 @@ def picontrol_subroutine(piDIR,
             
             shuffle(pi_files[mod])
             
+            picm = 0
             for file in pi_files[mod]:
                 
                 # mod data and coords for ar6 mask
@@ -225,7 +259,14 @@ def picontrol_subroutine(piDIR,
                 input_pi_ar6 = deepcopy(pi_ar6) # temporal centering
                 pi_ar6 = temp_center(ns,
                                      input_pi_ar6)
+                pi_ts_ens[mod].append(pi_ar6)
+                    
+                if picm <= min_pi_samp:
+                    
+                    pi_ts_ens['mmm'].append(pi_ar6)
+                        
                 pi_data[mod].append(pi_ar6.flatten()) # 1-D pi array to go into pi-chunks for DA
+                picm += 1
                 
                 # 1-D pi array per continent
                 for c in continents.keys():
@@ -263,6 +304,9 @@ def picontrol_subroutine(piDIR,
                     
                     ctl_data_ar6[mod][ar6] = np.stack(pi_data_ar6[mod][ar6],
                                                       axis=0)
+        
+            # pi tseries data
+            pi_ts_ens[mod] = np.stack(pi_ts_ens[mod],axis=0)
                 
         # collect all pi data for mmm approach (balance contribution of noise data from each model with taking minimum # samples)
         min_pi_samp = np.min(len_list)
@@ -300,5 +344,8 @@ def picontrol_subroutine(piDIR,
                     
                 ctl_data_ar6['mmm'][ar6] = np.concatenate(ctl_list_ar6[ar6],
                                                           axis=0)
+                
+        # pi tseries data
+        pi_ts_ens['mmm'] = np.stack(pi_ts_ens['mmm'],axis=0)
         
-    return ctl_data,ctl_data_continental,ctl_data_ar6
+    return ctl_data,ctl_data_continental,ctl_data_ar6,pi_ts_ens
