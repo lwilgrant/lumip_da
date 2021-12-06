@@ -363,38 +363,63 @@ cbax_lu = f.add_axes([cb_lu_x0,
                       cb_lu_y0, 
                       cb_lu_xlen, 
                       cb_lu_ylen])
-
 cbax_lc = f.add_axes([cb_lc_x0, 
                       cb_lc_y0, 
                       cb_lc_xlen, 
                       cb_lc_ylen])
 
+
+# f, ax = plt.subplots(nrows=1,
+#                        ncols=1,
+#                        figsize=(x,y),
+#                        subplot_kw={'projection':ccrs.PlateCarree()})
+# cbax_lc = f.add_axes([cb_lc_x0, 
+#                       cb_lc_y0, 
+#                       cb_lc_xlen, 
+#                       cb_lc_ylen])
+# stats_ds['CanESM5']['treeFrac_slope'].plot(ax=ax,
+#                                            cbar_ax = cbax_lc,
+#                                            cmap=cmap_list_lc,
+#                                            levels=levels_lc,
+#                                            extend='both',
+#                                            center=0)
+
 i = 0
+
+
+# stats_ds['CanESM5']['treeFrac_slope'] = xr.where((stats_ds['CanESM5']['treeFrac_slope']>null_bnds_lc[0])&\
+#     (stats_ds['CanESM5']['treeFrac_slope']<null_bnds_lc[1]),
+#     0,
+#     stats_ds['CanESM5']['treeFrac_slope'])
+
+# stats_ds['CanESM5']['treeFrac_slope'] = stats_ds['CanESM5']['treeFrac_slope'].where(ar6_land['CanESM5']==1)
+    
+    
 
 for mod,row_axes in zip(models,axes):
     
     # stats_ds['CanESM5']['treeFrac_slope'].plot(cmap=cmap_list_lc,levels=levels_lc,extend='both',center=0)
     stats_ds[mod]['lu_slope'].plot(ax=row_axes[0],
-                                   transform=ccrs.PlateCarree(),
                                    cmap=cmap_list_lu,
                                    cbar_ax=cbax_lu,
                                    levels=levels_lu,
+                                   extend='both',
                                    center=0,
                                    add_labels=False)
     
     stats_ds[mod]['treeFrac_slope'].plot(ax=row_axes[1],
-                                         transform=ccrs.PlateCarree(),
                                          cmap=cmap_list_lc,
                                          cbar_ax=cbax_lc,
                                          levels=levels_lc,
+                                         extend='both',
                                          center=0,
                                          add_labels=False)
     
     stats_ds[mod]['cropFrac_slope'].plot(ax=row_axes[2],
-                                         transform=ccrs.PlateCarree(),
                                          cmap=cmap_list_lc,
                                          cbar_ax=cbax_lc,
                                          levels=levels_lc,
+                                         extend='both',
                                          center=0,
                                          add_labels=False)
     
@@ -430,7 +455,8 @@ for mod,row_axes in zip(models,axes):
                          fontweight='bold')
             
         i += 1
-    
+
+# lu response pattern colorbar
 cb_lu = mpl.colorbar.ColorbarBase(ax=cbax_lu, 
                                   cmap=cmap_list_lu,
                                   norm=norm_lu,
@@ -453,6 +479,7 @@ cb_lu.ax.set_xticklabels(tick_labels_lu,
 cb_lu.outline.set_edgecolor(col_cbedg)
 cb_lu.outline.set_linewidth(cb_edgthic)
 
+# lc pattern colorbar
 cb_lc = mpl.colorbar.ColorbarBase(ax=cbax_lc, 
                                   cmap=cmap_list_lc,
                                   norm=norm_lc,
@@ -578,14 +605,23 @@ for mod,row_axes in zip(models,axes):
     
     for ax,lc in zip(row_axes,['treeFrac','cropFrac']):
     
-        # stats_ds[mod]['lu_slope'] = stats_ds[mod]['lu_slope'].where(stats_ds[mod]['lu_p'] == 1)
-        stats_ds[mod]['lu-{}_corr'.format(lc)].plot(ax=ax,
-                                                    transform=ccrs.PlateCarree(),
-                                                    cmap=cmap_list,
-                                                    cbar_ax=cbax,
-                                                    center=0,
-                                                    norm=norm,
-                                                    add_labels=False)
+        plottable = stats_ds[mod]['lu-{}_corr'.format(lc)].where((stats_ds[mod]['{}_slope'.format(lc)]<null_bnds_lc[0])|\
+            (stats_ds[mod]['{}_slope'.format(lc)]>null_bnds_lc[1]))
+        plottable.plot(ax=ax,
+                       transform=ccrs.PlateCarree(),
+                       cmap=cmap_list,
+                       cbar_ax=cbax,
+                       levels=values,
+                       center=0,
+                       add_labels=False)
+        
+            # stats_ds[mod]['lu_slope'].plot(ax=row_axes[0],
+            #                        cmap=cmap_list_lu,
+            #                        cbar_ax=cbax_lu,
+            #                        levels=levels_lu,
+            #                        extend='both',
+            #                        center=0,
+            #                        add_labels=False)
     
     
     for ax,column in zip(row_axes,['LU,treeFrac','LU,cropFrac']):

@@ -367,31 +367,31 @@ def colormap_details(sequence_string,
         
     start = np.around(np.max(q_samples),decimals=4)
     inc = start/6
-    values = [np.around(-1*start,decimals=2),
-              np.around(-1*start+inc,decimals=2),
-              np.around(-1*start+inc*2,decimals=2),
-              np.around(-1*start+inc*3,decimals=2),
-              np.around(-1*start+inc*4,decimals=2),
-              np.around(-1*start+inc*5,decimals=2),
-              np.around(start-inc*5,decimals=2),
-              np.around(start-inc*4,decimals=2),
-              np.around(start-inc*3,decimals=2),
-              np.around(start-inc*2,decimals=2),
-              np.around(start-inc,decimals=2),
-              np.around(start,decimals=2)]
-    
     # values = [np.around(-1*start,decimals=2),
     #           np.around(-1*start+inc,decimals=2),
     #           np.around(-1*start+inc*2,decimals=2),
     #           np.around(-1*start+inc*3,decimals=2),
     #           np.around(-1*start+inc*4,decimals=2),
-    #           null_bnds[0],
-    #           null_bnds[1],
+    #           np.around(-1*start+inc*5,decimals=2),
+    #           np.around(start-inc*5,decimals=2),
     #           np.around(start-inc*4,decimals=2),
     #           np.around(start-inc*3,decimals=2),
     #           np.around(start-inc*2,decimals=2),
     #           np.around(start-inc,decimals=2),
     #           np.around(start,decimals=2)]
+    
+    values = [np.around(-1*start,decimals=2),
+              np.around(-1*start+inc,decimals=2),
+              np.around(-1*start+inc*2,decimals=2),
+              np.around(-1*start+inc*3,decimals=2),
+              np.around(-1*start+inc*4,decimals=2),
+              null_bnds[0],
+              null_bnds[1],
+              np.around(start-inc*4,decimals=2),
+              np.around(start-inc*3,decimals=2),
+              np.around(start-inc*2,decimals=2),
+              np.around(start-inc,decimals=2),
+              np.around(start,decimals=2)]
 
     tick_locs = [-1*start,
                  -1*start+inc,
