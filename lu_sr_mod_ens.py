@@ -45,7 +45,7 @@ def ensemble_subroutine(modDIR,
                         lu_techn,
                         y1,
                         freq,
-                        fp_files):
+                        mod_files):
 
     os.chdir(modDIR)
     mod_data = {}
@@ -60,7 +60,7 @@ def ensemble_subroutine(modDIR,
             
             mod_data[mod][exp] = []    
             
-            for file in fp_files[mod][exp]:
+            for file in mod_files[mod][exp]:
             
                 da = nc_read(file,
                              y1,

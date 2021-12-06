@@ -295,119 +295,6 @@ for mod in models:
 
 #%%============================================================================
 
-def data_lumper(dataset,
-                models,
-                maptype):
-    
-    if maptype == 'lu':
-        
-        data = np.empty(1)
-        for mod in models:
-            mod_data = dataset[mod]['lu_slope'].values.flatten()
-            data = np.append(data,mod_data)
-        
-    elif maptype == 'lc':
-
-        data = np.empty(1)
-        for mod in models:
-            for lc in ['treeFrac','cropFrac']:
-                mod_data = dataset[mod]['{}_slope'.format(lc)].values.flatten()
-                data = np.append(data,mod_data)
-               
-    data = data[~np.isnan(data)]
-    return data
-
-
-def colormap_details(sequence_string,
-                     data):
-
-    # identify colors for land cover transition trends
-    cmap_brbg = plt.cm.get_cmap(sequence_string)
-    cmap55 = cmap_brbg(0.01)
-    cmap50 = cmap_brbg(0.05)   #blue
-    cmap45 = cmap_brbg(0.1)
-    cmap40 = cmap_brbg(0.15)
-    cmap35 = cmap_brbg(0.2)
-    cmap30 = cmap_brbg(0.25)
-    cmap25 = cmap_brbg(0.3)
-    cmap20 = cmap_brbg(0.325)
-    cmap10 = cmap_brbg(0.4)
-    cmap5 = cmap_brbg(0.475)
-    cmap0 = col_zero
-    cmap_5 = cmap_brbg(0.525)
-    cmap_10 = cmap_brbg(0.6)
-    cmap_20 = cmap_brbg(0.625)
-    cmap_25 = cmap_brbg(0.7)
-    cmap_30 = cmap_brbg(0.75)
-    cmap_35 = cmap_brbg(0.8)
-    cmap_40 = cmap_brbg(0.85)
-    cmap_45 = cmap_brbg(0.9)
-    cmap_50 = cmap_brbg(0.95)  #red
-    cmap_55 = cmap_brbg(0.99)
-
-    colors = [cmap_45,
-              cmap_35,
-              cmap_30,
-              cmap_25,
-              cmap_10,
-              cmap0,
-              cmap10,
-              cmap25,
-              cmap30,
-              cmap35,
-              cmap45]
-
-    cmap_list = mpl.colors.ListedColormap(colors,N=len(colors))
-
-    cmap_list.set_over(cmap55)
-    cmap_list.set_under(cmap_55)
-
-    q_samples = []
-    q_samples.append(np.abs(np.quantile(data,0.95)))
-    q_samples.append(np.abs(np.quantile(data,0.05)))
-        
-    start = np.around(np.max(q_samples),decimals=4)
-    inc = start/5
-    values = [-1*start,
-              -1*start+inc,
-              -1*start+inc*2,
-              -1*start+inc*3,
-              -1*start+inc*4,
-              -0.001,
-              0.001,
-              start-inc*4,
-              start-inc*3,
-              start-inc*2,
-              start-inc,
-              start]
-
-    tick_locs = [-1*start,
-                 -1*start+inc,
-                 -1*start+inc*2,
-                 -1*start+inc*3,
-                 -1*start+inc*4,
-                 0,
-                 start-inc*4,
-                 start-inc*3,
-                 start-inc*2,
-                 start-inc,
-                 start]
-
-    tick_labels = [str(np.around(-1*start,decimals=1)),
-                   str(np.around(-1*start+inc,decimals=1)),
-                   str(np.around(-1*start+inc*2,decimals=1)),
-                   str(np.around(-1*start+inc*3,decimals=1)),
-                   str(np.around(-1*start+inc*4,decimals=1)),
-                   str(0),
-                   str(np.around(start-inc*4,decimals=1)),
-                   str(np.around(start-inc*3,decimals=1)),
-                   str(np.around(start-inc*2,decimals=1)),
-                   str(np.around(start-inc,decimals=1)),
-                   str(np.around(start,decimals=1))]
-
-    norm = mpl.colors.BoundaryNorm(values,cmap_list.N)
-    
-    return cmap_list,tick_locs,tick_labels,norm
 
 col_cbticlbl = '0'   # colorbar color of tick labels
 col_cbtic = '0.5'   # colorbar color of ticks
@@ -416,40 +303,60 @@ cb_ticlen = 3.5   # colorbar length of ticks
 cb_ticwid = 0.4   # colorbar thickness of ticks
 cb_edgthic = 0   # colorbar thickness of edges between colors
 cblabel = 'corr'  # colorbar label
-col_zero = 'gray'   # zero change color
 sbplt_lw = 0.1   # linewidth on projection panels
-cstlin_lw = 0.2   # linewidth for coastlines
+cstlin_lw = 0.75   # linewidth for coastlines
 
-title_font = 18
-cbtitle_font = 18
+# fonts
+title_font = 20
+cbtitle_font = 20
 tick_font = 18
 legend_font=12
 
+x=25
+y=15
+
 # placment lu trends cbar
-cb_lu_x0 = 0.025
-cb_lu_y0 = 0.0
-cb_lu_xlen = 0.45
+cb_lu_x0 = 0.1275
+cb_lu_y0 = 0.05
+cb_lu_xlen = 0.225
 cb_lu_ylen = 0.015
 
+# boundaries of 0 for lu
+null_bnds_lu = [-0.0050,
+                0.0050]
+
 # placment lc trends cbar
-cb_lc_x0 = 0.525
-cb_lc_y0 = 0.0
+cb_lc_x0 = 0.43
+cb_lc_y0 = 0.05
 cb_lc_xlen = 0.45
 cb_lc_ylen = 0.015
 
+# boundaries of 0 for lc
+null_bnds_lc = [-0.10,
+                0.10]
+
+# extent
 east = 180
 west = -180
 north = 80
 south = -60
 extent = [west,east,south,north]
 
-cmap_list_lu,tick_locs_lu,tick_labels_lu,norm_lu = colormap_details('RdBu_r',
-                                                                     data_lumper(stats_ds,models,maptype='lu'))
-cmap_list_lc,tick_locs_lc,tick_labels_lc,norm_lc = colormap_details('BrBG',
-                                                                     data_lumper(stats_ds,models,maptype='lc'))
+cmap_list_lu,tick_locs_lu,tick_labels_lu,norm_lu,levels_lu = colormap_details('RdBu',
+                                                                              data_lumper(stats_ds,
+                                                                                          models,
+                                                                                          maptype='lu'),
+                                                                              null_bnds_lu)
+
+cmap_list_lc,tick_locs_lc,tick_labels_lc,norm_lc,levels_lc = colormap_details('BrBG_r',
+                                                                              data_lumper(stats_ds,
+                                                                                          models,
+                                                                                          maptype='lc'),
+                                                                              null_bnds_lc)
 
 f, axes = plt.subplots(nrows=len(models),
                        ncols=3,
+                       figsize=(x,y),
                        subplot_kw={'projection':ccrs.PlateCarree()})
 
 cbax_lu = f.add_axes([cb_lu_x0, 
@@ -462,75 +369,314 @@ cbax_lc = f.add_axes([cb_lc_x0,
                       cb_lc_xlen, 
                       cb_lc_ylen])
 
+i = 0
+
 for mod,row_axes in zip(models,axes):
+    
+    # stats_ds['CanESM5']['treeFrac_slope'].plot(cmap=cmap_list_lc,levels=levels_lc,extend='both',center=0)
     stats_ds[mod]['lu_slope'].plot(ax=row_axes[0],
                                    transform=ccrs.PlateCarree(),
                                    cmap=cmap_list_lu,
                                    cbar_ax=cbax_lu,
+                                   levels=levels_lu,
                                    center=0,
-                                   norm=norm_lu,
                                    add_labels=False)
+    
     stats_ds[mod]['treeFrac_slope'].plot(ax=row_axes[1],
                                          transform=ccrs.PlateCarree(),
                                          cmap=cmap_list_lc,
                                          cbar_ax=cbax_lc,
+                                         levels=levels_lc,
                                          center=0,
-                                         norm=norm_lc,
                                          add_labels=False)
+    
     stats_ds[mod]['cropFrac_slope'].plot(ax=row_axes[2],
                                          transform=ccrs.PlateCarree(),
                                          cmap=cmap_list_lc,
                                          cbar_ax=cbax_lc,
+                                         levels=levels_lc,
                                          center=0,
-                                         norm=norm_lc,
                                          add_labels=False)
-    for ax in row_axes:
+    
+    for ax,column in zip(row_axes,['LU response','treeFrac','cropFrac']):
+        
         ax.set_extent(extent,
                       crs=ccrs.PlateCarree())
+        ax.set_title(letters[i],
+                     loc='left',
+                     fontsize = title_font,
+                     fontweight='bold')
+        ax.coastlines(linewidth=cstlin_lw)
+        
+        if column == 'LU response':
+            
+                if mod == 'CanESM5':
+                    height = 0.3
+                else:
+                    height= 0
+                ax.text(-0.1,
+                        height,
+                        mod,
+                        fontsize=title_font,
+                        fontweight='bold',
+                        rotation='vertical',
+                        transform=ax.transAxes)
+        
+        if i < 3:
+            
+            ax.set_title(column,
+                         loc='center',
+                         fontsize = title_font,
+                         fontweight='bold')
+            
+        i += 1
     
 cb_lu = mpl.colorbar.ColorbarBase(ax=cbax_lu, 
-                                   cmap=cmap_list_lu,
-                                   norm=norm_lu,
-                                   spacing='uniform',
-                                   orientation='horizontal',
-                                   extend='both',
-                                   ticks=tick_locs_lu,
-                                   drawedges=False)
-cb_lu.set_label('Depth bias (ISIMIP - GLDB)',
+                                  cmap=cmap_list_lu,
+                                  norm=norm_lu,
+                                  spacing='uniform',
+                                  orientation='horizontal',
+                                  extend='both',
+                                  ticks=tick_locs_lu,
+                                  drawedges=False)
+cb_lu.set_label('LU trends (°C/5-years)',
                  size=title_font)
 cb_lu.ax.xaxis.set_label_position('top')
 cb_lu.ax.tick_params(labelcolor=col_cbticlbl,
-                      labelsize=tick_font,
-                      color=col_cbtic,
-                      length=cb_ticlen,
-                      width=cb_ticwid,
-                      direction='out'); 
-cb_lu.ax.set_xticklabels(tick_labels_lu)
-                        #   rotation=45)
+                     labelsize=tick_font,
+                     color=col_cbtic,
+                     length=cb_ticlen,
+                     width=cb_ticwid,
+                     direction='out'); 
+cb_lu.ax.set_xticklabels(tick_labels_lu,
+                         rotation=45)
 cb_lu.outline.set_edgecolor(col_cbedg)
 cb_lu.outline.set_linewidth(cb_edgthic)
 
 cb_lc = mpl.colorbar.ColorbarBase(ax=cbax_lc, 
-                                   cmap=cmap_list_lc,
-                                   norm=norm_lc,
-                                   spacing='uniform',
-                                   orientation='horizontal',
-                                   extend='both',
-                                   ticks=tick_locs_lc,
-                                   drawedges=False)
-cb_lc.set_label('Depth bias (ISIMIP - GLDB)',
+                                  cmap=cmap_list_lc,
+                                  norm=norm_lc,
+                                  spacing='uniform',
+                                  orientation='horizontal',
+                                  extend='both',
+                                  ticks=tick_locs_lc,
+                                  drawedges=False)
+cb_lc.set_label('LC trends (% landcover/5-years)',
                  size=title_font)
 cb_lc.ax.xaxis.set_label_position('top')
 cb_lc.ax.tick_params(labelcolor=col_cbticlbl,
-                      labelsize=tick_font,
-                      color=col_cbtic,
-                      length=cb_ticlen,
-                      width=cb_ticwid,
-                      direction='out'); 
-cb_lc.ax.set_xticklabels(tick_labels_lc)
-                        #   rotation=45)
+                     labelsize=tick_font,
+                     color=col_cbtic,
+                     length=cb_ticlen,
+                     width=cb_ticwid,
+                     direction='out'); 
+cb_lc.ax.set_xticklabels(tick_labels_lc,
+                         rotation=45)
 cb_lc.outline.set_edgecolor(col_cbedg)
 cb_lc.outline.set_linewidth(cb_edgthic)
-    
-    
 
+f.savefig(outDIR+'/lu_lc_trends_v2.png')
+    
+#%%============================================================================
+
+# cmap_list_corr,tick_locs_corr,tick_labels_corr,norm_corr = colormap_details('RdBu_r',
+#                                                                             data_lumper(stats_ds,
+#                                                                                         models,
+#                                                                                         maptype='corr'),
+#                                                                             null_bnds_corr)
+
+# fig size
+x=18
+y=15
+
+# tight layout or gspec boundaries, maybe not necessary
+# t_left = 0.0
+# t_bottom = 0.0
+# t_right = 1
+# t_top = 1
+# t_rect = [t_left, t_bottom, t_right, t_top]
+
+col_cbticlbl = '0'   # colorbar color of tick labels
+col_cbtic = '0.5'   # colorbar color of ticks
+col_cbedg = '0.9'   # colorbar color of edge
+cb_ticlen = 3.5   # colorbar length of ticks
+cb_ticwid = 0.4   # colorbar thickness of ticks
+cb_edgthic = 0   # colorbar thickness of edges between colors
+cblabel = 'corr'  # colorbar label
+sbplt_lw = 0.1   # linewidth on projection panels
+cstlin_lw = 0.75   # linewidth for coastlines
+
+# fonts
+title_font = 20
+cbtitle_font = 20
+tick_font = 18
+legend_font=12
+
+# placment lu trends cbar
+cb_x0 = 0.275
+cb_y0 = 0.05
+cb_xlen = 0.5
+cb_ylen = 0.015
+
+# extent
+east = 180
+west = -180
+north = 80
+south = -60
+extent = [west,east,south,north]
+
+# identify colors
+cmap_whole = plt.cm.get_cmap('RdBu_r')
+cmap55 = cmap_whole(0.01)
+cmap50 = cmap_whole(0.05)   #blue
+cmap45 = cmap_whole(0.1)
+cmap40 = cmap_whole(0.15)
+cmap35 = cmap_whole(0.2)
+cmap30 = cmap_whole(0.25)
+cmap25 = cmap_whole(0.3)
+cmap20 = cmap_whole(0.325)
+cmap10 = cmap_whole(0.4)
+cmap5 = cmap_whole(0.475)
+cmap0 = 'gray'
+cmap_5 = cmap_whole(0.525)
+cmap_10 = cmap_whole(0.6)
+cmap_20 = cmap_whole(0.625)
+cmap_25 = cmap_whole(0.7)
+cmap_30 = cmap_whole(0.75)
+cmap_35 = cmap_whole(0.8)
+cmap_40 = cmap_whole(0.85)
+cmap_45 = cmap_whole(0.9)
+cmap_50 = cmap_whole(0.95)  #red
+cmap_55 = cmap_whole(0.99)
+
+colors = [cmap_45,cmap_35,cmap_25,cmap_10,
+            cmap0,
+            cmap10,cmap25,cmap35,cmap45]
+
+# declare list of colors for discrete colormap of colorbar
+cmap_list = mpl.colors.ListedColormap(colors,N=len(colors))
+
+# colorbar args
+values = [-1,-.75,-.50,-.25,-0.01,0.01,.25,.5,.75,1]
+tick_locs = [-1,-.75,-.50,-.25,0,.25,.5,.75,1]
+tick_labels = ['-1','-0.75','-0.50','-0.25','0','0.25','0.50','0.75','1']
+norm = mpl.colors.BoundaryNorm(values,cmap_list.N)
+
+f, axes = plt.subplots(nrows=len(models),
+                       ncols=2,
+                       figsize=(x,y),
+                       subplot_kw={'projection':ccrs.PlateCarree()})
+
+cbax = f.add_axes([cb_x0, 
+                   cb_y0, 
+                   cb_xlen, 
+                   cb_ylen])
+
+i = 0
+
+for mod,row_axes in zip(models,axes):
+    
+    for ax,lc in zip(row_axes,['treeFrac','cropFrac']):
+    
+        # stats_ds[mod]['lu_slope'] = stats_ds[mod]['lu_slope'].where(stats_ds[mod]['lu_p'] == 1)
+        stats_ds[mod]['lu-{}_corr'.format(lc)].plot(ax=ax,
+                                                    transform=ccrs.PlateCarree(),
+                                                    cmap=cmap_list,
+                                                    cbar_ax=cbax,
+                                                    center=0,
+                                                    norm=norm,
+                                                    add_labels=False)
+    
+    
+    for ax,column in zip(row_axes,['LU,treeFrac','LU,cropFrac']):
+        
+        ax.set_extent(extent,
+                      crs=ccrs.PlateCarree())
+        ax.set_title(letters[i],
+                     loc='left',
+                     fontsize=title_font,
+                     fontweight='bold')
+        ax.coastlines(linewidth=cstlin_lw)
+        
+        if column == 'LU,treeFrac':
+            
+                if mod == 'CanESM5':
+                    height = 0.3
+                else:
+                    height= 0
+                ax.text(-0.1,
+                        height,
+                        mod,
+                        fontsize=title_font,
+                        fontweight='bold',
+                        rotation='vertical',
+                        transform=ax.transAxes)
+        
+        if i < 2:
+            
+            ax.set_title(column,
+                         loc='center',
+                         fontsize = title_font,
+                         fontweight='bold')
+            
+        i += 1
+        
+cb = mpl.colorbar.ColorbarBase(ax=cbax, 
+                                   cmap=cmap_list,
+                                   norm=norm,
+                                   spacing='uniform',
+                                   orientation='horizontal',
+                                   extend='neither',
+                                   ticks=tick_locs,
+                                   drawedges=False)
+cb.set_label('Correlation',
+                 size=title_font)
+cb.ax.xaxis.set_label_position('top')
+cb.ax.tick_params(labelcolor=col_cbticlbl,
+                  labelsize=tick_font,
+                  color=col_cbtic,
+                  length=cb_ticlen,
+                  width=cb_ticwid,
+                  direction='out'); 
+cb.ax.set_xticklabels(tick_labels,
+                      rotation=45)
+cb.outline.set_edgecolor(col_cbedg)
+cb.outline.set_linewidth(cb_edgthic)
+
+f.savefig(outDIR+'/lu_lc_correlation_v2.png')
+
+# %%
+    # test_lc = xr.where((stats_ds[mod]['treeFrac_slope']<null_bnds_lc[0]) | \
+    #                 (stats_ds[mod]['treeFrac_slope']>null_bnds_lc[1]),
+    #                 1,
+    #                 0)
+    # stats_ds[mod]['treeFrac_slope'] = stats_ds[mod]['treeFrac_slope'].where(test_lc == 1,
+    #                                                                         other = 0)
+    # stats_ds[mod]['treeFrac_slope'] = stats_ds[mod]['treeFrac_slope'].where(ar6_land[mod] == 1)
+    
+    #     stats_ds[mod]['lu_slope'].plot(ax=row_axes[0],
+    #                                transform=ccrs.PlateCarree(),
+    #                                cmap=cmap_list_lu,
+    #                                cbar_ax=cbax_lu,
+    #                                levels=levels_lu,
+    #                                center=0,
+    #                             #    norm=norm_lu,
+    #                                add_labels=False)
+    
+    # stats_ds[mod]['treeFrac_slope'].plot(ax=row_axes[1],
+    #                                      transform=ccrs.PlateCarree(),
+    #                                      cmap=cmap_list_lc,
+    #                                      cbar_ax=cbax_lc,
+    #                                      levels=levels_lc,
+    #                                      center=0,
+    #                                     #  norm=norm_lc,
+    #                                      add_labels=False)
+    
+    # stats_ds[mod]['cropFrac_slope'].plot(ax=row_axes[2],
+    #                                      transform=ccrs.PlateCarree(),
+    #                                      cmap=cmap_list_lc,
+    #                                      cbar_ax=cbax_lc,
+    #                                      levels=levels_lc,
+    #                                      center=0,
+    #                                     #  norm=norm_lc,
+    #                                      add_labels=False)

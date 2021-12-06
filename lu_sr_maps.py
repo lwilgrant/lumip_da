@@ -80,3 +80,5 @@ def map_subroutine(map_files,
             maps[mod][lu] = maps[mod][lu].where(ar6_land[mod] ==1)
             
     return maps,ar6_regs,ar6_land
+
+# %%
