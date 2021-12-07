@@ -53,7 +53,7 @@ def picontrol_subroutine(piDIR,
             da = nc_read(file,
                          y1,
                          var,
-                         freq=freq).where(maps[mod] == 1)
+                         freq=freq)
                     
             pi_data[mod].append(da) # 1-D pi array to go into pi-chunks for DA
             
