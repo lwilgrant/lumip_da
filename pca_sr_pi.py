@@ -41,6 +41,8 @@ from pca_funcs import *
 def picontrol_subroutine(piDIR,
                          pi_files,
                          models,
+                         flag_temp_center,
+                         flag_standardize,
                          var,
                          y1,
                          freq,
@@ -60,6 +62,8 @@ def picontrol_subroutine(piDIR,
             da = nc_read(file,
                          y1,
                          var,
+                         flag_temp_center,
+                         flag_standardize,
                          freq=freq)
                     
             pi_data[mod].append(da.where(ar6_land[mod]==1)) # 1-D pi array to go into pi-chunks for DA
@@ -70,3 +74,5 @@ def picontrol_subroutine(piDIR,
         pi_data[mod] = pi_data[mod].rename({'concat_dim':'rls'})
                 # da = da.rename({'latitude':'lat','longitude':'lon'})
     return pi_data
+
+# %%

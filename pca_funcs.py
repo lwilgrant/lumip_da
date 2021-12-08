@@ -34,9 +34,13 @@ import matplotlib as mpl
 # functions
 #==============================================================================
 
+#%%==============================================================================    
+
 def nc_read(file,
             y1,
             var,
+            flag_temp_center,
+            flag_standardize,
             obs=False,
             freq=False):
     
@@ -63,72 +67,31 @@ def nc_read(file,
     if obs == 'berkley_earth':
         da = da.rename({'latitude':'lat','longitude':'lon'})
         
-    # da = da.resample(time=freq,
-    #                  closed='left',
-    #                  label='left').mean('time') #this mean doesn't make sense for land cover maps
     da['time'] = da['time.year']
+    
+    if flag_temp_center == 1:
+        
+        da = da - da.mean(dim='time')
+        
+    if flag_standardize == 1:
+        
+        da = standard_data(da)
     
     return da
 
-#     # luh2 data
-#     os.chdir(mapDIR)
-#     luh2_data[obs] = {}
-    
-#     for lc in landcover_types:
-        
-#         for file in [file for file in sorted(os.listdir(mapDIR))\
-#                      if obs+'_grid' in file\
-#                          and lc in file\
-#                          and '191501_201412' in file]:
-            
-#             luh2_data[obs][lc] = nc_read(file,
-#                                          y1,
-#                                          var='cell_area',
-#                                          obs=obs)
-        
-#             if correlation == "yes":
-                
-#                 # adjust data to be temporally centered and unit variance (check xarray for this)
-#                     # also adjust model data
-#                 print("not ready yet")
-                
-#             else:
-                
-#                 luh2_data[obs][lc] = luh2_data[obs][lc].where(ar6_land==1)
+#%%==============================================================================   
 
-# #%%==============================================================================    
-
-# def nc_read(file,
-#             y1,
-#             var,
-#             obs=False):
+def standard_data(da):
     
-#     """ Read in netcdfs based on variable and set time.
-    
-#     Parameters
-#     ----------
-#     file : files in data directory
-    
-#     Returns
-#     ------- 
-#     Xarray data array
-#     """
-    
-#     ds = xr.open_dataset(file,decode_times=False)
-#     da = ds[var].squeeze()
-    
-#     units, reference_date = da.time.attrs['units'].split('since')
-#     reference_date = reference_date.replace(reference_date[1:5],str(y1))[1:]
-#     new_date = pd.date_range(start=reference_date, periods=da.sizes['time'], freq='YS')
-#     da['time'] = new_date
-    
-#     if 'height' in da.coords:
-#         da = da.drop('height')
-        
-#     if obs == 'berkley_earth':
-#         da = da.rename({'latitude':'lat','longitude':'lon'})
-    
-#     return da
+    climatology_mean = da.mean("time")
+    climatology_std = da.std("time")
+    stand_anomalies = xr.apply_ufunc(
+        lambda x, m, s: (x - m) / s,
+        da,
+        climatology_mean,
+        climatology_std,
+    )
+    return stand_anomalies
 
 #%%==============================================================================    
 

@@ -41,6 +41,8 @@ from pca_funcs import *
 def ensemble_subroutine(modDIR,
                         models,
                         exps,
+                        flag_temp_center,
+                        flag_standardize,
                         mod_files,
                         var,
                         lu_techn,
@@ -66,6 +68,8 @@ def ensemble_subroutine(modDIR,
                 da = nc_read(file,
                              y1,
                              var,
+                             flag_temp_center,
+                             flag_standardize,
                              freq=freq)
                 mod_data[mod][exp].append(da.where(ar6_land[mod]==1))
             

@@ -32,6 +32,8 @@ from pca_funcs import *
 def map_subroutine(map_files,
                    models,
                    mapDIR,
+                   flag_temp_center,
+                   flag_standardize,
                    lulcc,
                    y1,
                    measure,
@@ -67,14 +69,18 @@ def map_subroutine(map_files,
                 
                 maps[mod][lu] = nc_read(map_files[mod][lu],
                                         y1,
-                                        var=lu,
+                                        lu,
+                                        flag_temp_center,
+                                        flag_standardize,
                                         freq=freq)
                 
             elif measure == 'area_change':
                 
                 maps[mod][lu] = nc_read(map_files[mod][lu],
                                         y1,
-                                        var=lu,
+                                        lu,
+                                        flag_temp_center,
+                                        flag_standardize,
                                         freq=freq) / 100 * grid_area[mod] / 1e6
                 
             maps[mod][lu] = maps[mod][lu].where(ar6_land[mod] ==1)
