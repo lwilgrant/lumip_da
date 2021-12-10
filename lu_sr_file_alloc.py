@@ -105,7 +105,7 @@ def file_subroutine(mapDIR,
         for file in [file for file in sorted(os.listdir(piDIR))\
                     if var in file\
                     and mod in file\
-                    and t_ext in file\
+                    and '196501-201412' in file\
                     and not 'berkley_earth' in file\
                     and not 'cru' in file\
                     and 'unmasked' in file]:

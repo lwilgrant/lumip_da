@@ -299,6 +299,7 @@ lineplot(glm_ds,
          models,
          exps,
          letters,
+         t_ext,
          outDIR)
         
 #%%============================================================================
@@ -310,6 +311,7 @@ trends_plot(stats_ds,
             letters,
             null_bnds_lc,
             null_bnds_lu,
+            t_ext,
             outDIR)
     
 #%%============================================================================
@@ -320,6 +322,7 @@ corr_plot(stats_ds,
           lulcc,
           letters,
           null_bnds_lc,
+          t_ext,
           outDIR)
 
 # %%

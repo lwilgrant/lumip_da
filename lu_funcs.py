@@ -500,17 +500,17 @@ def colormap_details(sequence_string,
               np.around(start-inc,decimals=2),
               np.around(start,decimals=2)]
 
-    tick_locs = [-1*start,
-                 -1*start+inc,
-                 -1*start+inc*2,
-                 -1*start+inc*3,
-                 -1*start+inc*4,
+    tick_locs = [np.around(-1*start,decimals=2),
+                 np.around(-1*start+inc,decimals=2),
+                 np.around(-1*start+inc*2,decimals=2),
+                 np.around(-1*start+inc*3,decimals=2),
+                 np.around(-1*start+inc*4,decimals=2),
                  0,
-                 start-inc*4,
-                 start-inc*3,
-                 start-inc*2,
-                 start-inc,
-                 start]
+                 np.around(start-inc*4,decimals=2),
+                 np.around(start-inc*3,decimals=2),
+                 np.around(start-inc*2,decimals=2),
+                 np.around(start-inc,decimals=2),
+                 np.around(start,decimals=2)]
 
     tick_labels = [str(np.around(-1*start,decimals=2)),
                    str(np.around(-1*start+inc,decimals=2)),
@@ -534,6 +534,7 @@ def lineplot(glm_ds,
              models,
              exps,
              letters,
+             t_ext,
              outDIR):
     x=10
     y=10
@@ -617,7 +618,11 @@ def lineplot(glm_ds,
             ax.set_ylabel('land anomaly [°C]',
                         fontsize=12)
             
-            ax.xaxis.set_ticklabels(np.arange(1965,2015,5))
+            if t_ext == '196501-201412':
+                ax.xaxis.set_ticklabels(np.arange(1965,2015,5))
+            elif t_ext == '191501-196412':
+                ax.xaxis.set_ticklabels(np.arange(1915,1965,5))
+                
             
         i += 1
         
@@ -661,7 +666,7 @@ def lineplot(glm_ds,
             handlelength=legend_entrylen, 
             handletextpad=legend_entrypad)
     
-    f.savefig(outDIR+'/global_mean_timeseries.png')
+    f.savefig(outDIR+'/global_mean_timeseries_{}.png'.format(t_ext))
 
 #%%============================================================================
 
@@ -671,6 +676,7 @@ def trends_plot(stats_ds,
                 letters,
                 null_bnds_lc,
                 null_bnds_lu,
+                t_ext,
                 outDIR):
     
     col_cbticlbl = '0'   # colorbar color of tick labels
@@ -846,7 +852,7 @@ def trends_plot(stats_ds,
     cb_lc.outline.set_edgecolor(col_cbedg)
     cb_lc.outline.set_linewidth(cb_edgthic)
 
-    # f.savefig(outDIR+'/lu_lc_trends_v2.png')
+    f.savefig(outDIR+'/lu_lc_trends_{}.png'.format(t_ext))
 
 #%%============================================================================
 
@@ -855,6 +861,7 @@ def corr_plot(stats_ds,
               lulcc,
               letters,
               null_bnds_lc,
+              t_ext,
               outDIR):
 
     # fig size
@@ -1009,5 +1016,5 @@ def corr_plot(stats_ds,
     cb.outline.set_edgecolor(col_cbedg)
     cb.outline.set_linewidth(cb_edgthic)
 
-    # f.savefig(outDIR+'/lu_lc_correlation_v2.png')
+    f.savefig(outDIR+'/lu_lc_correlation_{}.png'.format(t_ext))
 
