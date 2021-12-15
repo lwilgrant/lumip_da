@@ -73,13 +73,24 @@ def ensemble_subroutine(modDIR,
                              freq=freq)
                 mod_data[mod][exp].append(da.where(ar6_land[mod]==1))
             
-            mod_ens[mod][exp] = da_ensembler(mod_data[mod][exp])
+            
+            # concat_dim = np.arange(len(pi_data[mod]))
+            # aligned = xr.concat(pi_data[mod],dim=concat_dim)
+            # pi_data[mod] = aligned
+            # pi_data[mod] = pi_data[mod].rename({'concat_dim':'rls'})
+            concat_dim = np.arange(len(mod_data[mod][exp]))
+            aligned = xr.concat(mod_data[mod][exp],
+                                dim=concat_dim)
+            mod_ens[mod][exp] = da_ensembler(deepcopy(mod_data[mod][exp]))
+            mod_data[mod][exp] = aligned
+            mod_data[mod][exp] = mod_data[mod][exp].rename({'concat_dim':'rls'})
+        
         
         if lu_techn == 'mean':
         
             mod_ens[mod]['lu'] = mod_ens[mod]['historical'] - mod_ens[mod]['hist-noLu']
         
-    return mod_ens
+    return mod_ens,mod_data
 #%%============================================================================
 
                 

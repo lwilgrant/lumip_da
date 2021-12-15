@@ -87,12 +87,13 @@ flag_pickle=1     # 0: do not pickle objects
                   # 1: pickle objects after sections 'read' and 'analyze'
 
 # << SELECT >>
-flag_svplt=1      # 0: do not save plot
+flag_svplt=0      # 0: do not save plot
                   # 1: save plot in picDIR
                   
-# # << SELECT >>
-# flag_lulcc=0      # 0: treeFrac
-#                   # 1: cropFrac
+# << SELECT >>
+flag_inverse=1      # 0: don't replecate treefrac eof with *-1 inverse; do analysis on cropfrac and treefrac
+                    # 1: remove cropfrac eof; replace with inverse of treeFrac 
+                    # (this flag is currently only for global scale in "pca_sr_eof_proj.py")
 
 # << SELECT >>
 flag_lulcc_measure=0    # 0: absolute change
@@ -130,7 +131,7 @@ flag_standardize=1;  # 0: no (standardization before input to PCA and projection
                      # 1: yes, standardize 
                      
 # << SELECT >>
-flag_scale=2;         # 0: global
+flag_scale=0;         # 0: global
                       # 1: latitudinal
                       # 2: continental
                       # 3: ar6 regions
@@ -221,7 +222,8 @@ continents = {}
 continents['North America'] = [1,2,3,4,5,6,7]
 continents['South America'] = [9,10,11,12,13,14,15]
 continents['Europe'] = [16,17,18,19]
-continents['Asia'] = [28,29,30,31,32,33,34,35,37,38]
+# continents['Asia'] = [28,29,30,31,32,33,34,35,37,38]
+continents['Asia'] = [29,30,31,32,33,34,35,37,38]
 continents['Africa'] = [21,22,23,24,25,26]
 continents['Australia'] = [39,40,41,42]
 
@@ -295,17 +297,17 @@ maps,ar6_regs,ar6_land = map_subroutine(map_files,
 # mod ensembles
 os.chdir(curDIR)
 from pca_sr_mod_ens import *
-mod_ens = ensemble_subroutine(modDIR,
-                              models,
-                              exps,
-                              flag_temp_center,
-                              flag_standardize,
-                              mod_files,
-                              var,
-                              lu_techn,
-                              y1,
-                              freq,
-                              ar6_land)
+mod_ens,mod_data = ensemble_subroutine(modDIR,
+                                       models,
+                                       exps,
+                                       flag_temp_center,
+                                       flag_standardize,
+                                       mod_files,
+                                       var,
+                                       lu_techn,
+                                       y1,
+                                       freq,
+                                       ar6_land)
 
 #%%============================================================================
 
@@ -331,732 +333,58 @@ solver_dict,eof_dict,pc,pspc = pca_subroutine(lulcc,
                                               models,
                                               maps,
                                               mod_ens,
+                                              mod_data,
                                               pi_data,
                                               continents,
                                               lat_ranges,
                                               ar6_regs,
-                                              scale)
+                                              scale,
+                                              flag_inverse)
+
+for mod in models:
+    print(mod)
+    eof_dict[mod]['treeFrac'].plot()
+    plt.show()
+    
+    
+#%%============================================================================
+
+# pca work
+os.chdir(curDIR)
+from pca_sr_sig_noise import *
+sig_noise,lulcc = pca_sn(scale,
+                         models,
+                         lulcc,
+                         mod_data,
+                         pi_data,
+                         continents,
+                         lat_ranges,
+                         pspc,
+                         pc,
+                         flag_inverse)
+
 
 #%%============================================================================
 
-if scale == 'global':
-    
-    lu_S = np.empty((len(models),len(lulcc)))
-    lc_S = np.empty((len(models),len(lulcc)))
-    N = np.empty((len(models),len(lulcc)))
-    lu_S_N = np.empty((len(models),len(lulcc)))
-    lc_S_N = np.empty((len(models),len(lulcc)))
+# pickle eof + sig/noise information
+os.chdir(curDIR)
+pkl_file = open('pca_{}_{}_{}_{}.pkl'.format(scale,t_ext,stat,freq),'wb')
+pk.dump([solver_dict,eof_dict,pc,pspc,sig_noise,lulcc],pkl_file)
+pkl_file.close()
 
-    sig_noise = xr.Dataset(
-        
-        data_vars={
-            'lu_S': (['models','landcover'],lu_S),
-            'lc_S': (['models','landcover'],lc_S),
-            'N': (['models','landcover'],N),
-            'lu_S_N': (['models','landcover'],lu_S_N),
-            'lc_S_N': (['models','landcover'],lc_S_N),
-            'pic_S_{}'.format(models[0]): (['pic_rls_{}'.format(models[0]),'landcover'],np.empty((len(pi_data[models[0]]),len(lulcc)))),
-            'pic_S_{}'.format(models[1]): (['pic_rls_{}'.format(models[1]),'landcover'],np.empty((len(pi_data[models[1]]),len(lulcc)))),
-            'pic_S_{}'.format(models[2]): (['pic_rls_{}'.format(models[2]),'landcover'],np.empty((len(pi_data[models[2]]),len(lulcc)))),
-            'pic_S_{}'.format(models[3]): (['pic_rls_{}'.format(models[3]),'landcover'],np.empty((len(pi_data[models[3]]),len(lulcc)))),
-            'pic_S_N_{}'.format(models[0]): (['pic_rls_{}'.format(models[0]),'landcover'],np.empty((len(pi_data[models[0]]),len(lulcc)))),
-            'pic_S_N_{}'.format(models[1]): (['pic_rls_{}'.format(models[1]),'landcover'],np.empty((len(pi_data[models[1]]),len(lulcc)))),
-            'pic_S_N_{}'.format(models[2]): (['pic_rls_{}'.format(models[2]),'landcover'],np.empty((len(pi_data[models[2]]),len(lulcc)))),
-            'pic_S_N_{}'.format(models[3]): (['pic_rls_{}'.format(models[3]),'landcover'],np.empty((len(pi_data[models[3]]),len(lulcc)))),
-        },
-        
-        coords={
-            'models': ('models', models),
-            'landcover': ('landcover', lulcc),
-            'pic_rls_{}'.format(models[0]): ('pic_rls_{}'.format(models[0]),range(len(pi_data[models[0]]))),
-            'pic_rls_{}'.format(models[1]): ('pic_rls_{}'.format(models[1]),range(len(pi_data[models[1]]))),
-            'pic_rls_{}'.format(models[2]): ('pic_rls_{}'.format(models[2]),range(len(pi_data[models[2]]))),
-            'pic_rls_{}'.format(models[3]): ('pic_rls_{}'.format(models[3]),range(len(pi_data[models[3]])))
-        }
-    )
+#%%============================================================================
 
-    for mod in models:
-        
-        for lc in lulcc:
-            
-            # pic slopes
-            pic_slope = []
-            
-            for i in pspc[mod][lc]['pi']:
-                
-                slope = i.polyfit('time',1)['polyfit_coefficients'][0].values.item()
-                i.attrs['slope'] = slope
-                pic_slope.append(slope)
-                
-            sig_noise['pic_S_{}'.format(mod)].loc[dict(
-                    landcover=lc
-                )] = pic_slope
-            
-            # noise N
-            N = sig_noise['pic_S_{}'.format(mod)].sel(landcover=lc).std(dim='pic_rls_{}'.format(mod))
-            
-            # pic signal to noise ratio
-            sig_noise['pic_S_N_{}'.format(mod)].loc[dict(
-                    landcover=lc
-                )] = pic_slope / N.values
-            
-            # lu slopes
-            slope = pspc[mod][lc]['lu'].polyfit('time',1)['polyfit_coefficients'][0].values.item()
-            sig_noise['lu_S'].loc[dict(
-                    models=mod,
-                    landcover=lc
-                )] = slope
-            
-            # lu signal to noise ratio
-            sig_noise['lu_S_N'].loc[dict(
-                    models=mod,
-                    landcover=lc
-                )] = slope / N.values
-            
-            # lc slopes
-            slope = pc[mod][lc].polyfit('time',1)['polyfit_coefficients'][0].values.item()
-            sig_noise['lc_S'].loc[dict(
-                    models=mod,
-                    landcover=lc
-                )] = slope
-            
-            # lu signal to noise ratio
-            sig_noise['lc_S_N'].loc[dict(
-                    models=mod,
-                    landcover=lc
-                )] = slope / N.values
+# plot signal to noise ratio 
+sig_noise_plot(sig_noise,
+               scale,
+               lulcc,
+               models,
+               continents,
+               lat_ranges,
+               letters,
+               t_ext,
+               outDIR)
 
-    x=10
-    y=15
-    eof_color='BrBG'
-    cmap=plt.cm.get_cmap(eof_color)
-    colors = {}
-    colors['treeFrac'] = cmap(0.85)
-    colors['lu_treeFrac'] = cmap(0.95)
-    colors['cropFrac'] = cmap(0.15)
-    colors['lu_cropFrac'] = cmap(0.05)
-    le_x0 = 0.8
-    le_y0 = 0.6
-    le_xlen = 0.2
-    le_ylen = 0.5
 
-    # space between entries
-    legend_entrypad = 0.5
 
-    # length per entry
-    legend_entrylen = 2
-
-    # f,axes = plt.subplots(nrows=len(models),
-    #                       ncols=len(lulcc),
-    #                       figsize=(x,y))
-    f,axes = plt.subplots(nrows=len(models),
-                        ncols=1,
-                        figsize=(x,y))
-    i = 0
-    for mod,ax in zip(models,axes):
-    # for mod,row_axes in zip(models,axes):
-        
-        # for lc,ax in zip(lulcc,row_axes):
-        for lc in lulcc:
-            
-            sns.distplot(sig_noise['pic_S_N_{}'.format(mod)].sel(landcover=lc),
-                        ax=ax,
-                        fit=sts.norm,
-                        fit_kws={"color":colors[lc]},
-                        color = colors[lc],
-                        label='PIC_{}'.format(lc),
-                        kde=False)
-            
-            # plot lu s/n
-            ax.vlines(x=sig_noise['lu_S_N'.format(mod)].sel(models=mod,landcover=lc),
-                    ymin=0,
-                    ymax=0.5,
-                    colors=colors['lu_{}'.format(lc)],
-                    label='lu_{}'.format(lc))
-            
-            # # plot lc s/n
-            # ax.vlines(x=sig_noise['lc_S_N'.format(mod)].sel(models=mod,landcover=lc),
-            #           ymin=0,
-            #           ymax=a[0].max(),
-            #           colors='blue')
-            
-        ax.spines['right'].set_visible(False)
-        ax.spines['top'].set_visible(False)
-        ax.set_title(None)
-        ax.set_title(letters[i],
-                    loc='left',
-                    fontweight='bold')
-        ax.set_xlabel(None)
-        ax.xaxis.set_ticklabels([])
-        ax.set_xlim(-4,4)
-        
-        if mod == 'CanESM5':
-            height = 0.4
-        else:
-            height= 0.3
-
-        ax.set_ylabel('Frequency',
-                        fontsize=12)
-        ax.text(-0.15,
-                height,
-                mod,
-                fontweight='bold',
-                rotation='vertical',
-                transform=ax.transAxes) 
-        
-        if mod == models[-1]:
-            ax.set_xlabel('S/N')
-            ax.xaxis.set_ticklabels(np.arange(-4,5,1))
-        
-        if i == 0:
-            ax.legend(frameon=False,
-                    bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
-                    labelspacing=legend_entrypad)
-            
-        i += 1
-
-    f.savefig(outDIR+'/pca_noise_global.png')
-
-elif scale == 'latitudinal':
-    
-    lu_S = np.empty((len(models),len(lulcc)))
-    lc_S = np.empty((len(models),len(lulcc)))
-    N = np.empty((len(models),len(lulcc)))
-    lu_S_N = np.empty((len(models),len(lulcc)))
-    lc_S_N = np.empty((len(models),len(lulcc)))
-
-    sig_noise = xr.Dataset(
-        
-        data_vars={
-            'lu_S': (['models','landcover'],lu_S),
-            'lc_S': (['models','landcover'],lc_S),
-            'N': (['models','landcover'],N),
-            'lu_S_N': (['models','landcover'],lu_S_N),
-            'lc_S_N': (['models','landcover'],lc_S_N),
-            'pic_S_{}'.format(models[0]): (['pic_rls_{}'.format(models[0]),'landcover'],np.empty((len(pi_data[models[0]]),len(lulcc)))),
-            'pic_S_{}'.format(models[1]): (['pic_rls_{}'.format(models[1]),'landcover'],np.empty((len(pi_data[models[1]]),len(lulcc)))),
-            'pic_S_{}'.format(models[2]): (['pic_rls_{}'.format(models[2]),'landcover'],np.empty((len(pi_data[models[2]]),len(lulcc)))),
-            'pic_S_{}'.format(models[3]): (['pic_rls_{}'.format(models[3]),'landcover'],np.empty((len(pi_data[models[3]]),len(lulcc)))),
-            'pic_S_N_{}'.format(models[0]): (['pic_rls_{}'.format(models[0]),'landcover'],np.empty((len(pi_data[models[0]]),len(lulcc)))),
-            'pic_S_N_{}'.format(models[1]): (['pic_rls_{}'.format(models[1]),'landcover'],np.empty((len(pi_data[models[1]]),len(lulcc)))),
-            'pic_S_N_{}'.format(models[2]): (['pic_rls_{}'.format(models[2]),'landcover'],np.empty((len(pi_data[models[2]]),len(lulcc)))),
-            'pic_S_N_{}'.format(models[3]): (['pic_rls_{}'.format(models[3]),'landcover'],np.empty((len(pi_data[models[3]]),len(lulcc)))),
-        },
-        
-        coords={
-            'models': ('models', models),
-            'landcover': ('landcover', lulcc),
-            'pic_rls_{}'.format(models[0]): ('pic_rls_{}'.format(models[0]),range(len(pi_data[models[0]]))),
-            'pic_rls_{}'.format(models[1]): ('pic_rls_{}'.format(models[1]),range(len(pi_data[models[1]]))),
-            'pic_rls_{}'.format(models[2]): ('pic_rls_{}'.format(models[2]),range(len(pi_data[models[2]]))),
-            'pic_rls_{}'.format(models[3]): ('pic_rls_{}'.format(models[3]),range(len(pi_data[models[3]]))),
-        }
-    )
-
-    for ltr in lat_ranges.keys():
-
-        for mod in models:
-            
-            for lc in lulcc:
-                
-                # pic slopes
-                pic_slope = []
-                
-                for i in pspc[mod][lc][ltr]['pi']:
-                    
-                    slope = i.polyfit('time',1)['polyfit_coefficients'][0].values.item()
-                    i.attrs['slope'] = slope
-                    pic_slope.append(slope)
-                    
-                sig_noise['pic_S_{}'.format(mod)].loc[dict(
-                        landcover=lc
-                    )] = pic_slope
-                
-                # noise N
-                N = sig_noise['pic_S_{}'.format(mod)].sel(landcover=lc).std(dim='pic_rls_{}'.format(mod))
-                
-                # pic signal to noise ratio
-                sig_noise['pic_S_N_{}'.format(mod)].loc[dict(
-                        landcover=lc
-                    )] = pic_slope / N.values
-                
-                # lu slopes
-                slope = pspc[mod][lc][ltr]['lu'].polyfit('time',1)['polyfit_coefficients'][0].values.item()
-                sig_noise['lu_S'].loc[dict(
-                        models=mod,
-                        landcover=lc
-                    )] = slope
-                
-                # lu signal to noise ratio
-                sig_noise['lu_S_N'].loc[dict(
-                        models=mod,
-                        landcover=lc
-                    )] = slope / N.values
-                
-                # lc slopes
-                slope = pc[mod][lc][ltr].polyfit('time',1)['polyfit_coefficients'][0].values.item()
-                sig_noise['lc_S'].loc[dict(
-                        models=mod,
-                        landcover=lc
-                    )] = slope
-                
-                # lu signal to noise ratio
-                sig_noise['lc_S_N'].loc[dict(
-                        models=mod,
-                        landcover=lc
-                    )] = slope / N.values
-
-        x=10
-        y=15
-        eof_color='BrBG'
-        cmap=plt.cm.get_cmap(eof_color)
-        colors = {}
-        colors['treeFrac'] = cmap(0.85)
-        colors['lu_treeFrac'] = cmap(0.95)
-        colors['cropFrac'] = cmap(0.15)
-        colors['lu_cropFrac'] = cmap(0.05)
-        le_x0 = 0.8
-        le_y0 = 0.6
-        le_xlen = 0.2
-        le_ylen = 0.5
-
-        # space between entries
-        legend_entrypad = 0.5
-
-        # length per entry
-        legend_entrylen = 2
-
-        # f,axes = plt.subplots(nrows=len(models),
-        #                       ncols=len(lulcc),
-        #                       figsize=(x,y))
-        f,axes = plt.subplots(nrows=len(models),
-                            ncols=1,
-                            figsize=(x,y))
-        i = 0
-        for mod,ax in zip(models,axes):
-        # for mod,row_axes in zip(models,axes):
-            
-            # for lc,ax in zip(lulcc,row_axes):
-            for lc in lulcc:
-                
-                sns.distplot(sig_noise['pic_S_N_{}'.format(mod)].sel(landcover=lc),
-                            ax=ax,
-                            fit=sts.norm,
-                            fit_kws={"color":colors[lc]},
-                            color = colors[lc],
-                            label='PIC_{}'.format(lc),
-                            kde=False)
-                
-                # plot lu s/n
-                ax.vlines(x=sig_noise['lu_S_N'.format(mod)].sel(models=mod,landcover=lc),
-                        ymin=0,
-                        ymax=0.5,
-                        colors=colors['lu_{}'.format(lc)],
-                        label='lu_{}'.format(lc))
-                
-                # # plot lc s/n
-                # ax.vlines(x=sig_noise['lc_S_N'.format(mod)].sel(models=mod,landcover=lc),
-                #           ymin=0,
-                #           ymax=a[0].max(),
-                #           colors='blue')
-                
-            ax.spines['right'].set_visible(False)
-            ax.spines['top'].set_visible(False)
-            ax.set_title(None)
-            ax.set_title(letters[i],
-                        loc='left',
-                        fontweight='bold')
-            ax.set_xlabel(None)
-            ax.xaxis.set_ticklabels([])
-            ax.set_xlim(-4,4)
-            
-            if mod == 'CanESM5':
-                height = 0.4
-            else:
-                height= 0.3
-
-            ax.set_ylabel('Frequency',
-                            fontsize=12)
-            ax.text(-0.15,
-                    height,
-                    mod,
-                    fontweight='bold',
-                    rotation='vertical',
-                    transform=ax.transAxes) 
-            
-            if mod == models[-1]:
-                ax.set_xlabel('S/N')
-                ax.xaxis.set_ticklabels(np.arange(-4,5,1))
-            
-            if i == 0:
-                ax.legend(frameon=False,
-                        bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
-                        labelspacing=legend_entrypad)
-                
-            i += 1
-
-        f.savefig(outDIR+'/pca_noise_{}.png'.format(ltr))
-
-elif scale == 'continental':
-    
-    lu_S = np.empty((len(models),len(lulcc)))
-    lc_S = np.empty((len(models),len(lulcc)))
-    N = np.empty((len(models),len(lulcc)))
-    lu_S_N = np.empty((len(models),len(lulcc)))
-    lc_S_N = np.empty((len(models),len(lulcc)))
-
-    sig_noise = xr.Dataset(
-        
-        data_vars={
-            'lu_S': (['models','landcover'],lu_S),
-            'lc_S': (['models','landcover'],lc_S),
-            'N': (['models','landcover'],N),
-            'lu_S_N': (['models','landcover'],lu_S_N),
-            'lc_S_N': (['models','landcover'],lc_S_N),
-            'pic_S_{}'.format(models[0]): (['pic_rls_{}'.format(models[0]),'landcover'],np.empty((len(pi_data[models[0]]),len(lulcc)))),
-            'pic_S_{}'.format(models[1]): (['pic_rls_{}'.format(models[1]),'landcover'],np.empty((len(pi_data[models[1]]),len(lulcc)))),
-            'pic_S_{}'.format(models[2]): (['pic_rls_{}'.format(models[2]),'landcover'],np.empty((len(pi_data[models[2]]),len(lulcc)))),
-            'pic_S_{}'.format(models[3]): (['pic_rls_{}'.format(models[3]),'landcover'],np.empty((len(pi_data[models[3]]),len(lulcc)))),
-            'pic_S_N_{}'.format(models[0]): (['pic_rls_{}'.format(models[0]),'landcover'],np.empty((len(pi_data[models[0]]),len(lulcc)))),
-            'pic_S_N_{}'.format(models[1]): (['pic_rls_{}'.format(models[1]),'landcover'],np.empty((len(pi_data[models[1]]),len(lulcc)))),
-            'pic_S_N_{}'.format(models[2]): (['pic_rls_{}'.format(models[2]),'landcover'],np.empty((len(pi_data[models[2]]),len(lulcc)))),
-            'pic_S_N_{}'.format(models[3]): (['pic_rls_{}'.format(models[3]),'landcover'],np.empty((len(pi_data[models[3]]),len(lulcc)))),
-        },
-        
-        coords={
-            'models': ('models', models),
-            'landcover': ('landcover', lulcc),
-            'pic_rls_{}'.format(models[0]): ('pic_rls_{}'.format(models[0]),range(len(pi_data[models[0]]))),
-            'pic_rls_{}'.format(models[1]): ('pic_rls_{}'.format(models[1]),range(len(pi_data[models[1]]))),
-            'pic_rls_{}'.format(models[2]): ('pic_rls_{}'.format(models[2]),range(len(pi_data[models[2]]))),
-            'pic_rls_{}'.format(models[3]): ('pic_rls_{}'.format(models[3]),range(len(pi_data[models[3]]))),
-        }
-    )
-
-    for c in continents.keys():
-
-        for mod in models:
-            
-            for lc in lulcc:
-                
-                # pic slopes
-                pic_slope = []
-                
-                for i in pspc[mod][lc][c]['pi']:
-                    
-                    slope = i.polyfit('time',1)['polyfit_coefficients'][0].values.item()
-                    i.attrs['slope'] = slope
-                    pic_slope.append(slope)
-                    
-                sig_noise['pic_S_{}'.format(mod)].loc[dict(
-                        landcover=lc
-                    )] = pic_slope
-                
-                # noise N
-                N = sig_noise['pic_S_{}'.format(mod)].sel(landcover=lc).std(dim='pic_rls_{}'.format(mod))
-                
-                # pic signal to noise ratio
-                sig_noise['pic_S_N_{}'.format(mod)].loc[dict(
-                        landcover=lc
-                    )] = pic_slope / N.values
-                
-                # lu slopes
-                slope = pspc[mod][lc][c]['lu'].polyfit('time',1)['polyfit_coefficients'][0].values.item()
-                sig_noise['lu_S'].loc[dict(
-                        models=mod,
-                        landcover=lc
-                    )] = slope
-                
-                # lu signal to noise ratio
-                sig_noise['lu_S_N'].loc[dict(
-                        models=mod,
-                        landcover=lc
-                    )] = slope / N.values
-                
-                # lc slopes
-                slope = pc[mod][lc][c].polyfit('time',1)['polyfit_coefficients'][0].values.item()
-                sig_noise['lc_S'].loc[dict(
-                        models=mod,
-                        landcover=lc
-                    )] = slope
-                
-                # lu signal to noise ratio
-                sig_noise['lc_S_N'].loc[dict(
-                        models=mod,
-                        landcover=lc
-                    )] = slope / N.values
-
-        x=10
-        y=15
-        eof_color='BrBG'
-        cmap=plt.cm.get_cmap(eof_color)
-        colors = {}
-        colors['treeFrac'] = cmap(0.85)
-        colors['lu_treeFrac'] = cmap(0.95)
-        colors['cropFrac'] = cmap(0.15)
-        colors['lu_cropFrac'] = cmap(0.05)
-        le_x0 = 0.8
-        le_y0 = 0.6
-        le_xlen = 0.2
-        le_ylen = 0.5
-
-        # space between entries
-        legend_entrypad = 0.5
-
-        # length per entry
-        legend_entrylen = 2
-
-        # f,axes = plt.subplots(nrows=len(models),
-        #                       ncols=len(lulcc),
-        #                       figsize=(x,y))
-        f,axes = plt.subplots(nrows=len(models),
-                            ncols=1,
-                            figsize=(x,y))
-        i = 0
-        for mod,ax in zip(models,axes):
-        # for mod,row_axes in zip(models,axes):
-            
-            # for lc,ax in zip(lulcc,row_axes):
-            for lc in lulcc:
-                
-                sns.distplot(sig_noise['pic_S_N_{}'.format(mod)].sel(landcover=lc),
-                            ax=ax,
-                            fit=sts.norm,
-                            fit_kws={"color":colors[lc]},
-                            color = colors[lc],
-                            label='PIC_{}'.format(lc),
-                            kde=False)
-                
-                # plot lu s/n
-                ax.vlines(x=sig_noise['lu_S_N'.format(mod)].sel(models=mod,landcover=lc),
-                        ymin=0,
-                        ymax=0.5,
-                        colors=colors['lu_{}'.format(lc)],
-                        label='lu_{}'.format(lc))
-                
-                # # plot lc s/n
-                # ax.vlines(x=sig_noise['lc_S_N'.format(mod)].sel(models=mod,landcover=lc),
-                #           ymin=0,
-                #           ymax=a[0].max(),
-                #           colors='blue')
-                
-            ax.spines['right'].set_visible(False)
-            ax.spines['top'].set_visible(False)
-            ax.set_title(None)
-            ax.set_title(letters[i],
-                        loc='left',
-                        fontweight='bold')
-            ax.set_xlabel(None)
-            ax.xaxis.set_ticklabels([])
-            ax.set_xlim(-4,4)
-            
-            if mod == 'CanESM5':
-                height = 0.4
-            else:
-                height= 0.3
-
-            ax.set_ylabel('Frequency',
-                            fontsize=12)
-            ax.text(-0.15,
-                    height,
-                    mod,
-                    fontweight='bold',
-                    rotation='vertical',
-                    transform=ax.transAxes) 
-            
-            if mod == models[-1]:
-                ax.set_xlabel('S/N')
-                ax.xaxis.set_ticklabels(np.arange(-4,5,1))
-            
-            if i == 0:
-                ax.legend(frameon=False,
-                        bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
-                        labelspacing=legend_entrypad)
-                
-            i += 1
-
-        f.savefig(outDIR+'/pca_noise_{}.png'.format(c))
-        
-elif scale == 'ar6':
-    
-    lu_S = np.empty((len(models),len(lulcc)))
-    lc_S = np.empty((len(models),len(lulcc)))
-    N = np.empty((len(models),len(lulcc)))
-    lu_S_N = np.empty((len(models),len(lulcc)))
-    lc_S_N = np.empty((len(models),len(lulcc)))
-
-    sig_noise = xr.Dataset(
-        
-        data_vars={
-            'lu_S': (['models','landcover'],lu_S),
-            'lc_S': (['models','landcover'],lc_S),
-            'N': (['models','landcover'],N),
-            'lu_S_N': (['models','landcover'],lu_S_N),
-            'lc_S_N': (['models','landcover'],lc_S_N),
-            'pic_S_{}'.format(models[0]): (['pic_rls_{}'.format(models[0]),'landcover'],np.empty((len(pi_data[models[0]]),len(lulcc)))),
-            'pic_S_{}'.format(models[1]): (['pic_rls_{}'.format(models[1]),'landcover'],np.empty((len(pi_data[models[1]]),len(lulcc)))),
-            'pic_S_{}'.format(models[2]): (['pic_rls_{}'.format(models[2]),'landcover'],np.empty((len(pi_data[models[2]]),len(lulcc)))),
-            'pic_S_{}'.format(models[3]): (['pic_rls_{}'.format(models[3]),'landcover'],np.empty((len(pi_data[models[3]]),len(lulcc)))),
-            'pic_S_N_{}'.format(models[0]): (['pic_rls_{}'.format(models[0]),'landcover'],np.empty((len(pi_data[models[0]]),len(lulcc)))),
-            'pic_S_N_{}'.format(models[1]): (['pic_rls_{}'.format(models[1]),'landcover'],np.empty((len(pi_data[models[1]]),len(lulcc)))),
-            'pic_S_N_{}'.format(models[2]): (['pic_rls_{}'.format(models[2]),'landcover'],np.empty((len(pi_data[models[2]]),len(lulcc)))),
-            'pic_S_N_{}'.format(models[3]): (['pic_rls_{}'.format(models[3]),'landcover'],np.empty((len(pi_data[models[3]]),len(lulcc)))),
-        },
-        
-        coords={
-            'models': ('models', models),
-            'landcover': ('landcover', lulcc),
-            'pic_rls_{}'.format(models[0]): ('pic_rls_{}'.format(models[0]),range(len(pi_data[models[0]]))),
-            'pic_rls_{}'.format(models[1]): ('pic_rls_{}'.format(models[1]),range(len(pi_data[models[1]]))),
-            'pic_rls_{}'.format(models[2]): ('pic_rls_{}'.format(models[2]),range(len(pi_data[models[2]]))),
-            'pic_rls_{}'.format(models[3]): ('pic_rls_{}'.format(models[3]),range(len(pi_data[models[3]]))),
-        }
-    )
-
-    for c in continents.keys():
-        
-        for ar6 in continents[c]:
-
-            for mod in models:
-                
-                for lc in lulcc:
-                    
-                    # pic slopes
-                    pic_slope = []
-                    
-                    for i in pspc[mod][lc][ar6]['pi']:
-                        
-                        slope = i.polyfit('time',1)['polyfit_coefficients'][0].values.item()
-                        i.attrs['slope'] = slope
-                        pic_slope.append(slope)
-                        
-                    sig_noise['pic_S_{}'.format(mod)].loc[dict(
-                            landcover=lc
-                        )] = pic_slope
-                    
-                    # noise N
-                    N = sig_noise['pic_S_{}'.format(mod)].sel(landcover=lc).std(dim='pic_rls_{}'.format(mod))
-                    
-                    # pic signal to noise ratio
-                    sig_noise['pic_S_N_{}'.format(mod)].loc[dict(
-                            landcover=lc
-                        )] = pic_slope / N.values
-                    
-                    # lu slopes
-                    slope = pspc[mod][lc][ar6]['lu'].polyfit('time',1)['polyfit_coefficients'][0].values.item()
-                    sig_noise['lu_S'].loc[dict(
-                            models=mod,
-                            landcover=lc
-                        )] = slope
-                    
-                    # lu signal to noise ratio
-                    sig_noise['lu_S_N'].loc[dict(
-                            models=mod,
-                            landcover=lc
-                        )] = slope / N.values
-                    
-                    # lc slopes
-                    slope = pc[mod][lc][ar6].polyfit('time',1)['polyfit_coefficients'][0].values.item()
-                    sig_noise['lc_S'].loc[dict(
-                            models=mod,
-                            landcover=lc
-                        )] = slope
-                    
-                    # lu signal to noise ratio
-                    sig_noise['lc_S_N'].loc[dict(
-                            models=mod,
-                            landcover=lc
-                        )] = slope / N.values
-
-            x=10
-            y=15
-            eof_color='BrBG'
-            cmap=plt.cm.get_cmap(eof_color)
-            colors = {}
-            colors['treeFrac'] = cmap(0.85)
-            colors['lu_treeFrac'] = cmap(0.95)
-            colors['cropFrac'] = cmap(0.15)
-            colors['lu_cropFrac'] = cmap(0.05)
-            le_x0 = 0.8
-            le_y0 = 0.6
-            le_xlen = 0.2
-            le_ylen = 0.5
-
-            # space between entries
-            legend_entrypad = 0.5
-
-            # length per entry
-            legend_entrylen = 2
-
-            # f,axes = plt.subplots(nrows=len(models),
-            #                       ncols=len(lulcc),
-            #                       figsize=(x,y))
-            f,axes = plt.subplots(nrows=len(models),
-                                ncols=1,
-                                figsize=(x,y))
-            i = 0
-            for mod,ax in zip(models,axes):
-            # for mod,row_axes in zip(models,axes):
-                
-                # for lc,ax in zip(lulcc,row_axes):
-                for lc in lulcc:
-                    
-                    sns.distplot(sig_noise['pic_S_N_{}'.format(mod)].sel(landcover=lc),
-                                ax=ax,
-                                fit=sts.norm,
-                                fit_kws={"color":colors[lc]},
-                                color = colors[lc],
-                                label='PIC_{}'.format(lc),
-                                kde=False)
-                    
-                    # plot lu s/n
-                    ax.vlines(x=sig_noise['lu_S_N'.format(mod)].sel(models=mod,landcover=lc),
-                            ymin=0,
-                            ymax=0.5,
-                            colors=colors['lu_{}'.format(lc)],
-                            label='lu_{}'.format(lc))
-                    
-                    # # plot lc s/n
-                    # ax.vlines(x=sig_noise['lc_S_N'.format(mod)].sel(models=mod,landcover=lc),
-                    #           ymin=0,
-                    #           ymax=a[0].max(),
-                    #           colors='blue')
-                    
-                ax.spines['right'].set_visible(False)
-                ax.spines['top'].set_visible(False)
-                ax.set_title(None)
-                ax.set_title(letters[i],
-                            loc='left',
-                            fontweight='bold')
-                ax.set_xlabel(None)
-                ax.xaxis.set_ticklabels([])
-                ax.set_xlim(-4,4)
-                
-                if mod == 'CanESM5':
-                    height = 0.4
-                else:
-                    height= 0.3
-
-                ax.set_ylabel('Frequency',
-                                fontsize=12)
-                ax.text(-0.15,
-                        height,
-                        mod,
-                        fontweight='bold',
-                        rotation='vertical',
-                        transform=ax.transAxes) 
-                
-                if mod == models[-1]:
-                    ax.set_xlabel('S/N')
-                    ax.xaxis.set_ticklabels(np.arange(-4,5,1))
-                
-                if i == 0:
-                    ax.legend(frameon=False,
-                            bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
-                            labelspacing=legend_entrypad)
-                    
-                i += 1
-
-            f.savefig(outDIR+'/pca_noise_{}.png'.format(ar6))
-
-    # %%
+# %%

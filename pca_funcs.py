@@ -28,6 +28,9 @@ import cartopy.feature as cfeature
 from random import shuffle
 from matplotlib.lines import Line2D
 import matplotlib as mpl
+import seaborn as sns
+from scipy import stats as sts
+from eofs.xarray import Eof
 
 
 #==============================================================================
@@ -69,6 +72,8 @@ def nc_read(file,
         
     da['time'] = da['time.year']
     
+    
+    
     if flag_temp_center == 1:
         
         da = da - da.mean(dim='time')
@@ -92,6 +97,24 @@ def standard_data(da):
         climatology_std,
     )
     return stand_anomalies
+
+#%%==============================================================================   
+
+def pickler(curDIR,
+            var_fin,
+            analysis,
+            grid,
+            t_ext,
+            exp_list):
+    
+    os.chdir(curDIR)
+    if len(exp_list) == 2:
+        pkl_file = open('var_fin_2-factor_{}-grid_{}_{}.pkl'.format(grid,analysis,t_ext),'wb')
+    elif len(exp_list) == 1:
+        exp = exp_list[0]
+        pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}.pkl'.format(exp,grid,analysis,t_ext),'wb')
+    pk.dump(var_fin,pkl_file)
+    pkl_file.close()
 
 #%%==============================================================================    
 
@@ -178,1596 +201,6 @@ def c(x):
    fig.set_facecolor(col)
    ax.axis("off")
    plt.show()
-   
-#%%==============================================================================   
-
-
-def pca_plot(eof_dict,
-             principal_components,
-             pseudo_principal_components,
-             exps_start,
-             obs_types,
-             outDIR):
-
-    
-
-    ############################### panels ##################################
-    
-    x=22
-    y=10
-    f = plt.figure(figsize=(x,y))
-    
-    # time series rect, rect=[left, bottom, right, top]
-    t_left = 0.05
-    t_bottom = 0.65
-    t_right = 0.7
-    t_top = 1.0
-    t_rect = [t_left, t_bottom, t_right, t_top]
-    
-    # time series
-    gs1 = gridspec.GridSpec(1,1)
-    ax1 = f.add_subplot(gs1[0])    
-       
-    gs1.tight_layout(figure=f, rect=t_rect, h_pad=5)
-    
-    # maps of eof
-    gs2 = gridspec.GridSpec(2,3)
-        
-    # map panel rect, rect=[left, bottom, right, top]
-    c_left = 0
-    c_bottom = 0.0
-    c_right = 1.0
-    c_top = 0.6
-    c_rect = [c_left, c_bottom, c_right, c_top]
-    
-    ax2 = f.add_subplot(gs2[0],projection=ccrs.PlateCarree()) # obs eof (cru)
-    ax3 = f.add_subplot(gs2[1],projection=ccrs.PlateCarree()) # hist eof
-    ax4 = f.add_subplot(gs2[2],projection=ccrs.PlateCarree()) # hist-nolu bias
-    
-    ax5 = f.add_subplot(gs2[3],projection=ccrs.PlateCarree()) # obs eof (cru)
-    ax6 = f.add_subplot(gs2[4],projection=ccrs.PlateCarree()) # delta eof
-    ax7 = f.add_subplot(gs2[5],projection=ccrs.PlateCarree()) # eof bias
-    
-    map_axes = {}
-    map_axes['cru'] = [ax2,ax3,ax4]
-    map_axes['berkley_earth'] = [ax5,ax6,ax7]
-    
-    gs2.tight_layout(figure=f, rect=c_rect, h_pad=5)
-    
-    ############################### general ##################################
-    
-    letters = ['a','b','c','d','e','f','g','h','i']
-    ls_types = ['-', # cru
-                '--'] # berkley
-    ls_types = {}
-    ls_types['cru'] = '-'
-    ls_types['berkley_earth'] = '--'
-    ls_types['pc'] = ':'
-    
-    cmap_brbg = plt.cm.get_cmap('BrBG')
-    cols={}
-    cols['hist-noLu'] = cmap_brbg(0.95)
-    cols['historical'] = cmap_brbg(0.05)
-    col_zero = 'gray'   # zero change color
-    
-    col_cbticlbl = '0'   # colorbar color of tick labels
-    col_cbtic = '0.5'   # colorbar color of ticks
-    col_cbedg = '0.9'   # colorbar color of edge
-    cb_ticlen = 3.5   # colorbar length of ticks
-    cb_ticwid = 0.4   # colorbar thickness of ticks
-    cb_edgthic = 0   # colorbar thickness of edges between colors
-    cblabel = 'corr'  # colorbar label
-    col_zero = 'gray'   # zero change color
-    sbplt_lw = 0.1   # linewidth on projection panels
-    cstlin_lw = 0.2   # linewidth for coastlines
-    
-    title_font = 12
-    cbtitle_font = 12
-    tick_font = 12
-    legend_font=12
-    
-    east = 180
-    west = -180
-    north = 80
-    south = -60
-    extent = [west,east,south,north]
-    
-    
-    ############################### legend ##################################
-    
-    # bbox
-    le_x0 = 1.05
-    le_y0 = 0.75
-    le_xlen = 0.15
-    le_ylen = 0.25
-    
-    # space between entries
-    legend_entrypad = 0.5
-    
-    # length per entry
-    legend_entrylen = 0.75
-    
-    # space between entries
-    legend_spacing = 1.5
-    
-    ############################### colormaps ##################################
-    
-    # identify colors for obs eof maps
-    cmap55 = cmap_brbg(0.01)
-    cmap50 = cmap_brbg(0.05)   #blue
-    cmap45 = cmap_brbg(0.1)
-    cmap40 = cmap_brbg(0.15)
-    cmap35 = cmap_brbg(0.2)
-    cmap30 = cmap_brbg(0.25)
-    cmap25 = cmap_brbg(0.3)
-    cmap20 = cmap_brbg(0.325)
-    cmap10 = cmap_brbg(0.4)
-    cmap5 = cmap_brbg(0.475)
-    cmap0 = col_zero
-    cmap_5 = cmap_brbg(0.525)
-    cmap_10 = cmap_brbg(0.6)
-    cmap_20 = cmap_brbg(0.625)
-    cmap_25 = cmap_brbg(0.7)
-    cmap_30 = cmap_brbg(0.75)
-    cmap_35 = cmap_brbg(0.8)
-    cmap_40 = cmap_brbg(0.85)
-    cmap_45 = cmap_brbg(0.9)
-    cmap_50 = cmap_brbg(0.95)  #red
-    cmap_55 = cmap_brbg(0.99)
-    
-    colors_brbg = [cmap_55,
-                   cmap_45,
-                   cmap_35,
-                   cmap_25,
-                   cmap_10,
-                   cmap0,
-                   cmap10,
-                   cmap25,
-                   cmap35,
-                   cmap45,
-                   cmap55]
-    
-    # declare list of colors for discrete colormap of colorbar
-    cmap_list_eof = mpl.colors.ListedColormap(colors_brbg,N=len(colors_brbg))
-    
-    # colorbar args
-    start = 0.020
-    inc = start/5
-    values_eof = [-1*start,
-                  -1*start+inc,
-                  -1*start+inc*2,
-                  -1*start+inc*3,
-                  -1*start+inc*4,
-                  -0.001,
-                  0.001,
-                  start-inc*4,
-                  start-inc*3,
-                  start-inc*2,
-                  start-inc,
-                  start]
-    
-    tick_locs_eof = [-1*start,
-                     -1*start+inc,
-                     -1*start+inc*2,
-                     -1*start+inc*3,
-                     -1*start+inc*4,
-                     0,
-                     start-inc*4,
-                     start-inc*3,
-                     start-inc*2,
-                     start-inc,
-                     start]
-    
-    tick_labels_eof = [str(-1*start),
-                       str(-1*start+inc),
-                       str(-1*start+inc*2),
-                       str(-1*start+inc*3),
-                       str(-1*start+inc*4),
-                       str(0),
-                       str(start-inc*4),
-                       str(start-inc*3),
-                       str(start-inc*2),
-                       str(start-inc),
-                       str(start)]
-    
-    norm_eof = mpl.colors.BoundaryNorm(values_eof,cmap_list_eof.N)
-    
-    cb_eof_x0 = 0.36  
-    cb_eof_y0 = -0.05   
-    cb_eof_xlen = 0.5
-    cb_eof_ylen = 0.015
-    
-    cbax_eof = f.add_axes([cb_eof_x0, 
-                           cb_eof_y0, 
-                           cb_eof_xlen, 
-                           cb_eof_ylen])
-    
-    
-    
-    ############################### timeseries ##################################
-    
-    
-    # plot time series
-    for exp in exps_start:
-        for obs in obs_types:
-            data = pseudo_principal_components[obs][exp] - pseudo_principal_components[obs][exp].mean(dim='time')
-            data.plot(ax=ax1,
-                      add_legend=False,
-                      color=cols[exp],
-                      linestyle=ls_types[obs],
-                      linewidth=3,
-                      label=obs+' pseudo-PC ' +exp)
-            
-    ax1.legend(frameon=False,
-               bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
-               fontsize=legend_font,
-               labelspacing=legend_spacing)
-    ax1.set_title(letters[0],
-                  fontweight='bold',
-                  loc='left')
-    
-    ############################### eof maps ##################################
-    
-    # eof loading maps
-    count = 0
-    for obs in obs_types:
-        # data = figure_data[obs]
-        for i,ax in enumerate(map_axes[obs]):
-            count += 1
-            if i == 0:
-                eof_dict[obs][obs].plot(ax=ax,
-                             transform=ccrs.PlateCarree(),
-                             cmap=cmap_list_eof,
-                             cbar_ax=cbax_eof,
-                             center=0,
-                             norm=norm_eof,
-                             add_labels=False)
-                if obs == 'cru':
-                    height = 0.5
-                elif obs == 'berkley_earth':
-                    height = 0.3
-                ax.text(-0.07,
-                        height,
-                        obs,
-                        fontsize=title_font,
-                        fontweight='bold',
-                        rotation='vertical',
-                        transform=ax.transAxes)
-            elif i > 0:
-                for exp in exps_start:
-                    eof_dict[obs][exp].plot(ax=ax,
-                                    transform=ccrs.PlateCarree(),
-                                    cmap=cmap_list_eof,
-                                    cbar_ax=cbax_eof,
-                                    center=0,
-                                    norm=norm_eof,
-                                    add_labels=False)      
-            if obs == 'cru':
-                if i == 0:
-                    ax.set_title('Obs EOF loading',
-                                 fontweight='bold',
-                                 loc='center',
-                                 fontsize=title_font)
-                if i == 1:
-                    ax.set_title('hist EOF loading',
-                                 fontweight='bold',
-                                 loc='center',
-                                 fontsize=title_font)
-                if i == 2:
-                    ax.set_title('hist-noLu EOF loading',
-                                 fontweight='bold',
-                                 loc='center',
-                                 fontsize=title_font)
-            ax.set_title(letters[count],
-                         fontweight='bold',
-                         loc='left')
-            ax.set_extent(extent,
-                          crs=ccrs.PlateCarree())
-            ax.coastlines(linewidth=cstlin_lw)
-    
-    # eof cb
-    cb_eof = mpl.colorbar.ColorbarBase(ax=cbax_eof, 
-                                       cmap=cmap_list_eof,
-                                       norm=norm_eof,
-                                       spacing='uniform',
-                                       orientation='horizontal',
-                                       extend='neither',
-                                       ticks=tick_locs_eof,
-                                       drawedges=False)
-    cb_eof.ax.xaxis.set_label_position('top')
-    cb_eof.ax.tick_params(labelcolor=col_cbticlbl,
-                          labelsize=tick_font,
-                          color=col_cbtic,
-                          length=cb_ticlen,
-                          width=cb_ticwid,
-                          direction='out'); 
-    cb_eof.ax.set_xticklabels(tick_labels_eof,
-                              rotation=45)
-    cb_eof.outline.set_edgecolor(col_cbedg)
-    cb_eof.outline.set_linewidth(cb_edgthic)
-    
-    os.chdir(outDIR)
-    f.savefig(outDIR+'/pca_analysis_global.png',bbox_inches='tight',dpi=400)
-
-
-
-
-#%%==============================================================================   
-
-def pca_plot_latitudinal(eof_dict,
-                         principal_components,
-                         pseudo_principal_components,
-                         exps_start,
-                         lat_ranges,
-                         obs_types,
-                         outDIR):
-
-    
-    ############################### general ##################################
-    
-    letters = ['a','b','c','d','e','f','g','h','i']
-    ls_types = ['-', # cru
-                '--'] # berkley
-    ls_types = {}
-    ls_types['cru'] = '-'
-    ls_types['berkley_earth'] = '--'
-    ls_types['pc'] = ':'
-    
-    cmap_brbg = plt.cm.get_cmap('BrBG')
-    cols={}
-    cols['hist-noLu'] = cmap_brbg(0.95)
-    cols['historical'] = cmap_brbg(0.05)
-    col_zero = 'gray'   # zero change color
-    
-    col_cbticlbl = '0'   # colorbar color of tick labels
-    col_cbtic = '0.5'   # colorbar color of ticks
-    col_cbedg = '0.9'   # colorbar color of edge
-    cb_ticlen = 3.5   # colorbar length of ticks
-    cb_ticwid = 0.4   # colorbar thickness of ticks
-    cb_edgthic = 0   # colorbar thickness of edges between colors
-    cblabel = 'corr'  # colorbar label
-    col_zero = 'gray'   # zero change color
-    sbplt_lw = 0.1   # linewidth on projection panels
-    cstlin_lw = 0.2   # linewidth for coastlines
-    
-    title_font = 12
-    cbtitle_font = 12
-    tick_font = 12
-    legend_font=12
-    
-    east = 180
-    west = -180
-    north = 80
-    south = -60
-    extent = [west,east,south,north]
-    
-    
-    ############################### legend ##################################
-    
-    # bbox
-    le_x0 = 1.05
-    le_y0 = 0.75
-    le_xlen = 0.15
-    le_ylen = 0.25
-    
-    # space between entries
-    legend_entrypad = 0.5
-    
-    # length per entry
-    legend_entrylen = 0.75
-    
-    # space between entries
-    legend_spacing = 1.5
-    
-    ############################### colormaps ##################################
-    
-    # identify colors for obs eof maps
-    cmap55 = cmap_brbg(0.01)
-    cmap50 = cmap_brbg(0.05)   #blue
-    cmap45 = cmap_brbg(0.1)
-    cmap40 = cmap_brbg(0.15)
-    cmap35 = cmap_brbg(0.2)
-    cmap30 = cmap_brbg(0.25)
-    cmap25 = cmap_brbg(0.3)
-    cmap20 = cmap_brbg(0.325)
-    cmap10 = cmap_brbg(0.4)
-    cmap5 = cmap_brbg(0.475)
-    cmap0 = col_zero
-    cmap_5 = cmap_brbg(0.525)
-    cmap_10 = cmap_brbg(0.6)
-    cmap_20 = cmap_brbg(0.625)
-    cmap_25 = cmap_brbg(0.7)
-    cmap_30 = cmap_brbg(0.75)
-    cmap_35 = cmap_brbg(0.8)
-    cmap_40 = cmap_brbg(0.85)
-    cmap_45 = cmap_brbg(0.9)
-    cmap_50 = cmap_brbg(0.95)  #red
-    cmap_55 = cmap_brbg(0.99)
-    
-    colors_brbg = [cmap_55,
-                   cmap_45,
-                   cmap_35,
-                   cmap_25,
-                   cmap_10,
-                   cmap0,
-                   cmap10,
-                   cmap25,
-                   cmap35,
-                   cmap45,
-                   cmap55]
-    
-    # declare list of colors for discrete colormap of colorbar
-    cmap_list_eof = mpl.colors.ListedColormap(colors_brbg,N=len(colors_brbg))
-    
-    cb_eof_x0 = 0.36  
-    cb_eof_y0 = -0.05   
-    cb_eof_xlen = 0.5
-    cb_eof_ylen = 0.015
-    
-    for ltr in lat_ranges.keys():
-    
-        ############################### panels ##################################
-        
-        x=22
-        y=10
-        f = plt.figure(figsize=(x,y))
-        
-        # time series rect, rect=[left, bottom, right, top]
-        t_left = 0.05
-        t_bottom = 0.65
-        t_right = 0.7
-        t_top = 1.0
-        t_rect = [t_left, t_bottom, t_right, t_top]
-        
-        # time series
-        gs1 = gridspec.GridSpec(1,1)
-        ax1 = f.add_subplot(gs1[0])    
-        
-        gs1.tight_layout(figure=f, rect=t_rect, h_pad=5)
-        
-        # maps of eof
-        gs2 = gridspec.GridSpec(2,3)
-            
-        # map panel rect, rect=[left, bottom, right, top]
-        c_left = 0
-        c_bottom = 0.0
-        c_right = 1.0
-        c_top = 0.6
-        c_rect = [c_left, c_bottom, c_right, c_top]
-        
-        ax2 = f.add_subplot(gs2[0],projection=ccrs.PlateCarree()) # obs eof (cru)
-        ax3 = f.add_subplot(gs2[1],projection=ccrs.PlateCarree()) # hist eof
-        ax4 = f.add_subplot(gs2[2],projection=ccrs.PlateCarree()) # hist-nolu bias
-        
-        ax5 = f.add_subplot(gs2[3],projection=ccrs.PlateCarree()) # obs eof (cru)
-        ax6 = f.add_subplot(gs2[4],projection=ccrs.PlateCarree()) # delta eof
-        ax7 = f.add_subplot(gs2[5],projection=ccrs.PlateCarree()) # eof bias
-        
-        map_axes = {}
-        map_axes['cru'] = [ax2,ax3,ax4]
-        map_axes['berkley_earth'] = [ax5,ax6,ax7]
-        
-        gs2.tight_layout(figure=f, rect=c_rect, h_pad=5)
-        
-        cbax_eof = f.add_axes([cb_eof_x0, 
-                            cb_eof_y0, 
-                            cb_eof_xlen, 
-                            cb_eof_ylen])
-        
-        ############################### timeseries ##################################
-        
-        # plot time series
-        for exp in exps_start:
-            for obs in obs_types:
-                data = pseudo_principal_components[obs][exp][ltr] - pseudo_principal_components[obs][exp][ltr].mean(dim='time')
-                data.plot(ax=ax1,
-                          add_legend=False,
-                          color=cols[exp],
-                          linestyle=ls_types[obs],
-                          linewidth=3,
-                          label=obs+' pseudo-PC ' +exp)
-                
-        ax1.legend(frameon=False,
-                   bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
-                   fontsize=legend_font,
-                   labelspacing=legend_spacing)
-        ax1.set_title(letters[0],
-                      fontweight='bold',
-                      loc='left')
-        
-        ############################### eof maps ##################################
-        
-        # eof loading maps
-        count = 0
-        
-        q_samples = []
-        
-        for obs in obs_types:        
-            q_samples.append(np.abs(eof_dict[obs][obs][ltr].quantile(0.95).item()))
-            q_samples.append(np.abs(eof_dict[obs][obs][ltr].quantile(0.05).item()))
-            for exp in exps_start:
-                q_samples.append(np.abs(eof_dict[obs][exp][ltr].quantile(0.95).item()))
-                q_samples.append(np.abs(eof_dict[obs][exp][ltr].quantile(0.05).item()))
-            
-        # colorbar args
-        start = np.around(np.max(q_samples),decimals=4)
-        inc = start/5
-        values_eof = [-1*start,
-                    -1*start+inc,
-                    -1*start+inc*2,
-                    -1*start+inc*3,
-                    -1*start+inc*4,
-                    -0.001,
-                    0.001,
-                    start-inc*4,
-                    start-inc*3,
-                    start-inc*2,
-                    start-inc,
-                    start]
-        
-        tick_locs_eof = [-1*start,
-                        -1*start+inc,
-                        -1*start+inc*2,
-                        -1*start+inc*3,
-                        -1*start+inc*4,
-                        0,
-                        start-inc*4,
-                        start-inc*3,
-                        start-inc*2,
-                        start-inc,
-                        start]
-        
-        tick_labels_eof = [str(np.around(-1*start,decimals=4)),
-                        str(np.around(-1*start+inc,decimals=4)),
-                        str(np.around(-1*start+inc*2,decimals=4)),
-                        str(np.around(-1*start+inc*3,decimals=4)),
-                        str(np.around(-1*start+inc*4)),
-                        str(0),
-                        str(np.around(start-inc*4,decimals=4)),
-                        str(np.around(start-inc*3,decimals=4)),
-                        str(np.around(start-inc*2,decimals=4)),
-                        str(np.around(start-inc,decimals=4)),
-                        str(start)]
-        
-        norm_eof = mpl.colors.BoundaryNorm(values_eof,cmap_list_eof.N)
-        for obs in obs_types:
-            # data = figure_data[obs]
-            for i,ax in enumerate(map_axes[obs]):
-                count += 1
-                if i == 0:
-                    eof_dict[obs][obs][ltr].plot(ax=ax,
-                                               transform=ccrs.PlateCarree(),
-                                               cmap=cmap_list_eof,
-                                               cbar_ax=cbax_eof,
-                                               center=0,
-                                               norm=norm_eof,
-                                               add_labels=False)
-                    if obs == 'cru':
-                        height = 0.5
-                    elif obs == 'berkley_earth':
-                        height = 0.3
-                    ax.text(-0.07,
-                            height,
-                            obs,
-                            fontsize=title_font,
-                            fontweight='bold',
-                            rotation='vertical',
-                            transform=ax.transAxes)
-                elif i > 0:
-                    for exp in exps_start:
-                        eof_dict[obs][exp][ltr].plot(ax=ax,
-                                                   transform=ccrs.PlateCarree(),
-                                                   cmap=cmap_list_eof,
-                                                   cbar_ax=cbax_eof,
-                                                   center=0,
-                                                   norm=norm_eof,
-                                                   add_labels=False)      
-                if obs == 'cru':
-                    if i == 0:
-                        ax.set_title('Obs EOF loading',
-                                     fontweight='bold',
-                                     loc='center',
-                                     fontsize=title_font)
-                    if i == 1:
-                        ax.set_title('hist EOF loading',
-                                    fontweight='bold',
-                                    loc='center',
-                                    fontsize=title_font)
-                    if i == 2:
-                        ax.set_title('hist-noLu EOF loading',
-                                    fontweight='bold',
-                                    loc='center',
-                                    fontsize=title_font)
-                ax.set_title(letters[count],
-                            fontweight='bold',
-                            loc='left')
-                ax.set_extent(extent,
-                            crs=ccrs.PlateCarree())
-                ax.coastlines(linewidth=cstlin_lw)
-        
-        # eof cb
-        cb_eof = mpl.colorbar.ColorbarBase(ax=cbax_eof, 
-                                        cmap=cmap_list_eof,
-                                        norm=norm_eof,
-                                        spacing='uniform',
-                                        orientation='horizontal',
-                                        extend='neither',
-                                        ticks=tick_locs_eof,
-                                        drawedges=False)
-        cb_eof.ax.xaxis.set_label_position('top')
-        cb_eof.ax.tick_params(labelcolor=col_cbticlbl,
-                            labelsize=tick_font,
-                            color=col_cbtic,
-                            length=cb_ticlen,
-                            width=cb_ticwid,
-                            direction='out'); 
-        cb_eof.ax.set_xticklabels(tick_labels_eof,
-                                rotation=45)
-        cb_eof.outline.set_edgecolor(col_cbedg)
-        cb_eof.outline.set_linewidth(cb_edgthic)
-        
-        os.chdir(outDIR)
-        f.savefig(outDIR+'/pca_analysis_latitudinal_{}.png'.format(ltr),bbox_inches='tight',dpi=400)
-
-#%%==============================================================================   
-
-def pca_plot_continental(eof_dict,
-                         principal_components,
-                         pseudo_principal_components,
-                         exps_start,
-                         continents,
-                         obs_types,
-                         outDIR):
-
-    
-    ############################### general ##################################
-    
-    letters = ['a','b','c','d','e','f','g','h','i']
-    ls_types = ['-', # cru
-                '--'] # berkley
-    ls_types = {}
-    ls_types['cru'] = '-'
-    ls_types['berkley_earth'] = '--'
-    ls_types['pc'] = ':'
-    
-    cmap_brbg = plt.cm.get_cmap('BrBG')
-    cols={}
-    cols['hist-noLu'] = cmap_brbg(0.95)
-    cols['historical'] = cmap_brbg(0.05)
-    col_zero = 'gray'   # zero change color
-    
-    col_cbticlbl = '0'   # colorbar color of tick labels
-    col_cbtic = '0.5'   # colorbar color of ticks
-    col_cbedg = '0.9'   # colorbar color of edge
-    cb_ticlen = 3.5   # colorbar length of ticks
-    cb_ticwid = 0.4   # colorbar thickness of ticks
-    cb_edgthic = 0   # colorbar thickness of edges between colors
-    cblabel = 'corr'  # colorbar label
-    col_zero = 'gray'   # zero change color
-    sbplt_lw = 0.1   # linewidth on projection panels
-    cstlin_lw = 0.2   # linewidth for coastlines
-    
-    title_font = 12
-    cbtitle_font = 12
-    tick_font = 12
-    legend_font=12
-    
-    east = 180
-    west = -180
-    north = 80
-    south = -60
-    extent = [west,east,south,north]
-    
-    
-    ############################### legend ##################################
-    
-    # bbox
-    le_x0 = 1.05
-    le_y0 = 0.75
-    le_xlen = 0.15
-    le_ylen = 0.25
-    
-    # space between entries
-    legend_entrypad = 0.5
-    
-    # length per entry
-    legend_entrylen = 0.75
-    
-    # space between entries
-    legend_spacing = 1.5
-    
-    ############################### colormaps ##################################
-    
-    # identify colors for obs eof maps
-    cmap55 = cmap_brbg(0.01)
-    cmap50 = cmap_brbg(0.05)   #blue
-    cmap45 = cmap_brbg(0.1)
-    cmap40 = cmap_brbg(0.15)
-    cmap35 = cmap_brbg(0.2)
-    cmap30 = cmap_brbg(0.25)
-    cmap25 = cmap_brbg(0.3)
-    cmap20 = cmap_brbg(0.325)
-    cmap10 = cmap_brbg(0.4)
-    cmap5 = cmap_brbg(0.475)
-    cmap0 = col_zero
-    cmap_5 = cmap_brbg(0.525)
-    cmap_10 = cmap_brbg(0.6)
-    cmap_20 = cmap_brbg(0.625)
-    cmap_25 = cmap_brbg(0.7)
-    cmap_30 = cmap_brbg(0.75)
-    cmap_35 = cmap_brbg(0.8)
-    cmap_40 = cmap_brbg(0.85)
-    cmap_45 = cmap_brbg(0.9)
-    cmap_50 = cmap_brbg(0.95)  #red
-    cmap_55 = cmap_brbg(0.99)
-    
-    colors_brbg = [cmap_55,
-                   cmap_45,
-                   cmap_35,
-                   cmap_25,
-                   cmap_10,
-                   cmap0,
-                   cmap10,
-                   cmap25,
-                   cmap35,
-                   cmap45,
-                   cmap55]
-    
-    # declare list of colors for discrete colormap of colorbar
-    cmap_list_eof = mpl.colors.ListedColormap(colors_brbg,N=len(colors_brbg))
-    
-    cb_eof_x0 = 0.36  
-    cb_eof_y0 = -0.05   
-    cb_eof_xlen = 0.5
-    cb_eof_ylen = 0.015
-    
-    for c in continents.keys():
-    
-        ############################### panels ##################################
-        
-        x=22
-        y=10
-        f = plt.figure(figsize=(x,y))
-        
-        # time series rect, rect=[left, bottom, right, top]
-        t_left = 0.05
-        t_bottom = 0.65
-        t_right = 0.7
-        t_top = 1.0
-        t_rect = [t_left, t_bottom, t_right, t_top]
-        
-        # time series
-        gs1 = gridspec.GridSpec(1,1)
-        ax1 = f.add_subplot(gs1[0])    
-        
-        gs1.tight_layout(figure=f, rect=t_rect, h_pad=5)
-        
-        # maps of eof
-        gs2 = gridspec.GridSpec(2,3)
-            
-        # map panel rect, rect=[left, bottom, right, top]
-        c_left = 0
-        c_bottom = 0.0
-        c_right = 1.0
-        c_top = 0.6
-        c_rect = [c_left, c_bottom, c_right, c_top]
-        
-        ax2 = f.add_subplot(gs2[0],projection=ccrs.PlateCarree()) # obs eof (cru)
-        ax3 = f.add_subplot(gs2[1],projection=ccrs.PlateCarree()) # hist eof
-        ax4 = f.add_subplot(gs2[2],projection=ccrs.PlateCarree()) # hist-nolu bias
-        
-        ax5 = f.add_subplot(gs2[3],projection=ccrs.PlateCarree()) # obs eof (cru)
-        ax6 = f.add_subplot(gs2[4],projection=ccrs.PlateCarree()) # delta eof
-        ax7 = f.add_subplot(gs2[5],projection=ccrs.PlateCarree()) # eof bias
-        
-        map_axes = {}
-        map_axes['cru'] = [ax2,ax3,ax4]
-        map_axes['berkley_earth'] = [ax5,ax6,ax7]
-        
-        gs2.tight_layout(figure=f, rect=c_rect, h_pad=5)
-        
-        cbax_eof = f.add_axes([cb_eof_x0, 
-                            cb_eof_y0, 
-                            cb_eof_xlen, 
-                            cb_eof_ylen])
-        
-        ############################### timeseries ##################################
-        
-        # plot time series
-        for exp in exps_start:
-            for obs in obs_types:
-                data = pseudo_principal_components[obs][exp][c] - pseudo_principal_components[obs][exp][c].mean(dim='time')
-                data.plot(ax=ax1,
-                          add_legend=False,
-                          color=cols[exp],
-                          linestyle=ls_types[obs],
-                          linewidth=3,
-                          label=obs+' pseudo-PC ' +exp)
-                
-        ax1.legend(frameon=False,
-                   bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
-                   fontsize=legend_font,
-                   labelspacing=legend_spacing)
-        ax1.set_title(letters[0],
-                      fontweight='bold',
-                      loc='left')
-        
-        ############################### eof maps ##################################
-        
-        # eof loading maps
-        count = 0
-        
-        q_samples = []
-        
-        for obs in obs_types:        
-            q_samples.append(np.abs(eof_dict[obs][obs][c].quantile(0.95).item()))
-            q_samples.append(np.abs(eof_dict[obs][obs][c].quantile(0.05).item()))
-            for exp in exps_start:
-                q_samples.append(np.abs(eof_dict[obs][exp][c].quantile(0.95).item()))
-                q_samples.append(np.abs(eof_dict[obs][exp][c].quantile(0.05).item()))
-            
-        # colorbar args
-        start = np.around(np.max(q_samples),decimals=4)
-        inc = start/5
-        values_eof = [-1*start,
-                    -1*start+inc,
-                    -1*start+inc*2,
-                    -1*start+inc*3,
-                    -1*start+inc*4,
-                    -0.001,
-                    0.001,
-                    start-inc*4,
-                    start-inc*3,
-                    start-inc*2,
-                    start-inc,
-                    start]
-        
-        tick_locs_eof = [-1*start,
-                        -1*start+inc,
-                        -1*start+inc*2,
-                        -1*start+inc*3,
-                        -1*start+inc*4,
-                        0,
-                        start-inc*4,
-                        start-inc*3,
-                        start-inc*2,
-                        start-inc,
-                        start]
-        
-        tick_labels_eof = [str(np.around(-1*start,decimals=4)),
-                        str(np.around(-1*start+inc,decimals=4)),
-                        str(np.around(-1*start+inc*2,decimals=4)),
-                        str(np.around(-1*start+inc*3,decimals=4)),
-                        str(np.around(-1*start+inc*4)),
-                        str(0),
-                        str(np.around(start-inc*4,decimals=4)),
-                        str(np.around(start-inc*3,decimals=4)),
-                        str(np.around(start-inc*2,decimals=4)),
-                        str(np.around(start-inc,decimals=4)),
-                        str(start)]
-        
-        norm_eof = mpl.colors.BoundaryNorm(values_eof,cmap_list_eof.N)
-        
-        for obs in obs_types:
-            # data = figure_data[obs]
-            for i,ax in enumerate(map_axes[obs]):
-                count += 1
-                if i == 0:
-                    eof_dict[obs][obs][c].plot(ax=ax,
-                                               transform=ccrs.PlateCarree(),
-                                               cmap=cmap_list_eof,
-                                               cbar_ax=cbax_eof,
-                                               center=0,
-                                               norm=norm_eof,
-                                               add_labels=False)
-                    if obs == 'cru':
-                        height = 0.5
-                    elif obs == 'berkley_earth':
-                        height = 0.3
-                    ax.text(-0.07,
-                            height,
-                            obs,
-                            fontsize=title_font,
-                            fontweight='bold',
-                            rotation='vertical',
-                            transform=ax.transAxes)
-                elif i > 0:
-                    for exp in exps_start:
-                        eof_dict[obs][exp][c].plot(ax=ax,
-                                                   transform=ccrs.PlateCarree(),
-                                                   cmap=cmap_list_eof,
-                                                   cbar_ax=cbax_eof,
-                                                   center=0,
-                                                   norm=norm_eof,
-                                                   add_labels=False)      
-                if obs == 'cru':
-                    if i == 0:
-                        ax.set_title('Obs EOF loading',
-                                     fontweight='bold',
-                                     loc='center',
-                                     fontsize=title_font)
-                    if i == 1:
-                        ax.set_title('hist EOF loading',
-                                    fontweight='bold',
-                                    loc='center',
-                                    fontsize=title_font)
-                    if i == 2:
-                        ax.set_title('hist-noLu EOF loading',
-                                    fontweight='bold',
-                                    loc='center',
-                                    fontsize=title_font)
-                ax.set_title(letters[count],
-                            fontweight='bold',
-                            loc='left')
-                ax.set_extent(extent,
-                            crs=ccrs.PlateCarree())
-                ax.coastlines(linewidth=cstlin_lw)
-        
-        # eof cb
-        cb_eof = mpl.colorbar.ColorbarBase(ax=cbax_eof, 
-                                        cmap=cmap_list_eof,
-                                        norm=norm_eof,
-                                        spacing='uniform',
-                                        orientation='horizontal',
-                                        extend='neither',
-                                        ticks=tick_locs_eof,
-                                        drawedges=False)
-        cb_eof.ax.xaxis.set_label_position('top')
-        cb_eof.ax.tick_params(labelcolor=col_cbticlbl,
-                            labelsize=tick_font,
-                            color=col_cbtic,
-                            length=cb_ticlen,
-                            width=cb_ticwid,
-                            direction='out'); 
-        cb_eof.ax.set_xticklabels(tick_labels_eof,
-                                rotation=45)
-        cb_eof.outline.set_edgecolor(col_cbedg)
-        cb_eof.outline.set_linewidth(cb_edgthic)
-        
-        os.chdir(outDIR)
-        f.savefig(outDIR+'/pca_analysis_continental_{}.png'.format(c),bbox_inches='tight',dpi=400)
-
-#%%==============================================================================   
-
-def pca_plot_ar6(eof_dict,
-                 principal_components,
-                 pseudo_principal_components,
-                 exps_start,
-                 continents,
-                 obs_types,
-                 outDIR):
-
-    
-    ############################### general ##################################
-    
-    letters = ['a','b','c','d','e','f','g','h','i']
-    ls_types = ['-', # cru
-                '--'] # berkley
-    ls_types = {}
-    ls_types['cru'] = '-'
-    ls_types['berkley_earth'] = '--'
-    ls_types['pc'] = ':'
-    
-    cmap_brbg = plt.cm.get_cmap('BrBG')
-    cols={}
-    cols['hist-noLu'] = cmap_brbg(0.95)
-    cols['historical'] = cmap_brbg(0.05)
-    col_zero = 'gray'   # zero change color
-    
-    col_cbticlbl = '0'   # colorbar color of tick labels
-    col_cbtic = '0.5'   # colorbar color of ticks
-    col_cbedg = '0.9'   # colorbar color of edge
-    cb_ticlen = 3.5   # colorbar length of ticks
-    cb_ticwid = 0.4   # colorbar thickness of ticks
-    cb_edgthic = 0   # colorbar thickness of edges between colors
-    cblabel = 'corr'  # colorbar label
-    col_zero = 'gray'   # zero change color
-    sbplt_lw = 0.1   # linewidth on projection panels
-    cstlin_lw = 0.2   # linewidth for coastlines
-    
-    title_font = 12
-    cbtitle_font = 12
-    tick_font = 12
-    legend_font=12
-    
-    east = 180
-    west = -180
-    north = 80
-    south = -60
-    extent = [west,east,south,north]
-    
-    
-    ############################### legend ##################################
-    
-    # bbox
-    le_x0 = 1.05
-    le_y0 = 0.75
-    le_xlen = 0.15
-    le_ylen = 0.25
-    
-    # space between entries
-    legend_entrypad = 0.5
-    
-    # length per entry
-    legend_entrylen = 0.75
-    
-    # space between entries
-    legend_spacing = 1.5
-    
-    ############################### colormaps ##################################
-    
-    # identify colors for obs eof maps
-    cmap55 = cmap_brbg(0.01)
-    cmap50 = cmap_brbg(0.05)   #blue
-    cmap45 = cmap_brbg(0.1)
-    cmap40 = cmap_brbg(0.15)
-    cmap35 = cmap_brbg(0.2)
-    cmap30 = cmap_brbg(0.25)
-    cmap25 = cmap_brbg(0.3)
-    cmap20 = cmap_brbg(0.325)
-    cmap10 = cmap_brbg(0.4)
-    cmap5 = cmap_brbg(0.475)
-    cmap0 = col_zero
-    cmap_5 = cmap_brbg(0.525)
-    cmap_10 = cmap_brbg(0.6)
-    cmap_20 = cmap_brbg(0.625)
-    cmap_25 = cmap_brbg(0.7)
-    cmap_30 = cmap_brbg(0.75)
-    cmap_35 = cmap_brbg(0.8)
-    cmap_40 = cmap_brbg(0.85)
-    cmap_45 = cmap_brbg(0.9)
-    cmap_50 = cmap_brbg(0.95)  #red
-    cmap_55 = cmap_brbg(0.99)
-    
-    colors_brbg = [cmap_55,
-                   cmap_45,
-                   cmap_35,
-                   cmap_25,
-                   cmap_10,
-                   cmap0,
-                   cmap10,
-                   cmap25,
-                   cmap35,
-                   cmap45,
-                   cmap55]
-    
-    # declare list of colors for discrete colormap of colorbar
-    cmap_list_eof = mpl.colors.ListedColormap(colors_brbg,N=len(colors_brbg))
-
-    cb_eof_x0 = 0.36  
-    cb_eof_y0 = -0.05   
-    cb_eof_xlen = 0.5
-    cb_eof_ylen = 0.015
-    
-    for c in continents.keys():
-        
-        for ar6 in continents[c]:
-    
-            ############################### panels ##################################
-            
-            x=22
-            y=10
-            f = plt.figure(figsize=(x,y))
-            
-            # time series rect, rect=[left, bottom, right, top]
-            t_left = 0.05
-            t_bottom = 0.65
-            t_right = 0.7
-            t_top = 1.0
-            t_rect = [t_left, t_bottom, t_right, t_top]
-            
-            # time series
-            gs1 = gridspec.GridSpec(1,1)
-            ax1 = f.add_subplot(gs1[0])    
-            
-            gs1.tight_layout(figure=f, rect=t_rect, h_pad=5)
-            
-            # maps of eof
-            gs2 = gridspec.GridSpec(2,3)
-                
-            # map panel rect, rect=[left, bottom, right, top]
-            c_left = 0
-            c_bottom = 0.0
-            c_right = 1.0
-            c_top = 0.6
-            c_rect = [c_left, c_bottom, c_right, c_top]
-            
-            ax2 = f.add_subplot(gs2[0],projection=ccrs.PlateCarree()) # obs eof (cru)
-            ax3 = f.add_subplot(gs2[1],projection=ccrs.PlateCarree()) # hist eof
-            ax4 = f.add_subplot(gs2[2],projection=ccrs.PlateCarree()) # hist-nolu bias
-            
-            ax5 = f.add_subplot(gs2[3],projection=ccrs.PlateCarree()) # obs eof (cru)
-            ax6 = f.add_subplot(gs2[4],projection=ccrs.PlateCarree()) # delta eof
-            ax7 = f.add_subplot(gs2[5],projection=ccrs.PlateCarree()) # eof bias
-            
-            map_axes = {}
-            map_axes['cru'] = [ax2,ax3,ax4]
-            map_axes['berkley_earth'] = [ax5,ax6,ax7]
-            
-            gs2.tight_layout(figure=f, rect=c_rect, h_pad=5)
-            
-            cbax_eof = f.add_axes([cb_eof_x0, 
-                                   cb_eof_y0, 
-                                   cb_eof_xlen, 
-                                   cb_eof_ylen])
-            
-            ############################### timeseries ##################################
-            
-            # plot time series
-            for exp in exps_start:
-                for obs in obs_types:
-                    data = pseudo_principal_components[obs][exp][ar6] - pseudo_principal_components[obs][exp][ar6].mean(dim='time')
-                    data.plot(ax=ax1,
-                              add_legend=False,
-                              color=cols[exp],
-                              linestyle=ls_types[obs],
-                              linewidth=3,
-                              label=obs+' pseudo-PC ' +exp)
-                    
-            ax1.legend(frameon=False,
-                    bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
-                    fontsize=legend_font,
-                    labelspacing=legend_spacing)
-            ax1.set_title(letters[0],
-                        fontweight='bold',
-                        loc='left')
-            
-            ############################### eof maps ##################################
-            
-            q_samples = []
-            
-            for obs in obs_types:        
-                q_samples.append(np.abs(eof_dict[obs][obs][ar6].quantile(0.95).item()))
-                q_samples.append(np.abs(eof_dict[obs][obs][ar6].quantile(0.05).item()))
-                for exp in exps_start:
-                    q_samples.append(np.abs(eof_dict[obs][exp][ar6].quantile(0.95).item()))
-                    q_samples.append(np.abs(eof_dict[obs][exp][ar6].quantile(0.05).item()))
-                
-            # colorbar args
-            start = np.around(np.max(q_samples),decimals=4)
-            inc = start/5
-            values_eof = [-1*start,
-                        -1*start+inc,
-                        -1*start+inc*2,
-                        -1*start+inc*3,
-                        -1*start+inc*4,
-                        -0.001,
-                        0.001,
-                        start-inc*4,
-                        start-inc*3,
-                        start-inc*2,
-                        start-inc,
-                        start]
-            
-            tick_locs_eof = [-1*start,
-                            -1*start+inc,
-                            -1*start+inc*2,
-                            -1*start+inc*3,
-                            -1*start+inc*4,
-                            0,
-                            start-inc*4,
-                            start-inc*3,
-                            start-inc*2,
-                            start-inc,
-                            start]
-            
-            tick_labels_eof = [str(np.around(-1*start,decimals=4)),
-                            str(np.around(-1*start+inc,decimals=4)),
-                            str(np.around(-1*start+inc*2,decimals=4)),
-                            str(np.around(-1*start+inc*3,decimals=4)),
-                            str(np.around(-1*start+inc*4)),
-                            str(0),
-                            str(np.around(start-inc*4,decimals=4)),
-                            str(np.around(start-inc*3,decimals=4)),
-                            str(np.around(start-inc*2,decimals=4)),
-                            str(np.around(start-inc,decimals=4)),
-                            str(start)]
-            
-            norm_eof = mpl.colors.BoundaryNorm(values_eof,cmap_list_eof.N)
-            
-            # eof loading maps
-            count = 0
-            for obs in obs_types:
-                # data = figure_data[obs]
-                for i,ax in enumerate(map_axes[obs]):
-                    count += 1
-                    if i == 0:
-                        eof_dict[obs][obs][ar6].plot(ax=ax,
-                                                     transform=ccrs.PlateCarree(),
-                                                     cmap=cmap_list_eof,
-                                                     cbar_ax=cbax_eof,
-                                                     center=0,
-                                                     norm=norm_eof,
-                                                     add_labels=False)
-                        if obs == 'cru':
-                            height = 0.5
-                        elif obs == 'berkley_earth':
-                            height = 0.3
-                        ax.text(-0.07,
-                                height,
-                                obs,
-                                fontsize=title_font,
-                                fontweight='bold',
-                                rotation='vertical',
-                                transform=ax.transAxes)
-                    elif i > 0:
-                        for exp in exps_start:
-                            eof_dict[obs][exp][ar6].plot(ax=ax,
-                                                         transform=ccrs.PlateCarree(),
-                                                         cmap=cmap_list_eof,
-                                                         cbar_ax=cbax_eof,
-                                                         center=0,
-                                                         norm=norm_eof,
-                                                         add_labels=False)      
-                    if obs == 'cru':
-                        if i == 0:
-                            ax.set_title('Obs EOF loading',
-                                         fontweight='bold',
-                                         loc='center',
-                                         fontsize=title_font)
-                        if i == 1:
-                            ax.set_title('hist EOF loading',
-                                         fontweight='bold',
-                                         loc='center',
-                                         fontsize=title_font)
-                        if i == 2:
-                            ax.set_title('hist-noLu EOF loading',
-                                         fontweight='bold',
-                                         loc='center',
-                                         fontsize=title_font)
-                    ax.set_title(letters[count],
-                                fontweight='bold',
-                                loc='left')
-                    ax.set_extent(extent,
-                                crs=ccrs.PlateCarree())
-                    ax.coastlines(linewidth=cstlin_lw)
-            
-            # eof cb
-            cb_eof = mpl.colorbar.ColorbarBase(ax=cbax_eof, 
-                                            cmap=cmap_list_eof,
-                                            norm=norm_eof,
-                                            spacing='uniform',
-                                            orientation='horizontal',
-                                            extend='neither',
-                                            ticks=tick_locs_eof,
-                                            drawedges=False)
-            cb_eof.ax.xaxis.set_label_position('top')
-            cb_eof.ax.tick_params(labelcolor=col_cbticlbl,
-                                labelsize=tick_font,
-                                color=col_cbtic,
-                                length=cb_ticlen,
-                                width=cb_ticwid,
-                                direction='out'); 
-            cb_eof.ax.set_xticklabels(tick_labels_eof,
-                                    rotation=45)
-            cb_eof.outline.set_edgecolor(col_cbedg)
-            cb_eof.outline.set_linewidth(cb_edgthic)
-            
-            os.chdir(outDIR)
-            f.savefig(outDIR+'/pca_analysis_ar6_{}.png'.format(ar6),bbox_inches='tight',dpi=400)
-    
-#%%==============================================================================   
-
-def pca_plot_luh2(eof_dict,
-                  principal_components,
-                  pseudo_principal_components,
-                  models,
-                  landcover_types,
-                  obs_types,
-                  outDIR):
-    # 3 map panels on right side:
-        # lu EOF
-        # luh2 deforestation EOF
-        # luh2 crops EOF
-
-    # time series on right side:
-        # lu psuedo pc on luh2 eofs (do pseudo pc's per model and on multi-model mean)
-            # mmm could be band via leave 1 out cross val
-        # 
-    
-    ############################### general ##################################
-    
-    letters = ['a','b','c','d','e','f','g','h','i']
-
-    ls_types = {}
-    ls_types['mmm'] = '-'
-    ls_types['model_i'] = ':'
-    
-    cmap_brbg = plt.cm.get_cmap('BrBG')
-    cols={}
-    cols['forest'] = cmap_brbg(0.95)
-    cols['crops'] = cmap_brbg(0.05)
-    model_colors = ['maroon','darkorange','slategrey','slateblue']
-    for i,mod in enumerate(models):
-        cols[mod] = model_colors[i]
-
-    col_zero = 'gray'   # zero change color
-    
-    col_cbticlbl = '0'   # colorbar color of tick labels
-    col_cbtic = '0.5'   # colorbar color of ticks
-    col_cbedg = '0.9'   # colorbar color of edge
-    cb_ticlen = 3.5   # colorbar length of ticks
-    cb_ticwid = 0.4   # colorbar thickness of ticks
-    cb_edgthic = 0   # colorbar thickness of edges between colors
-    cblabel = 'corr'  # colorbar label
-    col_zero = 'gray'   # zero change color
-    sbplt_lw = 0.1   # linewidth on projection panels
-    cstlin_lw = 0.2   # linewidth for coastlines
-    
-    title_font = 12
-    cbtitle_font = 12
-    tick_font = 12
-    legend_font=12
-    
-    east = 180
-    west = -180
-    north = 80
-    south = -60
-    extent = [west,east,south,north]
-    
-    
-    ############################### legend ##################################
-    
-    # bbox
-    le_x0 = 1.0
-    le_y0 = 0.75
-    le_xlen = 0.15
-    le_ylen = 0.25
-    
-    # space between entries
-    legend_entrypad = 0.5
-    
-    # length per entry
-    legend_entrylen = 0.75
-    
-    # space between entries
-    legend_spacing = 1.5
-    
-    ############################### colormaps ##################################
-    
-    # identify colors for obs eof maps
-    cmap55 = cmap_brbg(0.01)
-    cmap50 = cmap_brbg(0.05)   #blue
-    cmap45 = cmap_brbg(0.1)
-    cmap40 = cmap_brbg(0.15)
-    cmap35 = cmap_brbg(0.2)
-    cmap30 = cmap_brbg(0.25)
-    cmap25 = cmap_brbg(0.3)
-    cmap20 = cmap_brbg(0.325)
-    cmap10 = cmap_brbg(0.4)
-    cmap5 = cmap_brbg(0.475)
-    cmap0 = col_zero
-    cmap_5 = cmap_brbg(0.525)
-    cmap_10 = cmap_brbg(0.6)
-    cmap_20 = cmap_brbg(0.625)
-    cmap_25 = cmap_brbg(0.7)
-    cmap_30 = cmap_brbg(0.75)
-    cmap_35 = cmap_brbg(0.8)
-    cmap_40 = cmap_brbg(0.85)
-    cmap_45 = cmap_brbg(0.9)
-    cmap_50 = cmap_brbg(0.95)  #red
-    cmap_55 = cmap_brbg(0.99)
-    
-    colors_brbg = [cmap_45,
-                   cmap_35,
-                   cmap_25,
-                   cmap_10,
-                   cmap0,
-                   cmap10,
-                   cmap25,
-                   cmap35,
-                   cmap45]
-    
-    # declare list of colors for discrete colormap of colorbar
-    cmap_list_eof = mpl.colors.ListedColormap(colors_brbg,N=len(colors_brbg))
-    
-    # colorbar args
-    start = 0.015
-    inc = start/4
-    values_eof = [-1*start,
-                  -1*start+inc,
-                  -1*start+inc*2,
-                  -1*start+inc*3,
-                  -0.001,
-                  0.001,
-                  start-inc*3,
-                  start-inc*2,
-                  start-inc,
-                  start]
-    
-    tick_locs_eof = [-1*start,
-                     -1*start+inc,
-                     -1*start+inc*2,
-                     -1*start+inc*3,
-                     0,
-                     start-inc*3,
-                     start-inc*2,
-                     start-inc,
-                     start]
-    
-    tick_labels_eof = [str(-1*start),
-                       str(-1*start+inc),
-                       str(-1*start+inc*2),
-                       str(-1*start+inc*3),
-                       str(0),
-                       str(start-inc*3),
-                       str(start-inc*2),
-                       str(start-inc),
-                       str(start)]
-    
-    norm_eof = mpl.colors.BoundaryNorm(values_eof,cmap_list_eof.N)
-    
-    cb_eof_x0 = 0.66  
-    cb_eof_y0 = -0.05   
-    cb_eof_xlen = 0.25
-    cb_eof_ylen = 0.015
-    
-    ############################### timeseries ##################################
-
-    # one fig per obs type:
-    for obs in obs_types:
-
-        x=22
-        y=10
-        f = plt.figure(figsize=(x,y))
-        
-        # time series rect, rect=[left, bottom, right, top]
-        t_left = 0.0
-        t_bottom = 0.0
-        t_right = 0.45
-        t_top = 1.0
-        t_rect = [t_left, t_bottom, t_right, t_top]
-        
-        # time series
-        gs1 = gridspec.GridSpec(2,1)
-        ax1 = f.add_subplot(gs1[0])    
-        ax2 = f.add_subplot(gs1[1])    
-        
-        gs1.tight_layout(figure=f, rect=t_rect, h_pad=5)
-
-        ts_axes = {}
-        ts_axes['forest'] = ax1
-        ts_axes['crops'] = ax2
-        
-        # maps of eof
-        gs2 = gridspec.GridSpec(2,1)
-        ax3 = f.add_subplot(gs2[0],projection=ccrs.PlateCarree()) # luh2 defor eof
-        ax4 = f.add_subplot(gs2[1],projection=ccrs.PlateCarree()) # luh2 crops eof
-            
-        c_left = 0.6
-        c_bottom = 0.0
-        c_right = 1.0
-        c_top = 1.0
-        c_rect = [c_left, c_bottom, c_right, c_top]
-        
-        map_axes = {}
-        map_axes['forest'] = ax3
-        map_axes['crops'] = ax4
-        
-        gs2.tight_layout(figure=f, rect=c_rect, h_pad=5)
-
-        cbax_eof = f.add_axes([cb_eof_x0, 
-                               cb_eof_y0, 
-                               cb_eof_xlen, 
-                               cb_eof_ylen])
-
-        # plot time series
-        for lc in landcover_types:
-            ax = ts_axes[lc]
-            # data = principal_components[obs][lc] - principal_components[obs][lc].mean(dim='time')
-            # ax = ts_axes[lc]
-            # data.plot(ax=ax,
-            #           add_legend=False,
-            #           color='k',
-            #           linestyle=ls_types['mmm'],
-            #           linewidth=5,
-            #           label='PC1')
-            # plot mmm
-            data = pseudo_principal_components[obs][lc]['mmm'] - pseudo_principal_components[obs][lc]['mmm'].mean(dim='time')
-            data.plot(ax=ax,
-                      add_legend=False,
-                      color=cols[lc],
-                      linestyle=ls_types['mmm'],
-                      linewidth=3,
-                      label='MMM pseudo-PC ({})'.format(lc))
-            # plot alternative mmm
-            for mod in models:
-                data = pseudo_principal_components[obs][lc]['mmm_no_{}'.format(mod)] - pseudo_principal_components[obs][lc]['mmm_no_{}'.format(mod)].mean(dim='time')
-                data.plot(ax=ax,
-                          add_legend=False,
-                          color=cols[mod],
-                          linestyle=ls_types['mmm'],
-                          linewidth=3,
-                          label='MMM except {}'.format(mod))
-                # data = pseudo_principal_components[obs][lc][mod] - pseudo_principal_components[obs][lc][mod].mean(dim='time')
-                # data.plot(ax=ts_axes[lc],
-                #           add_legend=False,
-                #           color=cols[mod],
-                #           linestyle=ls_types['model_i'],
-                #           linewidth=3,
-                #           label=mod)                      
-            
-                
-        ax1.legend(frameon=False,
-                bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
-                fontsize=legend_font,
-                labelspacing=legend_spacing)
-        ax1.set_title(letters[0],
-                    fontweight='bold',
-                    loc='left')
-        
-        ############################### eof maps ##################################
-        
-        # eof loading maps
-        for i,lc in enumerate(landcover_types):
-            data = eof_dict[obs][lc]
-            ax = map_axes[lc]
-            data.plot(ax=ax,
-                        transform=ccrs.PlateCarree(),
-                        cmap=cmap_list_eof,
-                        cbar_ax=cbax_eof,
-                        center=0,
-                        norm=norm_eof,
-                        add_labels=False)
-            ax.set_title(lc,
-                        fontweight='bold',
-                        loc='center',
-                        fontsize=title_font)
-            ax.set_title(letters[i+1],
-                        fontweight='bold',
-                        loc='left')
-            ax.set_extent(extent,
-                            crs=ccrs.PlateCarree())
-            ax.coastlines(linewidth=cstlin_lw)
-        
-        # eof cb
-        cb_eof = mpl.colorbar.ColorbarBase(ax=cbax_eof, 
-                                            cmap=cmap_list_eof,
-                                            norm=norm_eof,
-                                            spacing='uniform',
-                                            orientation='horizontal',
-                                            extend='neither',
-                                            ticks=tick_locs_eof,
-                                            drawedges=False)
-        cb_eof.ax.xaxis.set_label_position('top')
-        cb_eof.ax.tick_params(labelcolor=col_cbticlbl,
-                            labelsize=tick_font,
-                            color=col_cbtic,
-                            length=cb_ticlen,
-                            width=cb_ticwid,
-                            direction='out'); 
-        cb_eof.ax.set_xticklabels(tick_labels_eof,
-                                rotation=45)
-        cb_eof.outline.set_edgecolor(col_cbedg)
-        cb_eof.outline.set_linewidth(cb_edgthic)
-        
-        os.chdir(outDIR)
-        plt.show()
-
-        # f.savefig(outDIR+'/pca_analysis_luh2_{}.png'.format(obs),bbox_inches='tight',dpi=400)
-
-#%%==============================================================================   
-
-def standard_data(da):
-    
-    climatology_mean = da.mean("time")
-    climatology_std = da.std("time")
-    stand_anomalies = xr.apply_ufunc(
-        lambda x, m, s: (x - m) / s,
-        da,
-        climatology_mean,
-        climatology_std,
-    )
-    return stand_anomalies
-        
-# #data ensembler
-# def ensembler(data,roller_dim):
-#     concat_dim = np.arange(len(data))
-#     aligned = xr.concat(data,dim=concat_dim)    
-#     mean = aligned.mean(dim='concat_dim').rolling(dim={roller_dim:21},center=True).mean()
-#     scen_max = aligned.max(dim='concat_dim').rolling(dim={roller_dim:21},center=True).mean()
-#     scen_min = aligned.min(dim='concat_dim').rolling(dim={roller_dim:21},center=True).mean()
-#     return [mean,scen_max,scen_min]
 
 #%%==============================================================================           
 
@@ -1775,3 +208,663 @@ def lengther(mask):
     mask = mask.values.flatten()
     mask_length = np.count_nonzero(mask)
     return(mask_length)
+
+#%%============================================================================
+
+def data_lumper(dataset,
+                models):
+    
+    data = np.empty(1)
+    for mod in models:
+        mod_data = dataset[mod]['treeFrac'].values.flatten()
+        data = np.append(data,mod_data)
+                        
+    data = data[~np.isnan(data)]
+    return data
+
+#%%============================================================================
+
+def colormap_details(sequence_string,
+                     data):
+
+    # identify colors for land cover transition trends
+    cmap_brbg = plt.cm.get_cmap(sequence_string)
+    cmap55 = cmap_brbg(0.01)
+    cmap50 = cmap_brbg(0.05)   #blue
+    cmap45 = cmap_brbg(0.1)
+    cmap40 = cmap_brbg(0.15)
+    cmap35 = cmap_brbg(0.2)
+    cmap30 = cmap_brbg(0.25)
+    cmap25 = cmap_brbg(0.3)
+    cmap20 = cmap_brbg(0.325)
+    cmap10 = cmap_brbg(0.4)
+    cmap5 = cmap_brbg(0.475)
+    cmap0 = 'gray'
+    cmap_5 = cmap_brbg(0.525)
+    cmap_10 = cmap_brbg(0.6)
+    cmap_20 = cmap_brbg(0.625)
+    cmap_25 = cmap_brbg(0.7)
+    cmap_30 = cmap_brbg(0.75)
+    cmap_35 = cmap_brbg(0.8)
+    cmap_40 = cmap_brbg(0.85)
+    cmap_45 = cmap_brbg(0.9)
+    cmap_50 = cmap_brbg(0.95)  #red
+    cmap_55 = cmap_brbg(0.99)
+
+    colors = [cmap_50,
+              cmap_45,
+              cmap_40,
+              cmap_35,
+              cmap_30,
+              cmap_25,
+              cmap_10,
+              cmap0,
+              cmap10,
+              cmap25,
+              cmap30,
+              cmap35,
+              cmap40,
+              cmap45,
+              cmap50]
+
+    cmap_list = mpl.colors.ListedColormap(colors,
+                                          N=len(colors))
+    
+    cmap_list.set_over(cmap55)
+    cmap_list.set_under(cmap_55)
+
+    q_samples = []
+    q_samples.append(np.abs(np.quantile(data,0.99)))
+    q_samples.append(np.abs(np.quantile(data,0.01)))
+        
+    start = np.around(np.max(q_samples),decimals=4)
+    inc = start/6
+    values = [np.around(-1*start,decimals=2),
+              np.around(-1*start+inc,decimals=2),
+              np.around(-1*start+inc*2,decimals=2),
+              np.around(-1*start+inc*3,decimals=2),
+              np.around(-1*start+inc*4,decimals=2),
+              np.around(-1*start+inc*5,decimals=2),
+              np.around(start-inc*5,decimals=2),
+              np.around(start-inc*4,decimals=2),
+              np.around(start-inc*3,decimals=2),
+              np.around(start-inc*2,decimals=2),
+              np.around(start-inc,decimals=2),
+              np.around(start,decimals=2)]
+    
+    # values = [np.around(-1*start,decimals=2),
+    #           np.around(-1*start+inc,decimals=2),
+    #           np.around(-1*start+inc*2,decimals=2),
+    #           np.around(-1*start+inc*3,decimals=2),
+    #           np.around(-1*start+inc*4,decimals=2),
+    #           null_bnds[0],
+    #           null_bnds[1],
+    #           np.around(start-inc*4,decimals=2),
+    #           np.around(start-inc*3,decimals=2),
+    #           np.around(start-inc*2,decimals=2),
+    #           np.around(start-inc,decimals=2),
+    #           np.around(start,decimals=2)]
+
+    tick_locs = [np.around(-1*start,decimals=2),
+                 np.around(-1*start+inc,decimals=2),
+                 np.around(-1*start+inc*2,decimals=2),
+                 np.around(-1*start+inc*3,decimals=2),
+                 np.around(-1*start+inc*4,decimals=2),
+                 0,
+                 np.around(start-inc*4,decimals=2),
+                 np.around(start-inc*3,decimals=2),
+                 np.around(start-inc*2,decimals=2),
+                 np.around(start-inc,decimals=2),
+                 np.around(start,decimals=2)]
+
+    tick_labels = [str(np.around(-1*start,decimals=2)),
+                   str(np.around(-1*start+inc,decimals=2)),
+                   str(np.around(-1*start+inc*2,decimals=2)),
+                   str(np.around(-1*start+inc*3,decimals=2)),
+                   str(np.around(-1*start+inc*4,decimals=2)),
+                   str(0),
+                   str(np.around(start-inc*4,decimals=2)),
+                   str(np.around(start-inc*3,decimals=2)),
+                   str(np.around(start-inc*2,decimals=2)),
+                   str(np.around(start-inc,decimals=2)),
+                   str(np.around(start,decimals=2))]
+
+    norm = mpl.colors.BoundaryNorm(values,cmap_list.N)
+    
+    return cmap_list,tick_locs,tick_labels,norm,values
+
+
+#%%==============================================================================
+
+def sig_noise_plot(sig_noise,
+                   eof_dict,
+                   scale,
+                   lulcc,
+                   models,
+                   continents,
+                   lat_ranges,
+                   letters,
+                   t_ext,
+                   outDIR):
+
+    x=7
+    y=6
+    eof_color='BrBG'
+    cmap=plt.cm.get_cmap(eof_color)
+    colors = {}
+    colors['treeFrac'] = cmap(0.85)
+    colors['lu_treeFrac_rls'] = cmap(0.75)
+    colors['lu_treeFrac'] = cmap(0.95)
+    colors['cropFrac'] = cmap(0.15)
+    colors['lu_cropFrac'] = cmap(0.05)
+    colors['pi'] = 'lightgray'
+
+    # legend location
+    le_x0 = 0.7
+    le_y0 = 0.4
+    le_xlen = 0.2
+    le_ylen = 0.5
+
+    legend_font = 5
+    
+    # space between entries
+    legend_entrypad = 0.5
+
+    # length per entry
+    legend_entrylen = 2
+    
+    col_cbticlbl = '0'   # colorbar color of tick labels
+    col_cbtic = '0.5'   # colorbar color of ticks
+    col_cbedg = '0.9'   # colorbar color of edge
+    cb_ticlen = 3.5   # colorbar length of ticks
+    cb_ticwid = 0.4   # colorbar thickness of ticks
+    cb_edgthic = 0   # colorbar thickness of edges between colors
+    cblabel = 'corr'  # colorbar label
+    sbplt_lw = 0.1   # linewidth on projection panels
+    cstlin_lw = 0.75   # linewidth for coastlines
+
+    # fonts
+    title_font = 11
+    cbtitle_font = 11
+    tick_font = 10
+    legend_font=10
+
+    # placment eof cbar
+    cb_x0 = 1.05
+    cb_y0 = 0.05
+    cb_xlen = 0.025
+    cb_ylen = 0.9
+
+    # extent
+    east = 180
+    west = -180
+    north = 80
+    south = -60
+    extent = [west,east,south,north]
+
+    cmap_list,_,_,_,_ = colormap_details('BrBG_r',
+                                        data_lumper(eof_dict,
+                                                    models))
+    levels = np.around(np.arange(-0.04,0.045,0.005),decimals=3)
+    levels = np.delete(levels,np.where(levels==0))
+    tick_labels = np.around(np.arange(-0.04,0.045,0.01),decimals=3)
+    tick_locs = tick_labels
+    norm = mpl.colors.BoundaryNorm(levels,cmap_list.N)
+    
+
+    if scale == 'global':
+        
+        f = plt.figure(figsize=(x,y))
+        
+        # histograms
+        gs1 = gridspec.GridSpec(4,1)
+        h_left = 0.0
+        h_bottom = 0.0
+        h_right = 0.45
+        h_top = 1.0
+        h_rect = [h_left, h_bottom, h_right, h_top]
+        
+        ax0 = f.add_subplot(gs1[0])    
+        ax1 = f.add_subplot(gs1[1])
+        ax2 = f.add_subplot(gs1[2])
+        ax3 = f.add_subplot(gs1[3])
+        
+        h_axes = [ax0,ax1,ax2,ax3]    
+        
+        gs1.tight_layout(figure=f, rect=h_rect, h_pad=2)
+        
+        # maps of eof
+        gs2 = gridspec.GridSpec(4,1)
+        m_left = 0.45
+        m_bottom = 0.0
+        m_right = 1.0
+        m_top = 1.0
+        m_rect = [m_left, m_bottom, m_right, m_top]
+        
+        ax4 = f.add_subplot(gs2[0],projection=ccrs.PlateCarree()) # hist-nolu bias
+        ax5 = f.add_subplot(gs2[1],projection=ccrs.PlateCarree()) # obs eof (cru)
+        ax6 = f.add_subplot(gs2[2],projection=ccrs.PlateCarree()) # delta eof
+        ax7 = f.add_subplot(gs2[3],projection=ccrs.PlateCarree()) # eof bias
+    
+        map_axes = [ax4,ax5,ax6,ax7]       
+        
+        gs2.tight_layout(figure=f, rect=m_rect, h_pad=2) 
+
+        cbax = f.add_axes([cb_x0, 
+                           cb_y0, 
+                           cb_xlen, 
+                           cb_ylen])
+        i = 0
+        
+        for mod,ax in zip(models,h_axes):
+
+            # collect pic across treeFrac and treeFrac_inv
+            pic = []
+
+            for lc in lulcc:
+                
+                pic.append(sig_noise['pic_S_N_{}'.format(mod)].sel(landcover=lc))
+                
+            pic = xr.concat(pic,dim='landcover')
+            
+            sns.distplot(pic,
+                         ax=ax,
+                         fit=sts.norm,
+                         fit_kws={"color":colors['pi']},
+                         color = colors['pi'],
+                         label='PIC',
+                         kde=False)
+                
+            # plot lu s/n
+            ax.vlines(x=np.abs(sig_noise['lu_S_N'].sel(models=mod,landcover='treeFrac')),
+                      ymin=0,
+                      ymax=0.5,
+                      colors=colors['lu_treeFrac'],
+                      label='LU mean',
+                      zorder=20)     
+            # plot lu rls s/n
+            ax.vlines(x=np.abs(sig_noise['lu_rls_S_N_{}'.format(mod)].sel(landcover='treeFrac')),
+                      ymin=0,
+                      ymax=0.5,
+                      colors=colors['lu_treeFrac_rls'],
+                      label='LU rls',
+                      zorder=10)                 
+                
+            # likelihood s/n for detectability
+            ax.vlines(x=0.95,
+                      ymin=0,
+                      ymax=0.1,
+                      colors='indianred',
+                      label=None,
+                      zorder=30)
+                    #   label='likely')
+            ax.vlines(x=1.64,
+                      ymin=0,
+                      ymax=0.1,
+                      colors='firebrick',
+                      label=None,
+                      zorder=30)
+                    #   label='very likely')
+            ax.vlines(x=2.57,
+                      ymin=0,
+                      ymax=0.1,
+                      colors='maroon',
+                      label=None,
+                      zorder=30)
+                    #   label='virtually certain')
+                    
+                    # Horizontal lines correspond to the thresholds of:
+                    #     likely (S/N > 0.95; detectable at 66% confidence), 
+                    #     very likely (S/N > 1.64, 90% confidence) 
+                    #     virtually certain (S/N > 2.57, 99% confidence).
+                
+            ax.spines['right'].set_visible(False)
+            ax.spines['top'].set_visible(False)
+            ax.set_title(None)
+            ax.set_xlabel(None)
+            ax.xaxis.set_ticklabels([])
+            ax.set_xticks(np.arange(-4,5,2))
+            ax.set_xlim(-4,4)
+            
+            if mod == 'CanESM5':
+                height = 0.2
+            else:
+                height= 0.0
+
+            ax.set_ylabel('Frequency',
+                            fontsize=title_font)
+            ax.text(-0.3,
+                    height,
+                    mod,
+                    fontweight='bold',
+                    rotation='vertical',
+                    fontsize=title_font,
+                    transform=ax.transAxes) 
+            
+            if mod == models[-1]:
+                ax.set_xlabel('S/N')
+                ax.xaxis.set_ticklabels(np.arange(-4,5,2))
+            
+            if i == 0:
+                ax.legend(frameon=False,
+                        bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
+                        fontsize=legend_font,
+                        labelspacing=legend_entrypad)
+                
+            i += 1
+            
+        i = 0
+        
+        for mod,ax in zip(models,map_axes):
+
+            eof_dict[mod]['treeFrac'].plot(ax=ax,
+                                           cmap=cmap_list,
+                                           cbar_ax=cbax,
+                                           levels=levels,
+                                           extend='both',
+                                           add_labels=False)
+            ax.set_extent(extent,
+                          crs=ccrs.PlateCarree())
+            ax.coastlines(linewidth=cstlin_lw)
+            
+            i += 1
+
+        cb = mpl.colorbar.ColorbarBase(ax=cbax, 
+                                          cmap=cmap_list,
+                                          norm=norm,
+                                          spacing='uniform',
+                                          orientation='vertical',
+                                          extend='both',
+                                          ticks=tick_locs,
+                                          drawedges=False)
+        cb.set_label('EOF loading [-]',
+                        size=cbtitle_font)
+        cb.ax.xaxis.set_label_position('top')
+        cb.ax.tick_params(labelcolor=col_cbticlbl,
+                             labelsize=tick_font,
+                             color=col_cbtic,
+                             length=cb_ticlen,
+                             width=cb_ticwid,
+                             direction='out'); 
+        cb.ax.set_yticklabels(tick_labels)
+        cb.outline.set_edgecolor(col_cbedg)
+        cb.outline.set_linewidth(cb_edgthic)
+        
+            
+        for i,ax in enumerate([ax0,ax1,ax2,ax3,ax4,ax5,ax6,ax7]):
+            
+            ax.set_title(letters[i],
+                         loc='left',
+                         fontweight='bold',
+                         fontsize=title_font)
+        
+        f.savefig(outDIR+'/pca_noise_{}_{}.png'.format(scale,t_ext),bbox_inches='tight',dpi=250)
+        
+#%%==============================================================================        
+
+    elif scale == 'latitudinal':
+
+        for ltr in lat_ranges.keys():
+
+            f,axes = plt.subplots(nrows=len(models),
+                                ncols=1,
+                                figsize=(x,y))
+            i = 0
+            
+            for mod,ax in zip(models,axes):
+
+                for lc in lulcc:
+                    
+                    sns.distplot(sig_noise['pic_S_N_{}'.format(mod)].sel(landcover=lc),
+                                ax=ax,
+                                fit=sts.norm,
+                                fit_kws={"color":colors[lc]},
+                                color = colors[lc],
+                                label='PIC_{}'.format(lc),
+                                kde=False)
+                    
+                    # plot lu s/n
+                    ax.vlines(x=np.abs(sig_noise['lu_S_N'].sel(models=mod,landcover='treeFrac')),
+                            ymin=0,
+                            ymax=0.5,
+                            colors=colors['lu_treeFrac'],
+                            label='lu_{}'.format(lc))    
+                    
+                # likelihood s/n for detectability
+                ax.vlines(x=0.95,
+                        ymin=0,
+                        ymax=0.1,
+                        colors='indianred',
+                        label='likely')
+                ax.vlines(x=1.64,
+                        ymin=0,
+                        ymax=0.1,
+                        colors='firebrick',
+                        label='very likely')
+                ax.vlines(x=2.57,
+                        ymin=0,
+                        ymax=0.1,
+                        colors='maroon',
+                        label='virtually certain')
+                        
+                        # Horizontal lines correspond to the thresholds of:
+                        #     likely (S/N > 0.95; detectable at 66% confidence), 
+                        #     very likely (S/N > 1.64, 90% confidence) 
+                        #     virtually certain (S/N > 2.57, 99% confidence).                
+                    
+                ax.spines['right'].set_visible(False)
+                ax.spines['top'].set_visible(False)
+                ax.set_title(None)
+                ax.set_title(letters[i],
+                            loc='left',
+                            fontweight='bold')
+                ax.set_xlabel(None)
+                ax.xaxis.set_ticklabels([])
+                ax.set_xlim(-4,4)
+                
+                if mod == 'CanESM5':
+                    height = 0.4
+                else:
+                    height= 0.3
+
+                ax.set_ylabel('Frequency',
+                                fontsize=12)
+                ax.text(-0.15,
+                        height,
+                        mod,
+                        fontweight='bold',
+                        rotation='vertical',
+                        transform=ax.transAxes) 
+                
+                if mod == models[-1]:
+                    ax.set_xlabel('S/N')
+                    ax.xaxis.set_ticklabels(np.arange(-4,5,1))
+                
+                if i == 0:
+                    ax.legend(frameon=False,
+                            bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
+                            labelspacing=legend_entrypad)
+                    
+                i += 1
+
+            # f.savefig(outDIR+'/pca_noise_{}_{}_{}.png'.format(scale,ltr,t_ext))
+            
+#%%==============================================================================
+
+    elif scale == 'continental':
+
+        for c in continents.keys():
+
+            f,axes = plt.subplots(nrows=len(models),
+                                ncols=1,
+                                figsize=(x,y))
+            i = 0
+            
+            for mod,ax in zip(models,axes):
+
+                for lc in lulcc:
+                    
+                    sns.distplot(sig_noise['pic_S_N_{}'.format(mod)].sel(landcover=lc),
+                                ax=ax,
+                                fit=sts.norm,
+                                fit_kws={"color":colors[lc]},
+                                color = colors[lc],
+                                label='PIC_{}'.format(lc),
+                                kde=False)
+                    
+                    # plot lu s/n
+                    ax.vlines(x=np.abs(sig_noise['lu_S_N'].sel(models=mod,landcover='treeFrac')),
+                            ymin=0,
+                            ymax=0.5,
+                            colors=colors['lu_treeFrac'],
+                            label='lu_{}'.format(lc))         
+                    
+                # likelihood s/n for detectability
+                ax.vlines(x=0.95,
+                        ymin=0,
+                        ymax=0.1,
+                        colors='indianred',
+                        label='likely')
+                ax.vlines(x=1.64,
+                        ymin=0,
+                        ymax=0.1,
+                        colors='firebrick',
+                        label='very likely')
+                ax.vlines(x=2.57,
+                        ymin=0,
+                        ymax=0.1,
+                        colors='maroon',
+                        label='virtually certain')
+                        
+                        # Horizontal lines correspond to the thresholds of:
+                        #     likely (S/N > 0.95; detectable at 66% confidence), 
+                        #     very likely (S/N > 1.64, 90% confidence) 
+                        #     virtually certain (S/N > 2.57, 99% confidence).                   
+                    
+                ax.spines['right'].set_visible(False)
+                ax.spines['top'].set_visible(False)
+                ax.set_title(None)
+                ax.set_title(letters[i],
+                            loc='left',
+                            fontweight='bold')
+                ax.set_xlabel(None)
+                ax.xaxis.set_ticklabels([])
+                ax.set_xlim(-4,4)
+                
+                if mod == 'CanESM5':
+                    height = 0.4
+                else:
+                    height= 0.3
+
+                ax.set_ylabel('Frequency',
+                                fontsize=12)
+                ax.text(-0.15,
+                        height,
+                        mod,
+                        fontweight='bold',
+                        rotation='vertical',
+                        transform=ax.transAxes) 
+                
+                if mod == models[-1]:
+                    ax.set_xlabel('S/N')
+                    ax.xaxis.set_ticklabels(np.arange(-4,5,1))
+                
+                if i == 0:
+                    ax.legend(frameon=False,
+                            bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
+                            labelspacing=legend_entrypad)
+                    
+                i += 1
+
+            f.savefig(outDIR+'/pca_noise_{}_{}_{}.png'.format(scale,c,t_ext))
+            
+    elif scale == 'ar6':
+
+        for c in continents.keys():
+            
+            for ar6 in continents[c]:
+
+                f,axes = plt.subplots(nrows=len(models),
+                                    ncols=1,
+                                    figsize=(x,y))
+                i = 0
+                
+                for mod,ax in zip(models,axes):
+
+                    for lc in lulcc:
+                        
+                        sns.distplot(sig_noise['pic_S_N_{}'.format(mod)].sel(landcover=lc),
+                                     ax=ax,
+                                     fit=sts.norm,
+                                     fit_kws={"color":colors[lc]},
+                                     color = colors[lc],
+                                     label='PIC_{}'.format(lc),
+                                     kde=False)
+                        
+                        # plot lu s/n
+                        ax.vlines(x=np.abs(sig_noise['lu_S_N'].sel(models=mod,landcover='treeFrac')),
+                                ymin=0,
+                                ymax=0.5,
+                                colors=colors['lu_treeFrac'],
+                                label='lu_{}'.format(lc))    
+                        
+                    # likelihood s/n for detectability
+                    ax.vlines(x=0.95,
+                              ymin=0,
+                              ymax=0.1,
+                              colors='indianred',
+                              label='likely')
+                    ax.vlines(x=1.64,
+                              ymin=0,
+                              ymax=0.1,
+                              colors='firebrick',
+                              label='very likely')
+                    ax.vlines(x=2.57,
+                              ymin=0,
+                              ymax=0.1,
+                              colors='maroon',
+                              label='virtually certain')
+                    
+                    # Horizontal lines correspond to the thresholds of:
+                    #     likely (S/N > 0.95; detectable at 66% confidence), 
+                    #     very likely (S/N > 1.64, 90% confidence) 
+                    #     virtually certain (S/N > 2.57, 99% confidence).                       
+                        
+                    ax.spines['right'].set_visible(False)
+                    ax.spines['top'].set_visible(False)
+                    ax.set_title(None)
+                    ax.set_title(letters[i],
+                                 loc='left',
+                                 fontweight='bold')
+                    ax.set_xlabel(None)
+                    ax.xaxis.set_ticklabels([])
+                    ax.set_xlim(-4,4)
+                    
+                    if mod == 'CanESM5':
+                        height = 0.4
+                    else:
+                        height= 0.3
+
+                    ax.set_ylabel('Frequency',
+                                    fontsize=12)
+                    ax.text(-0.15,
+                            height,
+                            mod,
+                            fontweight='bold',
+                            rotation='vertical',
+                            transform=ax.transAxes) 
+                    
+                    if mod == models[-1]:
+                        ax.set_xlabel('S/N')
+                        ax.xaxis.set_ticklabels(np.arange(-4,5,1))
+                    
+                    if i == 0:
+                        ax.legend(frameon=False,
+                                bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
+                                labelspacing=legend_entrypad)
+                        
+                    i += 1
+
+                f.savefig(outDIR+'/pca_noise_{}_{}_{}.png'.format(scale,ar6,t_ext))
+
+        # %%
