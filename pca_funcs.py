@@ -31,6 +31,8 @@ import matplotlib as mpl
 import seaborn as sns
 from scipy import stats as sts
 from eofs.xarray import Eof
+from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+import matplotlib.ticker as mticker
 
 
 #==============================================================================
@@ -212,11 +214,16 @@ def lengther(mask):
 #%%============================================================================
 
 def data_lumper(dataset,
-                models):
+                models,
+                scale):
     
     data = np.empty(1)
     for mod in models:
-        mod_data = dataset[mod]['treeFrac'].values.flatten()
+        if scale == 'global':
+            mod_data = dataset[mod]['treeFrac'].values.flatten()
+        elif scale == 'latitudinal':
+            for ltr in ['boreal','temperate_north','tropics']:
+                mod_data = dataset[mod]['treeFrac'][ltr].values.flatten()
         data = np.append(data,mod_data)
                         
     data = data[~np.isnan(data)]
@@ -353,7 +360,7 @@ def sig_noise_plot(sig_noise,
     cmap=plt.cm.get_cmap(eof_color)
     colors = {}
     colors['treeFrac'] = cmap(0.85)
-    colors['lu_treeFrac_rls'] = cmap(0.75)
+    colors['lu_treeFrac_rls'] = cmap(0.6)
     colors['lu_treeFrac'] = cmap(0.95)
     colors['cropFrac'] = cmap(0.15)
     colors['lu_cropFrac'] = cmap(0.05)
@@ -404,7 +411,8 @@ def sig_noise_plot(sig_noise,
 
     cmap_list,_,_,_,_ = colormap_details('BrBG_r',
                                         data_lumper(eof_dict,
-                                                    models))
+                                                    models,
+                                                    scale))
     levels = np.around(np.arange(-0.04,0.045,0.005),decimals=3)
     levels = np.delete(levels,np.where(levels==0))
     tick_labels = np.around(np.arange(-0.04,0.045,0.01),decimals=3)
@@ -598,60 +606,78 @@ def sig_noise_plot(sig_noise,
                          fontweight='bold',
                          fontsize=title_font)
         
-        f.savefig(outDIR+'/pca_noise_{}_{}.png'.format(scale,t_ext),bbox_inches='tight',dpi=250)
+        # f.savefig(outDIR+'/pca_noise_{}_{}.png'.format(scale,t_ext),bbox_inches='tight',dpi=250)
         
 #%%==============================================================================        
 
     elif scale == 'latitudinal':
 
-        for ltr in lat_ranges.keys():
+        x=13
+        y=12
+        f = plt.figure(figsize=(x,y))
+        
+        # placment eof cbar
+        cb_x0 = 0.5725
+        cb_y0 = 0.075
+        cb_xlen = 0.305
+        cb_ylen = 0.015                
+        
+        # spec = f.add_gridspec(12,2)
+        gs0 = gridspec.GridSpec(4,2)
+        
+        ax01 = f.add_subplot(gs0[0,1],projection=ccrs.PlateCarree())
+        ax02 = f.add_subplot(gs0[1,1],projection=ccrs.PlateCarree())
+        ax03 = f.add_subplot(gs0[2,1],projection=ccrs.PlateCarree())
+        ax04 = f.add_subplot(gs0[3,1],projection=ccrs.PlateCarree())
+        
+        map_axes = [ax01,ax02,ax03,ax04]
+        h_axes = []
+        
+        gs00 = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=gs0[0,0])
+        ax00 = f.add_subplot(gs00[0])
+        ax10 = f.add_subplot(gs00[1])
+        ax20 = f.add_subplot(gs00[2])
+        h_axes.append([ax00,ax10,ax20])
+        
+        gs10 = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=gs0[1,0])
+        ax30 = f.add_subplot(gs10[0])
+        ax40 = f.add_subplot(gs10[1])
+        ax50 = f.add_subplot(gs10[2])
+        h_axes.append([ax30,ax40,ax50])
+        
+        gs20 = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=gs0[2,0])
+        ax60 = f.add_subplot(gs20[0])
+        ax70 = f.add_subplot(gs20[1])
+        ax80 = f.add_subplot(gs20[2])
+        h_axes.append([ax60,ax70,ax80])
+        
+        gs30 = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=gs0[3,0])
+        ax90 = f.add_subplot(gs30[0])
+        ax100 = f.add_subplot(gs30[1])
+        ax110 = f.add_subplot(gs30[2]) 
+        h_axes.append([ax90,ax100,ax110])  
+        
+        cbax = f.add_axes([cb_x0, 
+                    cb_y0, 
+                    cb_xlen, 
+                    cb_ylen])             
 
-            f,axes = plt.subplots(nrows=len(models),
-                                ncols=1,
-                                figsize=(x,y))
-            i = 0
+        cmap_list,_,_,_,_ = colormap_details('BrBG_r',
+                                            data_lumper(eof_dict,
+                                                        models,
+                                                        scale))
+        levels = np.around(np.arange(-0.04,0.045,0.005),decimals=3)
+        levels = np.delete(levels,np.where(levels==0))
+        tick_labels = np.around(np.arange(-0.04,0.045,0.01),decimals=3)
+        tick_locs = tick_labels
+        norm = mpl.colors.BoundaryNorm(levels,cmap_list.N)
+
+
+        i = 0        
+
+        for mod,ax_set in zip(models,h_axes):
             
-            for mod,ax in zip(models,axes):
-
-                for lc in lulcc:
-                    
-                    sns.distplot(sig_noise['pic_S_N_{}'.format(mod)].sel(landcover=lc),
-                                ax=ax,
-                                fit=sts.norm,
-                                fit_kws={"color":colors[lc]},
-                                color = colors[lc],
-                                label='PIC_{}'.format(lc),
-                                kde=False)
-                    
-                    # plot lu s/n
-                    ax.vlines(x=np.abs(sig_noise['lu_S_N'].sel(models=mod,landcover='treeFrac')),
-                            ymin=0,
-                            ymax=0.5,
-                            colors=colors['lu_treeFrac'],
-                            label='lu_{}'.format(lc))    
-                    
-                # likelihood s/n for detectability
-                ax.vlines(x=0.95,
-                        ymin=0,
-                        ymax=0.1,
-                        colors='indianred',
-                        label='likely')
-                ax.vlines(x=1.64,
-                        ymin=0,
-                        ymax=0.1,
-                        colors='firebrick',
-                        label='very likely')
-                ax.vlines(x=2.57,
-                        ymin=0,
-                        ymax=0.1,
-                        colors='maroon',
-                        label='virtually certain')
-                        
-                        # Horizontal lines correspond to the thresholds of:
-                        #     likely (S/N > 0.95; detectable at 66% confidence), 
-                        #     very likely (S/N > 1.64, 90% confidence) 
-                        #     virtually certain (S/N > 2.57, 99% confidence).                
-                    
+            for ax in ax_set:
                 ax.spines['right'].set_visible(False)
                 ax.spines['top'].set_visible(False)
                 ax.set_title(None)
@@ -660,32 +686,147 @@ def sig_noise_plot(sig_noise,
                             fontweight='bold')
                 ax.set_xlabel(None)
                 ax.xaxis.set_ticklabels([])
+                ax.yaxis.set_ticklabels([])
+                ax.set_xticks(np.arange(-4,5,2))
+                ax.set_yticks([])
                 ax.set_xlim(-4,4)
-                
-                if mod == 'CanESM5':
-                    height = 0.4
-                else:
-                    height= 0.3
-
-                ax.set_ylabel('Frequency',
-                                fontsize=12)
-                ax.text(-0.15,
-                        height,
-                        mod,
-                        fontweight='bold',
-                        rotation='vertical',
-                        transform=ax.transAxes) 
-                
-                if mod == models[-1]:
-                    ax.set_xlabel('S/N')
-                    ax.xaxis.set_ticklabels(np.arange(-4,5,1))
-                
-                if i == 0:
+                if mod == models[0]:
+                    ax = ax_set[0]
                     ax.legend(frameon=False,
-                            bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
-                            labelspacing=legend_entrypad)
+                              bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
+                              fontsize=legend_font,
+                              labelspacing=legend_entrypad)
+                if mod == models[-1]:
+                    ax = ax_set[-1]
+                    ax.set_xlabel('S/N')
+                    ax.xaxis.set_ticklabels(np.arange(-4,5,2)) 
+            
+            ax = ax_set[1]
+            if mod == 'CanESM5':
+                height = 0.35
+            else:
+                height= 0.25
+
+            ax.set_ylabel('Frequency',
+                            fontsize=12)
+            ax.text(-0.15,
+                    height,
+                    mod,
+                    fontweight='bold',
+                    rotation='vertical',
+                    transform=ax.transAxes) 
+    
+            
+            for ax,ltr in zip(ax_set,lat_ranges.keys()):
+
+                # collect pic across treeFrac and treeFrac_inv
+                pic = []
+
+                for lc in lulcc:
+                    
+                    pic.append(sig_noise['pic_S_N_{}_{}'.format(mod,ltr)].sel(landcover=lc))
+                    
+                pic = xr.concat(pic,dim='landcover')
+                
+                sns.distplot(pic,
+                            ax=ax,
+                            fit=sts.norm,
+                            fit_kws={"color":colors['pi']},
+                            color = colors['pi'],
+                            label='PIC',
+                            kde=False)
+                    
+                # plot lu s/n
+                ax.vlines(x=np.abs(sig_noise['lu_S_N'].sel(models=mod,landcover='treeFrac',lat_keys=ltr)),
+                        ymin=0,
+                        ymax=0.5,
+                        colors=colors['lu_treeFrac'],
+                        label='LU mean',
+                        zorder=20)     
+                # plot lu rls s/n
+                ax.vlines(x=np.abs(sig_noise['lu_rls_S_N_{}_{}'.format(mod,ltr)].sel(landcover='treeFrac')),
+                        ymin=0,
+                        ymax=0.5,
+                        colors=colors['lu_treeFrac_rls'],
+                        label='LU rls',
+                        zorder=10)                 
+                    
+                # likelihood s/n for detectability
+                ax.vlines(x=0.95,
+                        ymin=0,
+                        ymax=0.1,
+                        colors='indianred',
+                        label=None,
+                        zorder=30)
+                ax.vlines(x=1.64,
+                        ymin=0,
+                        ymax=0.1,
+                        colors='firebrick',
+                        label=None,
+                        zorder=30)
+                ax.vlines(x=2.57,
+                        ymin=0,
+                        ymax=0.1,
+                        colors='maroon',
+                        label=None,
+                        zorder=30)
+
                     
                 i += 1
+                
+        for mod,ax in zip(models,map_axes):
+            
+            for ltr in lat_ranges:
+
+                eof_dict[mod]['treeFrac'][ltr].plot(ax=ax,
+                                                    cmap=cmap_list,
+                                                    cbar_ax=cbax,
+                                                    levels=levels,
+                                                    extend='both',
+                                                    add_labels=False)
+                
+
+
+            gl = ax.gridlines(crs=ccrs.PlateCarree(), 
+                              draw_labels=False,
+                              linewidth=2, 
+                              color='gray', 
+                              alpha=1, 
+                              linestyle='-')
+            gl.xlabels_top = False
+            gl.xlabels_bottom = False
+            gl.ylabels_left = False
+            gl.ylabels_right = False
+            gl.xlines = False
+            gl.ylocator = mticker.FixedLocator([89.5,51.5,23.5,-23.5])
+            gl.xformatter = LONGITUDE_FORMATTER
+            gl.yformatter = LATITUDE_FORMATTER
+            ax.set_extent(extent,
+                          crs=ccrs.PlateCarree())
+            ax.coastlines(linewidth=cstlin_lw)
+            
+            i += 1
+
+        cb = mpl.colorbar.ColorbarBase(ax=cbax, 
+                                       cmap=cmap_list,
+                                       norm=norm,
+                                       spacing='uniform',
+                                       orientation='horizontal',
+                                       extend='both',
+                                       ticks=tick_locs,
+                                       drawedges=False)
+        cb.set_label('EOF loading [-]',
+                        size=cbtitle_font)
+        cb.ax.xaxis.set_label_position('top')
+        cb.ax.tick_params(labelcolor=col_cbticlbl,
+                             labelsize=tick_font,
+                             color=col_cbtic,
+                             length=cb_ticlen,
+                             width=cb_ticwid,
+                             direction='out'); 
+        cb.ax.set_xticklabels(tick_labels)
+        cb.outline.set_edgecolor(col_cbedg)
+        cb.outline.set_linewidth(cb_edgthic)
 
             # f.savefig(outDIR+'/pca_noise_{}_{}_{}.png'.format(scale,ltr,t_ext))
             

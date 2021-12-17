@@ -95,7 +95,7 @@ def pca_subroutine(lulcc,
                     pspc[mod][lc]['lu'] = solver_dict[mod][lc].projectField(mod_ens[mod]['lu'].where(mod_msk[mod][lc]==1),
                                                                                                      neofs=1)
                     pspc[mod][lc]['lu_rls'] = []
-                    pspc[mod][lc]['pi_rls'] = []
+                    pspc[mod][lc]['pic_rls'] = []
                     
                     for i in mod_data[mod]['lu'].rls:
                         
@@ -106,7 +106,7 @@ def pca_subroutine(lulcc,
                     
                     for i in pi_data[mod].rls:
                         
-                        pspc[mod][lc]['pi_rls'].append(solver_dict[mod][lc].projectField(pi_data[mod].sel(rls=i).where(mod_msk[mod][lc]==1),
+                        pspc[mod][lc]['pic_rls'].append(solver_dict[mod][lc].projectField(pi_data[mod].sel(rls=i).where(mod_msk[mod][lc]==1),
                                                                                                             neofs=1))
 
             elif flag_inverse == 1:
@@ -134,7 +134,7 @@ def pca_subroutine(lulcc,
                     pspc[mod][fp]['lu'] = solver_dict[mod][fp].projectField(mod_ens[mod]['lu'].where(mod_msk[mod][lc]==1),
                                                                                                      neofs=1)
                     pspc[mod][fp]['lu_rls'] = []
-                    pspc[mod][fp]['pi_rls'] = []
+                    pspc[mod][fp]['pic_rls'] = []
                     
                     for i in mod_data[mod]['lu'].rls:
                         
@@ -145,43 +145,122 @@ def pca_subroutine(lulcc,
                     
                     for i in pi_data[mod].rls:
                         
-                        pspc[mod][fp]['pi_rls'].append(solver_dict[mod][fp].projectField(pi_data[mod].sel(rls=i).where(mod_msk[mod][lc]==1),
+                        pspc[mod][fp]['pic_rls'].append(solver_dict[mod][fp].projectField(pi_data[mod].sel(rls=i).where(mod_msk[mod][lc]==1),
                                                                                                             neofs=1))             
 
     # latitudinal pca            
     elif scale == 'latitudinal':
         
         for mod in models:
+            
+            if flag_inverse == 0:
                 
-            for lc in lulcc:
+                for lc in lulcc:
+                        
+                    solver_dict[mod][lc] = {}
+                    eof_dict[mod][lc] = {}
+                    pc[mod][lc] = {}
+                    pspc[mod][lc] = {}
                     
-                solver_dict[mod][lc] = {}
-                eof_dict[mod][lc] = {}
-                pc[mod][lc] = {}
-                pspc[mod][lc] = {}
+                    for ltr in lat_ranges.keys():
+                        
+                        luh2_slice = maps[mod][lc].where(mod_msk[mod][lc]==1)
+                        luh2_slice = luh2_slice.sel(lat=lat_ranges[ltr])
+                        solver_dict[mod][lc][ltr] = Eof(luh2_slice,
+                                                        weights=weighted_arr[mod].sel(lat=lat_ranges[ltr]))
+                        eof_dict[mod][lc][ltr] = solver_dict[mod][lc][ltr].eofs(neofs=1)
+                        pc[mod][lc][ltr] = solver_dict[mod][lc][ltr].pcs(npcs=1)
+                        pspc[mod][lc][ltr] = {}
+                        
+                        mod_slice = mod_ens[mod]['lu'].where(mod_msk[mod][lc]==1)
+                        mod_slice = mod_slice.sel(lat=lat_ranges[ltr])
+                        pspc[mod][lc][ltr]['lu'] = solver_dict[mod][lc][ltr].projectField(mod_slice,
+                                                                                          neofs=1)
+                        pspc[mod][lc][ltr]['pic_rls'] = []
+
+                        for i in pi_data[mod].rls:
+
+                            pi_slice = pi_data[mod].sel(rls=i).where(mod_msk[mod][lc]==1)
+                            pi_slice = pi_slice.sel(lat=lat_ranges[ltr])
+                            pspc[mod][lc][ltr]['pic_rls'].append(solver_dict[mod][lc][ltr].projectField(pi_slice,
+                                                                                                        neofs=1))
+                            
+            elif flag_inverse == 1:
                 
-                for ltr in lat_ranges.keys():
+                for fp in ['treeFrac', 'treeFrac_inv']:
+                        
+                    solver_dict[mod][fp] = {}
+                    eof_dict[mod][fp] = {}
+                    pc[mod][fp] = {}
+                    pspc[mod][fp] = {}
                     
-                    luh2_slice = maps[mod][lc].where(mod_msk[mod][lc]==1)
-                    luh2_slice = luh2_slice.sel(lat=lat_ranges[ltr])
-                    solver_dict[mod][lc][ltr] = Eof(luh2_slice,
-                                                    weights=weighted_arr[mod].sel(lat=lat_ranges[ltr]))
-                    eof_dict[mod][lc][ltr] = solver_dict[mod][lc][ltr].eofs(neofs=1)
-                    pc[mod][lc][ltr] = solver_dict[mod][lc][ltr].pcs(npcs=1)
-                    pspc[mod][lc][ltr] = {}
+                    lc = 'treeFrac'
+                    startmap = maps[mod][lc].where(mod_msk[mod][lc]==1)  
                     
-                    mod_slice = mod_ens[mod]['lu'].where(mod_msk[mod][lc]==1)
-                    mod_slice = mod_slice.sel(lat=lat_ranges[ltr])
-                    pspc[mod][lc][ltr]['lu'] = solver_dict[mod][lc][ltr].projectField(mod_slice,
-                                                                                                        neofs=1)
-                    pspc[mod][lc][ltr]['pi_rls'] = []
+                    if fp == 'treeFrac_inv':
+                        
+                        startmap *= -1
+                        
+                    else:
+                        
+                        pass
+                    
+                    for ltr in lat_ranges.keys():
+                        
+                        latmap = startmap.sel(lat=lat_ranges[ltr])
+                        solver_dict[mod][fp][ltr] = Eof(deepcopy(latmap),
+                                                        weights=weighted_arr[mod].sel(lat=lat_ranges[ltr]))
+                        eof_dict[mod][fp][ltr] = solver_dict[mod][fp][ltr].eofs(neofs=1)
+                        pc[mod][fp][ltr] = solver_dict[mod][fp][ltr].pcs(npcs=1)
+                        pspc[mod][fp][ltr] = {}
+                        
+                        mod_slice = mod_ens[mod]['lu'].where(mod_msk[mod][lc]==1)
+                        mod_slice = mod_slice.sel(lat=lat_ranges[ltr])
+                        pspc[mod][fp][ltr]['lu'] = solver_dict[mod][fp][ltr].projectField(mod_slice,
+                                                                                          neofs=1)
+                        pspc[mod][fp][ltr]['lu_rls'] = []
+                        pspc[mod][fp][ltr]['pic_rls'] = []
+                        
+                        for i in mod_data[mod]['lu'].rls:
+                            
+                            mod_rls_slice = mod_data[mod]['lu'].sel(rls=i).where(mod_msk[mod][lc]==1)
+                            mod_rls_slice = mod_rls_slice.sel(lat=lat_ranges[ltr])
+                            
+                            pspc[mod][fp][ltr]['lu_rls'].append(
+                                solver_dict[mod][fp][ltr].projectField(
+                                    mod_rls_slice,
+                                    neofs=1))                               
 
-                    for i in pi_data[mod].rls:
+                        for i in pi_data[mod].rls:
 
-                        pi_slice = pi_data[mod].sel(rls=i).where(mod_msk[mod][lc]==1)
-                        pi_slice = pi_slice.sel(lat=lat_ranges[ltr])
-                        pspc[mod][lc][ltr]['pi_rls'].append(solver_dict[mod][lc][ltr].projectField(pi_slice,
-                                                                                                                 neofs=1))
+                            pi_slice = pi_data[mod].sel(rls=i).where(mod_msk[mod][lc]==1)
+                            pi_slice = pi_slice.sel(lat=lat_ranges[ltr])
+                            pspc[mod][fp][ltr]['pic_rls'].append(solver_dict[mod][fp][ltr].projectField(pi_slice,
+                                                                                                        neofs=1)) 
+                            
+                            
+                    # solver_dict[mod][fp] = Eof(startmap,
+                    #                            weights=weighted_arr[mod])        
+                        
+                    # eof_dict[mod][fp] = solver_dict[mod][fp].eofs(neofs=1)
+                    # pc[mod][fp] = solver_dict[mod][fp].pcs(npcs=1)
+                    # pspc[mod][fp] = {}
+                    # pspc[mod][fp]['lu'] = solver_dict[mod][fp].projectField(mod_ens[mod]['lu'].where(mod_msk[mod][lc]==1),
+                    #                                                                                  neofs=1)
+                    # pspc[mod][fp]['lu_rls'] = []
+                    # pspc[mod][fp]['pic_rls'] = []
+                    
+                    # for i in mod_data[mod]['lu'].rls:
+                        
+                    #     pspc[mod][fp]['lu_rls'].append(
+                    #         solver_dict[mod][fp].projectField(
+                    #             mod_data[mod]['lu'].sel(rls=i).where(mod_msk[mod][lc]==1),
+                    #             neofs=1))                        
+                    
+                    # for i in pi_data[mod].rls:
+                        
+                    #     pspc[mod][fp]['pic_rls'].append(solver_dict[mod][fp].projectField(pi_data[mod].sel(rls=i).where(mod_msk[mod][lc]==1),
+                    #                                                                                         neofs=1))                       
                         
                         
                 
@@ -213,13 +292,13 @@ def pca_subroutine(lulcc,
                     mod_slice = mod_slice.where(continent > 0)
                     pspc[mod][lc][c]['lu'] = solver_dict[mod][lc][c].projectField(mod_slice,
                                                                                                          neofs=1)
-                    pspc[mod][lc][c]['pi_rls'] = []
+                    pspc[mod][lc][c]['pic_rls'] = []
 
                     for i in pi_data[mod].rls:
                         
                         pi_slice = pi_data[mod].sel(rls=i).where(mod_msk[mod][lc]==1)
                         pi_slice = pi_slice.where(continent > 0)
-                        pspc[mod][lc][c]['pi_rls'].append(solver_dict[mod][lc][c].projectField(pi_slice,
+                        pspc[mod][lc][c]['pic_rls'].append(solver_dict[mod][lc][c].projectField(pi_slice,
                                                                                                                   neofs=1))
                            
     # ar6 pca            
@@ -250,13 +329,13 @@ def pca_subroutine(lulcc,
                         mod_slice = mod_slice.where(ar6_regs[mod] == i)
                         pspc[mod][lc][i]['lu'] = solver_dict[mod][lc][i].projectField(mod_slice,
                                                                                                              neofs=1)
-                        pspc[mod][lc][i]['pi_rls'] = []
+                        pspc[mod][lc][i]['pic_rls'] = []
                         
                         for j in pi_data[mod].rls:
                             
                             pi_slice = pi_data[mod].sel(rls=j).where(mod_msk[mod][lc]==1)
                             pi_slice = pi_slice.where(ar6_regs[mod] == i)
-                            pspc[mod][lc][i]['pi_rls'].append(solver_dict[mod][lc][i].projectField(pi_slice,
+                            pspc[mod][lc][i]['pic_rls'].append(solver_dict[mod][lc][i].projectField(pi_slice,
                                                                                                                       neofs=1))                            
                             
 

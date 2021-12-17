@@ -131,7 +131,7 @@ flag_standardize=1;  # 0: no (standardization before input to PCA and projection
                      # 1: yes, standardize 
                      
 # << SELECT >>
-flag_scale=0;         # 0: global
+flag_scale=1;         # 0: global
                       # 1: latitudinal
                       # 2: continental
                       # 3: ar6 regions
@@ -245,7 +245,7 @@ labels['Australia'] = ['NAU','CAU','EAU','SAU']
 lat_ranges = {}
 lat_ranges['boreal'] = slice(51.5,89.5)
 lat_ranges['tropics'] = slice(-23.5,23.5)
-lat_ranges['temperate_south'] = slice(-50.5,-24.5)
+# lat_ranges['temperate_south'] = slice(-50.5,-24.5)
 lat_ranges['temperate_north'] = slice(24.5,50.5)
 
 letters = ['a', 'b', 'c',
@@ -340,12 +340,6 @@ solver_dict,eof_dict,pc,pspc = pca_subroutine(lulcc,
                                               ar6_regs,
                                               scale,
                                               flag_inverse)
-
-for mod in models:
-    print(mod)
-    eof_dict[mod]['treeFrac'].plot()
-    plt.show()
-    
     
 #%%============================================================================
 
@@ -376,6 +370,7 @@ pkl_file.close()
 
 # plot signal to noise ratio 
 sig_noise_plot(sig_noise,
+               eof_dict,
                scale,
                lulcc,
                models,
