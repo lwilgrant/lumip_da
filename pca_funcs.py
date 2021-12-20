@@ -33,6 +33,7 @@ from scipy import stats as sts
 from eofs.xarray import Eof
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 import matplotlib.ticker as mticker
+from matplotlib.patches import ConnectionPatch
 
 
 #==============================================================================
@@ -406,7 +407,7 @@ def sig_noise_plot(sig_noise,
     east = 180
     west = -180
     north = 80
-    south = -60
+    south = -80
     extent = [west,east,south,north]
 
     cmap_list,_,_,_,_ = colormap_details('BrBG_r',
@@ -606,16 +607,54 @@ def sig_noise_plot(sig_noise,
                          fontweight='bold',
                          fontsize=title_font)
         
-        # f.savefig(outDIR+'/pca_noise_{}_{}.png'.format(scale,t_ext),bbox_inches='tight',dpi=250)
-        
-#%%==============================================================================        
+        f.savefig(outDIR+'/pca_noise_{}_{}.png'.format(scale,t_ext),bbox_inches='tight',dpi=250)
 
     elif scale == 'latitudinal':
 
         x=13
-        y=12
+        y=15
         f = plt.figure(figsize=(x,y))
         
+        eof_color='BrBG'
+        cmap=plt.cm.get_cmap(eof_color)
+        colors = {}
+        colors['treeFrac'] = cmap(0.85)
+        colors['lu_treeFrac_rls'] = cmap(0.6)
+        colors['lu_treeFrac'] = cmap(0.95)
+        colors['cropFrac'] = cmap(0.15)
+        colors['lu_cropFrac'] = cmap(0.05)
+        colors['pi'] = 'lightgray'
+
+        # legend location
+        le_x0 = 0.65
+        le_y0 = -1.2
+        le_xlen = 0.2
+        le_ylen = 0.5
+
+        legend_font = 5
+        
+        # space between entries
+        legend_entrypad = 0.5
+
+        # length per entry
+        legend_entrylen = 2
+        
+        col_cbticlbl = '0'   # colorbar color of tick labels
+        col_cbtic = '0.5'   # colorbar color of ticks
+        col_cbedg = '0.9'   # colorbar color of edge
+        cb_ticlen = 3.5   # colorbar length of ticks
+        cb_ticwid = 0.4   # colorbar thickness of ticks
+        cb_edgthic = 0   # colorbar thickness of edges between colors
+        cblabel = 'corr'  # colorbar label
+        sbplt_lw = 0.1   # linewidth on projection panels
+        cstlin_lw = 0.75   # linewidth for coastlines
+
+        # fonts
+        title_font = 11
+        cbtitle_font = 11
+        tick_font = 10
+        legend_font=10        
+            
         # placment eof cbar
         cb_x0 = 0.5725
         cb_y0 = 0.075
@@ -658,9 +697,9 @@ def sig_noise_plot(sig_noise,
         h_axes.append([ax90,ax100,ax110])  
         
         cbax = f.add_axes([cb_x0, 
-                    cb_y0, 
-                    cb_xlen, 
-                    cb_ylen])             
+                           cb_y0, 
+                           cb_xlen, 
+                           cb_ylen])             
 
         cmap_list,_,_,_,_ = colormap_details('BrBG_r',
                                             data_lumper(eof_dict,
@@ -677,46 +716,6 @@ def sig_noise_plot(sig_noise,
 
         for mod,ax_set in zip(models,h_axes):
             
-            for ax in ax_set:
-                ax.spines['right'].set_visible(False)
-                ax.spines['top'].set_visible(False)
-                ax.set_title(None)
-                ax.set_title(letters[i],
-                            loc='left',
-                            fontweight='bold')
-                ax.set_xlabel(None)
-                ax.xaxis.set_ticklabels([])
-                ax.yaxis.set_ticklabels([])
-                ax.set_xticks(np.arange(-4,5,2))
-                ax.set_yticks([])
-                ax.set_xlim(-4,4)
-                if mod == models[0]:
-                    ax = ax_set[0]
-                    ax.legend(frameon=False,
-                              bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
-                              fontsize=legend_font,
-                              labelspacing=legend_entrypad)
-                if mod == models[-1]:
-                    ax = ax_set[-1]
-                    ax.set_xlabel('S/N')
-                    ax.xaxis.set_ticklabels(np.arange(-4,5,2)) 
-            
-            ax = ax_set[1]
-            if mod == 'CanESM5':
-                height = 0.35
-            else:
-                height= 0.25
-
-            ax.set_ylabel('Frequency',
-                            fontsize=12)
-            ax.text(-0.15,
-                    height,
-                    mod,
-                    fontweight='bold',
-                    rotation='vertical',
-                    transform=ax.transAxes) 
-    
-            
             for ax,ltr in zip(ax_set,lat_ranges.keys()):
 
                 # collect pic across treeFrac and treeFrac_inv
@@ -729,50 +728,101 @@ def sig_noise_plot(sig_noise,
                 pic = xr.concat(pic,dim='landcover')
                 
                 sns.distplot(pic,
-                            ax=ax,
-                            fit=sts.norm,
-                            fit_kws={"color":colors['pi']},
-                            color = colors['pi'],
-                            label='PIC',
-                            kde=False)
+                             ax=ax,
+                             fit=sts.norm,
+                             fit_kws={"color":colors['pi']},
+                             color = colors['pi'],
+                             label='PIC',
+                             kde=False)
                     
                 # plot lu s/n
                 ax.vlines(x=np.abs(sig_noise['lu_S_N'].sel(models=mod,landcover='treeFrac',lat_keys=ltr)),
-                        ymin=0,
-                        ymax=0.5,
-                        colors=colors['lu_treeFrac'],
-                        label='LU mean',
-                        zorder=20)     
+                          ymin=0,
+                          ymax=0.5,
+                          colors=colors['lu_treeFrac'],
+                          label='LU mean',
+                          zorder=20)     
                 # plot lu rls s/n
                 ax.vlines(x=np.abs(sig_noise['lu_rls_S_N_{}_{}'.format(mod,ltr)].sel(landcover='treeFrac')),
-                        ymin=0,
-                        ymax=0.5,
-                        colors=colors['lu_treeFrac_rls'],
-                        label='LU rls',
-                        zorder=10)                 
+                          ymin=0,
+                          ymax=0.5,
+                          colors=colors['lu_treeFrac_rls'],
+                          label='LU rls',
+                          zorder=10)                 
                     
                 # likelihood s/n for detectability
                 ax.vlines(x=0.95,
-                        ymin=0,
-                        ymax=0.1,
-                        colors='indianred',
-                        label=None,
-                        zorder=30)
+                          ymin=0,
+                          ymax=0.1,
+                          colors='indianred',
+                          label=None,
+                          zorder=30)
                 ax.vlines(x=1.64,
-                        ymin=0,
-                        ymax=0.1,
-                        colors='firebrick',
-                        label=None,
-                        zorder=30)
+                          ymin=0,
+                          ymax=0.1,
+                          colors='firebrick',
+                          label=None,
+                          zorder=30)
                 ax.vlines(x=2.57,
-                        ymin=0,
-                        ymax=0.1,
-                        colors='maroon',
-                        label=None,
-                        zorder=30)
+                          ymin=0,
+                          ymax=0.1,
+                          colors='maroon',
+                          label=None,
+                          zorder=30)
+                
+                
+            for ax in ax_set:
+                
+                if ax == ax_set[0]:
+                    
+                    ax.set_title(letters[i],
+                                 loc='left',
+                                 fontweight='bold')         
+                           
+                ax.spines['right'].set_visible(False)
+                ax.spines['top'].set_visible(False)
+                ax.set_title(None)
+                ax.set_xlabel(None)
+                ax.xaxis.set_ticklabels([])
+                ax.yaxis.set_ticklabels([])
+                ax.set_xticks(np.arange(-4,5,2))
+                ax.set_yticks([])
+                ax.set_xlim(-4,4)
+                    
+                if ax == ax_set[-1]:
+                    
+                    ax.set_xlabel('S/N')
+                    ax.xaxis.set_ticklabels(np.arange(-4,5,2)) 
+                    
+                if mod == models[-1]:
+                    
+                    ax_set[-1].legend(frameon=False,
+                                      ncol=3,
+                                      bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
+                                      fontsize=legend_font,
+                                      labelspacing=legend_entrypad)                
+            
+            ax = ax_set[1]
+            
+            if mod == 'CanESM5':
+                
+                height = 0.35
+                
+            else:
+                
+                height= 0.25
+
+            ax.set_ylabel('Frequency',
+                            fontsize=12)
+            ax.text(-0.15,
+                    height,
+                    mod,
+                    fontweight='bold',
+                    rotation='vertical',
+                    transform=ax.transAxes)                 
 
                     
-                i += 1
+            i += 1
                 
         for mod,ax in zip(models,map_axes):
             
@@ -785,8 +835,6 @@ def sig_noise_plot(sig_noise,
                                                     extend='both',
                                                     add_labels=False)
                 
-
-
             gl = ax.gridlines(crs=ccrs.PlateCarree(), 
                               draw_labels=False,
                               linewidth=2, 
@@ -804,9 +852,40 @@ def sig_noise_plot(sig_noise,
             ax.set_extent(extent,
                           crs=ccrs.PlateCarree())
             ax.coastlines(linewidth=cstlin_lw)
+            ax.set_title(letters[i],
+                         loc='left',
+                         fontweight='bold')
             
             i += 1
-
+            
+        # lines between plots
+        for ax,ax_set in zip(map_axes,h_axes):
+            
+            x_h = 4
+            y_h1 = 0.5
+            template = eof_dict['CanESM5']['treeFrac']['boreal']
+            x_m = template.lon[int(len(template.lon)/2)]*-1
+            y_m1 = 80
+            con = ConnectionPatch(xyA=(x_h,y_h1),
+                                    xyB=(x_m,y_m1),
+                                    coordsA=ax_set[0].transData,
+                                    coordsB=ax.transData,
+                                    color=colors['pi'])
+            ax.add_artist(con)            
+            
+            for ax_in,y_m1 in zip(ax_set,[51.5,23.5,-23.5]):
+                
+                x_h = 4
+                y_h1 = 0
+                template = eof_dict['CanESM5']['treeFrac']['boreal']
+                x_m = template.lon[int(len(template.lon)/2)]*-1
+                con = ConnectionPatch(xyA=(x_h,y_h1),
+                                      xyB=(x_m,y_m1),
+                                      coordsA=ax_in.transData,
+                                      coordsB=ax.transData,
+                                      color=colors['pi'])
+                ax.add_artist(con)
+        
         cb = mpl.colorbar.ColorbarBase(ax=cbax, 
                                        cmap=cmap_list,
                                        norm=norm,
@@ -828,7 +907,7 @@ def sig_noise_plot(sig_noise,
         cb.outline.set_edgecolor(col_cbedg)
         cb.outline.set_linewidth(cb_edgthic)
 
-            # f.savefig(outDIR+'/pca_noise_{}_{}_{}.png'.format(scale,ltr,t_ext))
+        f.savefig(outDIR+'/pca_noise_{}_{}.png'.format(scale,t_ext))
             
 #%%==============================================================================
 
