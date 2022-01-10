@@ -33,8 +33,10 @@ from da_funcs import *
 def file_subroutine(mapDIR,
                     modDIR,
                     piDIR,
+                    allpiDIR,
                     obsDIR,
                     grid,
+                    pi,
                     obs_types,
                     lulcc,
                     y1,
@@ -141,39 +143,74 @@ def file_subroutine(mapDIR,
     
     # pi files
     os.chdir(piDIR)
-
-    for mod in models:
+    
+    if pi == 'model':
         
-        if grid == 'obs':
+        for mod in models:
             
-            pi_files[mod] = {}
-        
-            for obs in obs_types:
+            if grid == 'obs':
                 
-                pi_files[mod][obs] = []
-        
+                pi_files[mod] = {}
+            
+                for obs in obs_types:
+                    
+                    pi_files[mod][obs] = []
+            
+                    for file in [file for file in sorted(os.listdir(piDIR))\
+                                if var in file\
+                                and mod in file\
+                                and t_ext in file\
+                                and obs in file\
+                                and 'unmasked' in file]:
+                        
+                        pi_files[mod][obs].append(file)
+                    
+            if grid == 'model':
+                
+                pi_files[mod] = []
+            
                 for file in [file for file in sorted(os.listdir(piDIR))\
                             if var in file\
                             and mod in file\
                             and t_ext in file\
+                            and not obs_types[0] in file\
+                            and not obs_types[1] in file\
+                            and 'unmasked' in file]:
+                    
+                    pi_files[mod].append(file)
+    
+    # use all available pi chunks
+    elif pi == 'allpi':
+            
+        # this option is not available yet
+        if grid == 'obs':
+            
+            pi_files[obs] = {}
+        
+            for obs in obs_types:
+                
+                pi_files[obs] = []
+        
+                for file in [file for file in sorted(os.listdir(piDIR))\
+                            if var in file\
+                            and t_ext in file\
                             and obs in file\
                             and 'unmasked' in file]:
                     
-                    pi_files[mod][obs].append(file)
-                
+                    pi_files[obs].append(file)
+                        
         if grid == 'model':
             
-            pi_files[mod] = []
+            pi_files = []
         
-            for file in [file for file in sorted(os.listdir(piDIR))\
+            for file in [file for file in sorted(os.listdir(allpiDIR))\
                         if var in file\
-                        and mod in file\
                         and t_ext in file\
                         and not obs_types[0] in file\
                         and not obs_types[1] in file\
                         and 'unmasked' in file]:
                 
-                pi_files[mod].append(file)
+                pi_files.append(file)
                 
     #==============================================================================
     

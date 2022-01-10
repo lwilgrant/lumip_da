@@ -634,14 +634,15 @@ def pickler(curDIR,
             analysis,
             grid,
             t_ext,
-            exp_list):
+            exp_list,
+            pi):
     
     os.chdir(curDIR)
     if len(exp_list) == 2:
-        pkl_file = open('var_fin_2-factor_{}-grid_{}_{}.pkl'.format(grid,analysis,t_ext),'wb')
+        pkl_file = open('var_fin_2-factor_{}-grid_{}_{}_{}-pi.pkl'.format(grid,analysis,t_ext,pi),'wb')
     elif len(exp_list) == 1:
         exp = exp_list[0]
-        pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}.pkl'.format(exp,grid,analysis,t_ext),'wb')
+        pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}_{}-pi.pkl'.format(exp,grid,analysis,t_ext,pi),'wb')
     pk.dump(var_fin,pkl_file)
     pkl_file.close()
 
@@ -678,6 +679,7 @@ def scale_take(array): #must take diff between b and sup/inf, store in separate 
 def plot_scaling_global(models,
                         grid,
                         obs_types,
+                        pi,
                         exp_list,
                         var_fin,
                         flag_svplt,
@@ -880,11 +882,11 @@ def plot_scaling_global(models,
             
             if exp_list == ['hist-noLu','lu']:
                 
-                f.savefig(outDIR+'/global_attribution_2-factor_{}_{}-grid.png'.format(obs,grid),bbox_inches='tight',dpi=200)     
+                f.savefig(outDIR+'/global_attribution_2-factor_{}_{}-grid_{}-pi.png'.format(obs,grid,pi),bbox_inches='tight',dpi=200)     
                 
             elif exp_list == ['historical','hist-noLu']:
                 
-                f.savefig(outDIR+'/global_attribution_1-factor_{}_{}-grid.png'.format(obs,grid),bbox_inches='tight',dpi=200)     
+                f.savefig(outDIR+'/global_attribution_1-factor_{}_{}-grid_{}-pi.png'.format(obs,grid,pi),bbox_inches='tight',dpi=200)     
   
 
 #%%============================================================================    
@@ -1189,6 +1191,7 @@ def plot_scaling_continental(models,
                 
 def plot_scaling_map_continental(sfDIR,
                                  obs_types,
+                                 pi,
                                  models,
                                  exp_list,
                                  continents,
@@ -1289,16 +1292,17 @@ def plot_scaling_map_continental(sfDIR,
             
         if exp_list == ['hist-noLu', 'lu']:
             
-            f.savefig(outDIR+'/continental_attribution_2-factor_{}_{}-grid.png'.format(obs,grid),bbox_inches='tight',dpi=500)
+            f.savefig(outDIR+'/continental_attribution_2-factor_{}_{}-grid_{}-pi.png'.format(obs,grid,pi),bbox_inches='tight',dpi=500)
             
         elif exp_list == ['historical','hist-noLu']:
             
-            f.savefig(outDIR+'/continental_attribution_1-factor_{}_{}-grid.png'.format(obs,grid),bbox_inches='tight',dpi=500)
+            f.savefig(outDIR+'/continental_attribution_1-factor_{}_{}-grid_{}-pi.png'.format(obs,grid,pi),bbox_inches='tight',dpi=500)
                 
 #%%============================================================================
                 
 def plot_scaling_map_ar6(sfDIR,
                          obs_types,
+                         pi,
                          models,
                          exp_list,
                          continents,
@@ -1394,11 +1398,11 @@ def plot_scaling_map_ar6(sfDIR,
             j += 1
         if exp_list == ['hist-noLu', 'lu']:
             
-            f.savefig(outDIR+'/ar6_attribution_2-factor_{}_{}-grid.png'.format(obs,grid),bbox_inches='tight',dpi=500)
+            f.savefig(outDIR+'/ar6_attribution_2-factor_{}_{}-grid_{}-pi.png'.format(obs,grid,pi),bbox_inches='tight',dpi=500)
             
         elif exp_list == ['historical','hist-noLu']:
             
-            f.savefig(outDIR+'/ar6_attribution_1-factor_{}_{}-grid.png'.format(obs,grid),bbox_inches='tight',dpi=500)
+            f.savefig(outDIR+'/ar6_attribution_1-factor_{}_{}-grid_{}-pi.png'.format(obs,grid,pi),bbox_inches='tight',dpi=500)
     
 
 # # create legend with patche for hsitnolu and lu det/att levels

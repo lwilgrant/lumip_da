@@ -35,6 +35,7 @@ def of_subroutine(grid,
                   analysis,
                   exp_list,
                   obs_types,
+                  pi,
                   obs_data,
                   obs_data_continental,
                   obs_data_ar6,
@@ -418,7 +419,10 @@ def of_subroutine(grid,
                     
                     y = obs_data[obs][mod]
                     X = fp[mod]
-                    ctl = ctl_data[mod]
+                    if pi == 'model':
+                        ctl = ctl_data[mod]
+                    elif pi == 'allpi':
+                        ctl = ctl_data
                     nb_runs_x= nx[mod]
                     
                     if bs_reps == 0: # for no bs, run ROF once
@@ -514,7 +518,10 @@ def of_subroutine(grid,
                     
                         y = obs_data_continental[obs][mod][c]
                         X = fp_continental[mod][c]
-                        ctl = ctl_data_continental[mod][c]
+                        if pi == 'model':
+                            ctl = ctl_data_continental[mod][c]
+                        elif pi == 'allpi':
+                            ctl = ctl_data_continental[c]
                         nb_runs_x= nx[mod]
                         ns = len(continents[c])
                     
@@ -617,7 +624,10 @@ def of_subroutine(grid,
                     
                             y = obs_data_ar6[obs][mod][ar6]
                             X = fp_ar6[mod][ar6]
-                            ctl = ctl_data_ar6[mod][ar6]
+                            if pi == 'model':
+                                ctl = ctl_data_ar6[mod][ar6]
+                            elif pi == 'allpi':
+                                ctl = ctl_data_ar6[ar6]
                             nb_runs_x= nx[mod]
                             ns = 1
                         
@@ -679,3 +689,5 @@ def of_subroutine(grid,
                                                             pval_med]
 
     return var_sfs,var_ctlruns,proj,U,yc,Z1c,Z2c,Xc,Cf1,Ft,beta_hat,var_fin,models
+
+# %%

@@ -39,15 +39,16 @@ from matplotlib.lines import Line2D
 #==============================================================================
 
 # curDIR = '/home/luke/documents/lumip/d_a/'
-curDIR = '/theia/data/brussel/vo/000/bvo00012/vsc10116/lumip/d_a'
+# curDIR = '/theia/data/brussel/vo/000/bvo00012/vsc10116/lumip/d_a'
 # curDIR = '/Users/Luke/Documents/PHD/lumip/da'
-# curDIR = 'C:/Users/lgrant/Documents/repos/lumip_da'
+curDIR = 'C:/Users/lgrant/Documents/repos/lumip_da'
 os.chdir(curDIR)
 
 # data input directories
 obsDIR = os.path.join(curDIR, 'obs')
 modDIR = os.path.join(curDIR, 'mod')
 piDIR = os.path.join(curDIR, 'pi')
+allpiDIR = os.path.join(curDIR, 'allpi')
 mapDIR = os.path.join(curDIR, 'map')
 sfDIR = os.path.join(curDIR, 'shapefiles')
 outDIR = os.path.join(curDIR, 'figures')
@@ -66,7 +67,7 @@ flag_pickle=1     # 0: do not pickle objects
                   # 1: pickle objects after sections 'read' and 'analyze'
 
 # << SELECT >>
-flag_svplt=1      # 0: do not save plot
+flag_svplt=0      # 0: do not save plot
                   # 1: save plot in picDIR
 
 # << SELECT >>
@@ -81,6 +82,10 @@ flag_lulcc=0      # 0: forest loss
 # << SELECT >>
 flag_grid=0       # 0: model grid resolution
                   # 1: uniform obs grid resolution
+                  
+# << SELECT >>
+flag_pi=1         # 0: only use pi from chosen models
+                  # 1: use all available pi
                   
 # << SELECT >>
 flag_factor=0     # 0: 2-factor -> hist-noLu and lu
@@ -128,10 +133,7 @@ flag_bs=1         # 0: No bootstrapping of covariance matrix build
                   # 4: 1000
 
 # << SELECT >>  # confidence intervals on scaling factors
-flag_ci_bnds=1    # 0: 10-90
-                  # 1: 5-95
-                  # 2: 2.5-97.5
-                  # 3: 0.5-99.5
+ci_bnds = 0.95    # means  beta - 0.95 cummulative quantile and + 0.95 cummulative quantile, 
   
 # << SELECT >> 
 flag_reg=0        # 0: OLS
@@ -164,6 +166,8 @@ lulcc = ['forest',
          'crops']
 grids = ['model',
          'obs']
+pi_opts = ['model',
+           'allpi']
 factors = [['hist-noLu','lu'],
            ['historical'],
            ['hist-noLu']]
@@ -192,11 +196,11 @@ tls_cis = ['AS03',
 shuffle_opts = ['no', 
                 'yes']
 bootstrap_reps = [0,50,100,500,1000]
-confidence_intervals = [0.8,0.9,0.95,0.99]
 
 analysis = analyses[flag_analysis]
 lulcc_type = lulcc[flag_lulcc]
 grid = grids[flag_grid]
+pi = pi_opts[flag_pi]
 exp_list = factors[flag_factor]
 obs = obs_types[flag_obs]
 measure = measures[flag_lulcc_measure]
@@ -206,7 +210,6 @@ length = lengths[flag_len]
 freq = resample[flag_resample]
 var = variables[flag_var]
 bs_reps = bootstrap_reps[flag_bs]
-ci_bnds = confidence_intervals[flag_ci_bnds]
 reg = regressions[flag_reg]
 cons_test = consistency_tests[flag_constest]
 formule_ic_tls = tls_cis[flag_ci_tls]
@@ -269,8 +272,10 @@ from da_sr_file_alloc import *
 map_files,grid_files,fp_files,pi_files,obs_files = file_subroutine(mapDIR,
                                                                    modDIR,
                                                                    piDIR,
+                                                                   allpiDIR,
                                                                    obsDIR,
                                                                    grid,
+                                                                   pi,
                                                                    obs_types,
                                                                    lulcc,
                                                                    y1,
@@ -347,8 +352,10 @@ fp,fp_continental,fp_ar6,nx = fingerprint_subroutine(obs_types,
 os.chdir(curDIR)
 from da_sr_pi import *
 ctl_data,ctl_data_continental,ctl_data_ar6,pi_ts_ens = picontrol_subroutine(piDIR,
+                                                                            allpiDIR,
                                                                             pi_files,
                                                                             grid,
+                                                                            pi,
                                                                             models,
                                                                             obs_types,
                                                                             continents,
@@ -358,6 +365,7 @@ ctl_data,ctl_data_continental,ctl_data_ar6,pi_ts_ens = picontrol_subroutine(piDI
                                                                             freq,
                                                                             maps,
                                                                             ar6_regs,
+                                                                            ar6_land,
                                                                             ns,
                                                                             nt)
 
@@ -418,6 +426,7 @@ models = of_subroutine(grid,
                        analysis,
                        exp_list,
                        obs_types,
+                       pi,
                        obs_data,
                        obs_data_continental,
                        obs_data_ar6,
@@ -443,7 +452,8 @@ pickler(curDIR,
         analysis,
         grid,
         t_ext,
-        exp_list)
+        exp_list,
+        pi)
            
 #%%============================================================================
 # plotting scaling factors
@@ -476,6 +486,7 @@ if analysis == 'global':
     plot_scaling_global(models,
                         grid,
                         obs_types,
+                        pi,
                         exp_list,
                         var_fin,
                         flag_svplt,
@@ -515,6 +526,7 @@ elif analysis == 'continental':
     
     plot_scaling_map_continental(sfDIR,
                                  obs_types,
+                                 pi,
                                  models,
                                  exp_list,
                                  continents,
@@ -527,6 +539,7 @@ elif analysis == 'ar6':
     
     plot_scaling_map_ar6(sfDIR,
                          obs_types,
+                         pi,
                          models,
                          exp_list,
                          continents,
