@@ -67,11 +67,11 @@ flag_pickle=1     # 0: do not pickle objects
                   # 1: pickle objects after sections 'read' and 'analyze'
 
 # << SELECT >>
-flag_svplt=0      # 0: do not save plot
+flag_svplt=1      # 0: do not save plot
                   # 1: save plot in picDIR
 
 # << SELECT >>
-flag_analysis=1   # 0: d&a on global scale (all chosen ar6 regions)
+flag_analysis=2   # 0: d&a on global scale (all chosen ar6 regions)
                   # 1: d&a on continental scale (scaling factor per continent; continent represented by AR6 weighted means)
                   # 2: d&a on ar6 scale (scaling factor per ar6 region)
                   
@@ -88,7 +88,7 @@ flag_pi=1         # 0: only use pi from chosen models
                   # 1: use all available pi
                   
 # << SELECT >>
-flag_factor=0     # 0: 2-factor -> hist-noLu and lu
+flag_factor=2     # 0: 2-factor -> hist-noLu and lu
                   # 1: 1-factor -> historical
                   # 2: 1-factor -> hist-noLu
                   
@@ -471,7 +471,7 @@ elif len(exp_list) == 1:
         second_exp = 'hist-noLu'
     elif start_exp == 'hist-noLu':
         second_exp = 'historical'
-    pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}.pkl'.format(second_exp,grid,analysis,t_ext),'rb')
+    pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}_{}-pi.pkl'.format(second_exp,grid,analysis,t_ext,pi),'rb')
     var_fin_2 = pk.load(pkl_file)
     pkl_file.close()
     
