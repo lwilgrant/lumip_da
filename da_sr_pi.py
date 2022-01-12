@@ -32,9 +32,12 @@ from da_funcs import *
 
 # mod data
 def picontrol_subroutine(piDIR,
+                         mapDIR,
                          allpiDIR,
+                         sfDIR,
                          pi_files,
                          grid,
+                         agg,
                          pi,
                          models,
                          obs_types,
@@ -44,8 +47,13 @@ def picontrol_subroutine(piDIR,
                          y1,
                          freq,
                          maps,
+                         grid_area,
                          ar6_regs,
                          ar6_land,
+                         cnt_regs,
+                         cnt_wts,
+                         cnt_areas,
+                         weight,
                          ns,
                          nt):
 
@@ -112,7 +120,7 @@ def picontrol_subroutine(piDIR,
                                 var,
                                 obs=obs,
                                 freq=freq).where(maps[obs] == 1)
-                    pi_ar6 = weighted_mean(continents, # weighted mean
+                    pi_ar6 = ar6_weighted_mean(continents, # weighted mean
                                            da,
                                            ar6_regs[obs],
                                            nt,
@@ -217,7 +225,7 @@ def picontrol_subroutine(piDIR,
     
     elif grid == 'model':
         
-        if pi == 'models':
+        if pi == 'model':
             
             len_list = []
             pi_ts_ens['mmm'] = []
@@ -255,7 +263,7 @@ def picontrol_subroutine(piDIR,
                                 y1,
                                 var,
                                 freq=freq).where(maps[mod] == 1)
-                    pi_ar6 = weighted_mean(continents, # weighted mean
+                    pi_ar6 = ar6_weighted_mean(continents, # weighted mean
                                         da,
                                         ar6_regs[mod],
                                         nt,
@@ -373,7 +381,10 @@ def picontrol_subroutine(piDIR,
             
             for mod in allmodels:
                 
+                os.chdir(mapDIR)    
+                grid_area[mod] = xr.open_dataset(mod+'_gridarea.nc',decode_times=False)['cell_area']
                 allmodels_pi_files[mod] = []
+                cnt_wts[mod] = {}
                 i=0
                 
                 for rls in pi_files:
@@ -382,6 +393,7 @@ def picontrol_subroutine(piDIR,
                        
                         if i == 0: # for new models in full piC ensemble,add ar6_land template to maps[mod] for area-weighted mean
                             
+                            os.chdir(allpiDIR)
                             template = xr.open_dataset(rls,decode_times=False).tasmax.isel(time=0).squeeze(drop=True)
                             
                             if 'height' in template.coords:
@@ -391,7 +403,14 @@ def picontrol_subroutine(piDIR,
                             ar6_regs[mod] = ar6_mask(template)
                             ar6_land[mod] = xr.where(ar6_regs[mod]>=0,1,0)
                             maps[mod] = deepcopy(ar6_land[mod])
-                                               
+                            cnt_regs[mod] = cnt_mask(sfDIR, # changes directory, correct elsewhere lower
+                                                     template)
+                            for c in continents.keys():
+                                cnt_areas[c] = grid_area[mod].where(cnt_regs[mod]==continents[c]).sum(dim=('lat','lon'))
+                            max_area = max(cnt_areas.values())
+                            for c in continents.keys():
+                                cnt_wts[mod][c] = cnt_areas[c]/max_area
+                                           
                         i+=1
                         allmodels_pi_files[mod].append(rls)
                         
@@ -410,83 +429,121 @@ def picontrol_subroutine(piDIR,
             ctl_data_continental = {}
             ctl_data_ar6 = {}      
                 
-            for c in continents.keys():
-                
-                pi_data_continental[c] = []
-                
-                for ar6 in continents[c]:
-                    
-                    pi_data_ar6[ar6] = []
-                
             shuffle(pi_files)
+            os.chdir(allpiDIR)
             
-            for mod in allmodels:
+            if agg == 'ar6':
                 
-                picm = 0
-                for file in allmodels_pi_files[mod]:
+                for c in continents.keys():
                     
-                    # mod data and coords for ar6 mask
-                    da = nc_read(file,
-                                y1,
-                                var,
-                                freq=freq).where(maps[mod] == 1)
-                    pi_ar6 = weighted_mean(continents, # weighted mean
-                                        da,
-                                        ar6_regs[mod],
-                                        nt,
-                                        ns)
-                    pi_ar6 = del_rows(pi_ar6) # remove tsteps with nans (temporal x spatial shaped matrix)
-                    input_pi_ar6 = deepcopy(pi_ar6) # temporal centering
-                    pi_ar6 = temp_center(ns,
-                                        input_pi_ar6)
+                    pi_data_continental[c] = []
+                    
+                    for ar6 in continents[c]:
                         
-                    # if picm <= min_pi_samp:
+                        pi_data_ar6[ar6] = []                
+            
+                for mod in allmodels:
+                    
+                    picm = 0
+                    for file in allmodels_pi_files[mod]:
                         
-                    pi_ts_ens.append(pi_ar6) 
-                    pi_data.append(pi_ar6.flatten()) # 1-D pi array to go into pi-chunks for DA
-                        
-                    picm += 1
-                        
-                    # 1-D pi array per continent
-                    for c in continents.keys():
-                        
-                        cnt_idx = continent_names.index(c)
-                        
-                        if cnt_idx == 0:
+                        # mod data and coords for ar6 mask
+                        da = nc_read(file,
+                                    y1,
+                                    var,
+                                    freq=freq).where(maps[mod] == 1)
+                        pi_ar6 = ar6_weighted_mean(continents, # weighted mean
+                                            da,
+                                            ar6_regs[mod],
+                                            nt,
+                                            ns)
+                        pi_ar6 = del_rows(pi_ar6) # remove tsteps with nans (temporal x spatial shaped matrix)
+                        input_pi_ar6 = deepcopy(pi_ar6) # temporal centering
+                        pi_ar6 = temp_center(ns,
+                                            input_pi_ar6)
                             
-                            strt_idx = 0
+                        # if picm <= min_pi_samp:
                             
-                        else:
+                        pi_ts_ens.append(pi_ar6) 
+                        pi_data.append(pi_ar6.flatten()) # 1-D pi array to go into pi-chunks for DA
                             
-                            strt_idx = 0
-                            idxs = np.arange(0,cnt_idx)
+                        picm += 1
                             
-                            for i in idxs:
+                        # 1-D pi array per continent
+                        for c in continents.keys():
+                            
+                            cnt_idx = continent_names.index(c)
+                            
+                            if cnt_idx == 0:
                                 
-                                strt_idx += len(continents[continent_names[i]])
+                                strt_idx = 0
                                 
-                        n = len(continents[c])
-                        pi_data_continental[c].append(pi_ar6[:,strt_idx:strt_idx+n].flatten())
-                        
-                        for ar6,i in zip(continents[c],range(strt_idx,strt_idx+n)):
+                            else:
+                                
+                                strt_idx = 0
+                                idxs = np.arange(0,cnt_idx)
+                                
+                                for i in idxs:
+                                    
+                                    strt_idx += len(continents[continent_names[i]])
+                                    
+                            n = len(continents[c])
+                            pi_data_continental[c].append(pi_ar6[:,strt_idx:strt_idx+n].flatten())
+                            
+                            for ar6,i in zip(continents[c],range(strt_idx,strt_idx+n)):
 
-                            pi_data_ar6[ar6].append(pi_ar6[:,i].flatten()) # is this flattening unnecessary or negatively impactful? already 1D (check this)
-                
-            ctl_data = np.stack(pi_data,axis=0)
-                
-            for c in continents.keys():
-                
-                ctl_data_continental[c] = np.stack(pi_data_continental[c],
-                                                   axis=0)
-                
-                for ar6 in continents[c]:
+                                pi_data_ar6[ar6].append(pi_ar6[:,i].flatten()) # is this flattening unnecessary or negatively impactful? already 1D (check this)
                     
-                    ctl_data_ar6[ar6] = np.stack(pi_data_ar6[ar6],
-                                                 axis=0)
-        
-            # pi tseries data
-            pi_ts_ens = np.stack(pi_ts_ens,
-                                 axis=0)          
+                ctl_data = np.stack(pi_data,axis=0)
+                    
+                for c in continents.keys():
+                    
+                    ctl_data_continental[c] = np.stack(pi_data_continental[c],
+                                                    axis=0)
+                    
+                    for ar6 in continents[c]:
+                        
+                        ctl_data_ar6[ar6] = np.stack(pi_data_ar6[ar6],
+                                                    axis=0)
+            
+                # pi tseries data
+                pi_ts_ens = np.stack(pi_ts_ens,
+                                    axis=0)          
+                
+            elif agg == 'continental':
+                
+                for mod in allmodels:
+                    
+                    picm = 0
+                    for file in allmodels_pi_files[mod]:
+                        
+                        # mod data and coords for ar6 mask
+                        da = nc_read(file,
+                                    y1,
+                                    var,
+                                    freq=freq).where(maps[mod] == 1)
+                        pi_cnt = cnt_weighted_mean(continents, # weighted mean
+                                                   da,
+                                                   cnt_regs[mod],
+                                                   nt,
+                                                   ns,
+                                                   weight,
+                                                   cnt_wts[mod])                      
+                        
+                        pi_cnt = del_rows(pi_cnt) # remove tsteps with nans (temporal x spatial shaped matrix)
+                        input_pi_cnt = deepcopy(pi_cnt) # temporal centering
+                        pi_cnt = temp_center(ns,
+                                             input_pi_cnt)
+                            
+                        pi_ts_ens.append(pi_cnt) 
+                        pi_data.append(pi_cnt.flatten()) # 1-D pi array to go into pi-chunks for DA
+                        
+                    
+                ctl_data = np.stack(pi_data,axis=0)
+            
+                # pi tseries data
+                pi_ts_ens = np.stack(pi_ts_ens,
+                                    axis=0)                     
             
     return ctl_data,ctl_data_continental,ctl_data_ar6,pi_ts_ens
 

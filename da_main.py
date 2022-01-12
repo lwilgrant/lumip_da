@@ -14,6 +14,20 @@ Created on Wed Jul  1 16:52:49 2020
 
 # This script generates detection and attribution results on LUMIP data
 
+# 01/2021
+    # added allpi option to better capture noise (done)
+    # added option to global analysis for using aggregated data per continent instead of ar6 (only for allpi case in "da_sr_pi") (done)
+    # added weights to continent level spatial means (asia = 1) (done)
+        # add similar weights to ar6? less necessary because lower discrepancy and high uncertainty in this data, 
+        # but if I do it, house the weight relativity per continent (so each continent has one largest region with weight = 1)
+    # note that these updates have not been established for the case of observation resolution analyses
+        # much of the input data has not been remapped to these resolutions anyway
+    # need to change code to:
+        # hide pickled datasets in "pickle" folder (done)
+            # need pickle folder in PCA main script + funcs too
+        # add "ar6/cnt-agg" format to pickle data names (done)
+    
+
 
 #%%============================================================================
 # import
@@ -51,6 +65,7 @@ piDIR = os.path.join(curDIR, 'pi')
 allpiDIR = os.path.join(curDIR, 'allpi')
 mapDIR = os.path.join(curDIR, 'map')
 sfDIR = os.path.join(curDIR, 'shapefiles')
+pklDIR = os.path.join(curDIR, 'pickle')
 outDIR = os.path.join(curDIR, 'figures')
 
 # bring in functions
@@ -71,9 +86,13 @@ flag_svplt=1      # 0: do not save plot
                   # 1: save plot in picDIR
 
 # << SELECT >>
-flag_analysis=2   # 0: d&a on global scale (all chosen ar6 regions)
+flag_analysis=0   # 0: d&a on global scale (all chosen ar6 regions)
                   # 1: d&a on continental scale (scaling factor per continent; continent represented by AR6 weighted means)
                   # 2: d&a on ar6 scale (scaling factor per ar6 region)
+                  
+# << SELECT >>
+flag_data_agg=1   # 0: global d&a (via flag_analysis) w/ ar6 scale input points
+                  # 1: global d&a w/ continental scale input points             
                   
 # << SELECT >>
 flag_lulcc=0      # 0: forest loss
@@ -88,7 +107,7 @@ flag_pi=1         # 0: only use pi from chosen models
                   # 1: use all available pi
                   
 # << SELECT >>
-flag_factor=2     # 0: 2-factor -> hist-noLu and lu
+flag_factor=1     # 0: 2-factor -> hist-noLu and lu
                   # 1: 1-factor -> historical
                   # 2: 1-factor -> hist-noLu
                   
@@ -105,6 +124,10 @@ thresh=-20       # flag_lulcc_measure == 0; threshold should be written as grid 
 flag_lulcc_measure=2    # 0: absolute change
                         # 1: area change
                         # 2: all_pixels
+                        
+# << SELECT >>
+flag_weight=0           # 0: no weights on continental means (not per pixel, which is automatic, but for overall area diff across continents when flag_data_agg == 1)
+                        # 1: continental weights (asia weight of 1, australia weight of ~0.18)    
                         
 # << SELECT >>
 flag_lu_technique=1     # 0: lu as mean of individual (historical - hist-nolu)
@@ -159,6 +182,8 @@ seasons = ['jja',
 analyses = ['global',
             'continental',
             'ar6']
+agg_opts = ['ar6',
+            'continental']
 deforest_options = ['all',
                     'defor',
                     'ar6']
@@ -176,6 +201,8 @@ obs_types = ['cru',
 measures = ['absolute_change',
             'area_change',
             'all_pixels']
+weight_opts = ['no_weights',
+               'weights']
 lu_techniques = ['individual',
                  'mean']
 start_years = [1915,
@@ -198,12 +225,14 @@ shuffle_opts = ['no',
 bootstrap_reps = [0,50,100,500,1000]
 
 analysis = analyses[flag_analysis]
+agg = agg_opts[flag_data_agg]
 lulcc_type = lulcc[flag_lulcc]
 grid = grids[flag_grid]
 pi = pi_opts[flag_pi]
 exp_list = factors[flag_factor]
 obs = obs_types[flag_obs]
 measure = measures[flag_lulcc_measure]
+weight = weight_opts[flag_weight]
 lu_techn = lu_techniques[flag_lu_technique]
 y1 = start_years[flag_y1]
 length = lengths[flag_len]
@@ -228,30 +257,51 @@ models = ['CanESM5',
 exps = ['historical',
         'hist-noLu',
         'lu']
-    
-continents = {}
-continents['North America'] = [1,2,3,4,5,6,7]
-continents['South America'] = [9,10,11,12,13,14,15]
-continents['Europe'] = [16,17,18,19]
-continents['Asia'] = [28,29,30,31,32,33,34,35,37,38]
-continents['Africa'] = [21,22,23,24,25,26]
-continents['Australia'] = [39,40,41,42]
 
-continent_names = []
-for c in continents.keys():
-    continent_names.append(c)
-
-labels = {}
-labels['North America'] = ['WNA','CNA','ENA','SCA']
-labels['South America'] = ['NWS','NSA','NES','SAM','SWS','SES']
-labels['Europe'] = ['NEU','WCE','EEU','MED']
-labels['Asia'] = ['WSB','ESB','TIB','EAS','SAS','SEA']
-labels['Africa'] = ['WAF','CAF','NEAF','SEAF','ESAF']
+if (analysis == 'global' and agg == 'ar6') or analysis == 'continental' or analysis == 'ar6':
     
-ns = 0
-for c in continents.keys():
-    for i in continents[c]:
-        ns += 1
+    continents = {}
+    continents['North America'] = [1,2,3,4,5,6,7]
+    continents['South America'] = [9,10,11,12,13,14,15]
+    continents['Europe'] = [16,17,18,19]
+    continents['Asia'] = [28,29,30,31,32,33,34,35,37,38]
+    continents['Africa'] = [21,22,23,24,25,26]
+    continents['Australia'] = [39,40,41,42]
+
+    continent_names = []
+    for c in continents.keys():
+        continent_names.append(c)
+
+    labels = {}
+    labels['North America'] = ['WNA','CNA','ENA','SCA']
+    labels['South America'] = ['NWS','NSA','NES','SAM','SWS','SES']
+    labels['Europe'] = ['NEU','WCE','EEU','MED']
+    labels['Asia'] = ['WSB','ESB','TIB','EAS','SAS','SEA']
+    labels['Africa'] = ['WAF','CAF','NEAF','SEAF','ESAF']
+
+    ns = 0
+    for c in continents.keys():
+        for i in continents[c]:
+            ns += 1
+            
+elif analysis == 'global' and agg == 'continental':
+    
+    continents = {}
+    continents['North America'] = 7
+    continents['South America'] = 4
+    continents['Europe'] = 1
+    continents['Asia'] = 6
+    continents['Africa'] = 3
+    continents['Australia'] = 5
+
+    continent_names = []
+    for c in continents.keys():
+        continent_names.append(c)
+
+    ns = 0
+    for c in continents.keys():
+        ns += 1    
+    
         
 letters = ['a', 'b', 'c',
            'd', 'e', 'f',
@@ -291,16 +341,18 @@ map_files,grid_files,fp_files,pi_files,obs_files = file_subroutine(mapDIR,
 # luh2 maps and ar6 regions
 os.chdir(curDIR)
 from da_sr_maps import *
-maps,ar6_regs,ar6_land = map_subroutine(map_files,
-                                        models,
-                                        mapDIR,
-                                        lulcc,
-                                        obs_types,
-                                        grid,
-                                        y1,
-                                        measure,
-                                        freq,
-                                        thresh)            
+maps,ar6_regs,ar6_land,cnt_regs,cnt_areas,cnt_wts,grid_area = map_subroutine(map_files,
+                                                                             models,
+                                                                             mapDIR,
+                                                                             sfDIR,
+                                                                             lulcc,
+                                                                             obs_types,
+                                                                             grid,
+                                                                             continents,
+                                                                             y1,
+                                                                             measure,
+                                                                             freq,
+                                                                             thresh)            
 
 #%%============================================================================
 
@@ -317,15 +369,23 @@ mod_ens,mod_ts_ens,nt = ensemble_subroutine(modDIR,
                                             lulcc_type,
                                             y1,
                                             grid,
+                                            agg,
+                                            weight,
                                             freq,
                                             obs_types,
                                             continents,
                                             ns,
                                             fp_files,
-                                            ar6_regs)
-ts_pickler(curDIR,
+                                            ar6_regs,
+                                            cnt_regs,
+                                            cnt_wts)
+
+ts_pickler(pklDIR,
            mod_ts_ens,
            grid,
+           pi,
+           agg,
+           weight,
            t_ext,
            obs_mod='mod')
 
@@ -336,12 +396,16 @@ os.chdir(curDIR)
 from da_sr_mod_fp import *
 fp,fp_continental,fp_ar6,nx = fingerprint_subroutine(obs_types,
                                                      grid,
+                                                     agg,
                                                      ns,
                                                      nt,
                                                      mod_ens,
                                                      exps,
                                                      models,
                                                      ar6_regs,
+                                                     cnt_regs,
+                                                     cnt_wts,
+                                                     weight,
                                                      continents,
                                                      continent_names,
                                                      exp_list)
@@ -352,9 +416,12 @@ fp,fp_continental,fp_ar6,nx = fingerprint_subroutine(obs_types,
 os.chdir(curDIR)
 from da_sr_pi import *
 ctl_data,ctl_data_continental,ctl_data_ar6,pi_ts_ens = picontrol_subroutine(piDIR,
+                                                                            mapDIR,
                                                                             allpiDIR,
+                                                                            sfDIR,
                                                                             pi_files,
                                                                             grid,
+                                                                            agg,
                                                                             pi,
                                                                             models,
                                                                             obs_types,
@@ -364,14 +431,22 @@ ctl_data,ctl_data_continental,ctl_data_ar6,pi_ts_ens = picontrol_subroutine(piDI
                                                                             y1,
                                                                             freq,
                                                                             maps,
+                                                                            grid_area,
                                                                             ar6_regs,
                                                                             ar6_land,
+                                                                            cnt_regs,
+                                                                            cnt_wts,
+                                                                            cnt_areas,
+                                                                            weight,
                                                                             ns,
                                                                             nt)
 
-ts_pickler(curDIR,
+ts_pickler(pklDIR,
            pi_ts_ens,
            grid,
+           pi,
+           agg,
+           weight,
            t_ext,
            obs_mod='pic')
 
@@ -391,13 +466,20 @@ obs_data,obs_data_continental,obs_data_ar6,obs_ts = obs_subroutine(obsDIR,
                                                                    var,
                                                                    maps,
                                                                    ar6_regs,
+                                                                   cnt_regs,
+                                                                   cnt_wts,
+                                                                   agg,
+                                                                   weight,
                                                                    freq,
                                                                    nt,
                                                                    ns)
 
-ts_pickler(curDIR,
+ts_pickler(pklDIR,
            obs_ts,
            grid,
+           pi,
+           agg,
+           weight,
            t_ext,
            obs_mod='obs')
 
@@ -447,10 +529,12 @@ models = of_subroutine(grid,
                        continents)
 
 # save OF results
-pickler(curDIR,
+pickler(pklDIR,
         var_fin,
         analysis,
         grid,
+        agg,
+        weight,
         t_ext,
         exp_list,
         pi)
@@ -471,7 +555,8 @@ elif len(exp_list) == 1:
         second_exp = 'hist-noLu'
     elif start_exp == 'hist-noLu':
         second_exp = 'historical'
-    pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}_{}-pi.pkl'.format(second_exp,grid,analysis,t_ext,pi),'rb')
+    os.chdir(pklDIR)
+    pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}.pkl'.format(second_exp,grid,analysis,pi,agg,weight,t_ext),'rb')
     var_fin_2 = pk.load(pkl_file)
     pkl_file.close()
     
@@ -487,6 +572,8 @@ if analysis == 'global':
                         grid,
                         obs_types,
                         pi,
+                        agg,
+                        weight,
                         exp_list,
                         var_fin,
                         flag_svplt,

@@ -32,9 +32,11 @@ from da_funcs import *
 def map_subroutine(map_files,
                    models,
                    mapDIR,
+                   sfDIR,
                    lulcc,
                    obs_types,
                    grid,
+                   continents,
                    y1,
                    measure,
                    freq,
@@ -46,6 +48,9 @@ def map_subroutine(map_files,
     maps = {}
     ar6_regs = {}
     ar6_land = {}
+    cnt_regs = {}
+    cnt_areas = {}
+    cnt_wts = {}
     
     if grid == 'obs':
         
@@ -114,22 +119,37 @@ def map_subroutine(map_files,
 
         for mod in models:
             
+            os.chdir(mapDIR)
             grid_area[mod] = xr.open_dataset(mod+'_gridarea.nc',decode_times=False)['cell_area']
+            cnt_wts[mod] = {}
             i = 0
             
             for lu in lulcc:
                                     
-                # get ar6 from lat/lon of sample model res luh2 file
+                # get ar6 and continents from lat/lon of sample model res luh2 file (only usnig luh2 for dimensions, not trusting data)
                 if i == 0:
                     template = xr.open_dataset(map_files[mod][lu],decode_times=False).cell_area.isel(time=0).squeeze(drop=True)
                     if 'height' in template.coords:
                         template = template.drop('height')
+                    # ar6
                     ar6_regs[mod] = ar6_mask(template)
                     ar6_land[mod] = xr.where(ar6_regs[mod]>=0,1,0)
+                    # continents
+                    cnt_regs[mod] = cnt_mask(sfDIR, # changes directory, correct elsewhere lower
+                                             template)
+                    for c in continents.keys():
+                        cnt_areas[c] = grid_area[mod].where(cnt_regs[mod]==continents[c]).sum(dim=('lat','lon'))
+                    max_area = max(cnt_areas.values())
+                    for c in continents.keys():
+                        cnt_wts[mod][c] = cnt_areas[c]/max_area
+                    
+                        
+                    
                 i += 1
                     
                 if measure == 'absolute_change':
                     
+                    os.chdir(mapDIR)
                     maps[mod][lu] = nc_read(map_files[mod][lu],
                                             y1,
                                             var='cell_area',
@@ -147,6 +167,7 @@ def map_subroutine(map_files,
                     
                 elif measure == 'area_change':
                     
+                    os.chdir(mapDIR)
                     maps[mod][lu] = nc_read(map_files[mod][lu],
                                             y1,
                                             var='cell_area',
@@ -166,4 +187,6 @@ def map_subroutine(map_files,
                     
                     maps[mod] = ar6_land[mod]
             
-    return maps,ar6_regs,ar6_land
+    return maps,ar6_regs,ar6_land,cnt_regs,cnt_areas,cnt_wts,grid_area
+
+# %%

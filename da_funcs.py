@@ -88,11 +88,30 @@ def ar6_mask(da):
 
 #%%============================================================================
 
-def weighted_mean(continents,
-                  da,
-                  ar6_regs,
-                  nt,
-                  ns):
+def cnt_mask(sfDIR,
+             da):
+    
+    lat = da.lat.values
+    lon = da.lon.values
+    ar6_regs = rm.defined_regions.ar6.land.mask(lon,lat)
+    landmask = rm.defined_regions.natural_earth.land_110.mask(lon,lat)    
+    ar6_regs = ar6_regs.where(landmask == 0)
+    ar6_land = xr.where(ar6_regs > 0,1,0)
+    os.chdir(sfDIR)
+    gpd_continents = gp.read_file('IPCC_WGII_continental_regions.shp')
+    gpd_continents = gpd_continents[(gpd_continents.Region != 'Antarctica')&(gpd_continents.Region != 'Small Islands')]
+    cnt_regs = rm.mask_geopandas(gpd_continents,lon,lat)
+    cnt_regs = cnt_regs.where((ar6_regs != 0)&(ar6_land == 1))
+    
+    return cnt_regs
+
+#%%============================================================================
+
+def ar6_weighted_mean(continents,
+                      da,
+                      ar6_regs,
+                      nt,
+                      ns):
     
     nt = len(da.time.values)
     matrix = np.zeros(shape=(nt,ns))
@@ -111,6 +130,35 @@ def weighted_mean(continents,
             
     return matrix
 
+#%%============================================================================
+
+def cnt_weighted_mean(continents,
+                      da,
+                      cnt_regs,
+                      nt,
+                      ns,
+                      weight,
+                      cnt_wts):
+    
+    nt = len(da.time.values)
+    matrix = np.zeros(shape=(nt,ns))
+    s = 0
+    for c in continents.keys():
+        da_i = da.where(cnt_regs==continents[c],
+                        drop=True)                    
+        for t in np.arange(nt):
+            da_i_t = da_i.isel(time=t)
+            weights = np.cos(np.deg2rad(da_i_t.lat))
+            weights.name='weights'
+            if weight == 'no_weights': # do not weigh based on continent size
+                da_i_t_w = da_i_t.weighted(weights).mean(('lon','lat')).values
+            elif weight == 'weights':
+                da_i_t_w = da_i_t.weighted(weights).mean(('lon','lat')).values
+                da_i_t_w = da_i_t_w * cnt_wts[c]
+            matrix[t,s]= da_i_t_w
+        s += 1
+            
+    return matrix
 
 #%%============================================================================
 
@@ -611,21 +659,25 @@ def da_run(y,
 
 #%%============================================================================
 
-def ts_pickler(curDIR,
+def ts_pickler(pklDIR,
                ts,
                grid,
+               pi,
+               agg,
+               weight,
                t_ext,
                obs_mod):
     
-    os.chdir(curDIR)
+    os.chdir(pklDIR)
     if obs_mod == 'mod':
-        pkl_file = open('mod_ts_{}-grid_{}.pkl'.format(grid,t_ext),'wb')
+        pkl_file = open('mod_ts_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(grid,pi,agg,weight,t_ext),'wb')
     elif obs_mod == 'obs':
-        pkl_file = open('obs_ts_{}-grid_{}.pkl'.format(grid,t_ext),'wb')
+        pkl_file = open('obs_ts_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(grid,pi,agg,weight,t_ext),'wb')
     elif obs_mod == 'pic':
-        pkl_file = open('pic_ts_{}-grid_{}.pkl'.format(grid,t_ext),'wb')
+        pkl_file = open('pic_ts_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(grid,pi,agg,weight,t_ext),'wb')
     pk.dump(ts,pkl_file)
     pkl_file.close()
+    
 
 #%%============================================================================
 
@@ -633,16 +685,18 @@ def pickler(curDIR,
             var_fin,
             analysis,
             grid,
+            agg,
+            weight,
             t_ext,
             exp_list,
             pi):
     
     os.chdir(curDIR)
     if len(exp_list) == 2:
-        pkl_file = open('var_fin_2-factor_{}-grid_{}_{}_{}-pi.pkl'.format(grid,analysis,t_ext,pi),'wb')
+        pkl_file = open('var_fin_2-factor_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}.pkl'.format(grid,analysis,pi,agg,weight,t_ext),'wb')
     elif len(exp_list) == 1:
         exp = exp_list[0]
-        pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}_{}-pi.pkl'.format(exp,grid,analysis,t_ext,pi),'wb')
+        pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}.pkl'.format(exp,grid,analysis,pi,agg,weight,t_ext),'wb')
     pk.dump(var_fin,pkl_file)
     pkl_file.close()
 
@@ -680,6 +734,8 @@ def plot_scaling_global(models,
                         grid,
                         obs_types,
                         pi,
+                        agg,
+                        weight,
                         exp_list,
                         var_fin,
                         flag_svplt,
@@ -882,11 +938,11 @@ def plot_scaling_global(models,
             
             if exp_list == ['hist-noLu','lu']:
                 
-                f.savefig(outDIR+'/global_attribution_2-factor_{}_{}-grid_{}-pi.png'.format(obs,grid,pi),bbox_inches='tight',dpi=200)     
+                f.savefig(outDIR+'/global_attribution_2-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight.png'.format(obs,grid,pi,agg,weight),bbox_inches='tight',dpi=200)     
                 
             elif exp_list == ['historical','hist-noLu']:
                 
-                f.savefig(outDIR+'/global_attribution_1-factor_{}_{}-grid_{}-pi.png'.format(obs,grid,pi),bbox_inches='tight',dpi=200)     
+                f.savefig(outDIR+'/global_attribution_1-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight.png'.format(obs,grid,pi,agg,weight),bbox_inches='tight',dpi=200)     
   
 
 #%%============================================================================    
