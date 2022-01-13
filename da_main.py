@@ -86,12 +86,12 @@ flag_svplt=1      # 0: do not save plot
                   # 1: save plot in picDIR
 
 # << SELECT >>
-flag_analysis=0   # 0: d&a on global scale (all chosen ar6 regions)
+flag_analysis=1   # 0: d&a on global scale (all chosen ar6 regions)
                   # 1: d&a on continental scale (scaling factor per continent; continent represented by AR6 weighted means)
                   # 2: d&a on ar6 scale (scaling factor per ar6 region)
                   
 # << SELECT >>
-flag_data_agg=1   # 0: global d&a (via flag_analysis) w/ ar6 scale input points
+flag_data_agg=0   # 0: global d&a (via flag_analysis) w/ ar6 scale input points
                   # 1: global d&a w/ continental scale input points             
                   
 # << SELECT >>
@@ -107,7 +107,7 @@ flag_pi=1         # 0: only use pi from chosen models
                   # 1: use all available pi
                   
 # << SELECT >>
-flag_factor=1     # 0: 2-factor -> hist-noLu and lu
+flag_factor=2     # 0: 2-factor -> hist-noLu and lu
                   # 1: 1-factor -> historical
                   # 2: 1-factor -> hist-noLu
                   
@@ -126,7 +126,7 @@ flag_lulcc_measure=2    # 0: absolute change
                         # 2: all_pixels
                         
 # << SELECT >>
-flag_weight=0           # 0: no weights on continental means (not per pixel, which is automatic, but for overall area diff across continents when flag_data_agg == 1)
+flag_weight=1           # 0: no weights on continental means (not per pixel, which is automatic, but for overall area diff across continents when flag_data_agg == 1)
                         # 1: continental weights (asia weight of 1, australia weight of ~0.18)    
                         
 # << SELECT >>
@@ -341,18 +341,20 @@ map_files,grid_files,fp_files,pi_files,obs_files = file_subroutine(mapDIR,
 # luh2 maps and ar6 regions
 os.chdir(curDIR)
 from da_sr_maps import *
-maps,ar6_regs,ar6_land,cnt_regs,cnt_areas,cnt_wts,grid_area = map_subroutine(map_files,
-                                                                             models,
-                                                                             mapDIR,
-                                                                             sfDIR,
-                                                                             lulcc,
-                                                                             obs_types,
-                                                                             grid,
-                                                                             continents,
-                                                                             y1,
-                                                                             measure,
-                                                                             freq,
-                                                                             thresh)            
+maps,ar6_regs,ar6_areas,ar6_wts,ar6_land,cnt_regs,cnt_areas,cnt_wts,grid_area = map_subroutine(map_files,
+                                                                                               models,
+                                                                                               mapDIR,
+                                                                                               sfDIR,
+                                                                                               lulcc,
+                                                                                               obs_types,
+                                                                                               grid,
+                                                                                               agg,
+                                                                                               weight,
+                                                                                               continents,
+                                                                                               y1,
+                                                                                               measure,
+                                                                                               freq,
+                                                                                               thresh)    
 
 #%%============================================================================
 
@@ -433,6 +435,8 @@ ctl_data,ctl_data_continental,ctl_data_ar6,pi_ts_ens = picontrol_subroutine(piDI
                                                                             maps,
                                                                             grid_area,
                                                                             ar6_regs,
+                                                                            ar6_wts,
+                                                                            ar6_areas,
                                                                             ar6_land,
                                                                             cnt_regs,
                                                                             cnt_wts,

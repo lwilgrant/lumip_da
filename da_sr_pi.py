@@ -49,6 +49,8 @@ def picontrol_subroutine(piDIR,
                          maps,
                          grid_area,
                          ar6_regs,
+                         ar6_wts,
+                         ar6_areas,
                          ar6_land,
                          cnt_regs,
                          cnt_wts,
@@ -385,6 +387,7 @@ def picontrol_subroutine(piDIR,
                 grid_area[mod] = xr.open_dataset(mod+'_gridarea.nc',decode_times=False)['cell_area']
                 allmodels_pi_files[mod] = []
                 cnt_wts[mod] = {}
+                ar6_wts[mod] = {}
                 i=0
                 
                 for rls in pi_files:
@@ -395,21 +398,53 @@ def picontrol_subroutine(piDIR,
                             
                             os.chdir(allpiDIR)
                             template = xr.open_dataset(rls,decode_times=False).tasmax.isel(time=0).squeeze(drop=True)
-                            
                             if 'height' in template.coords:
-                                
                                 template = template.drop('height')
-                                
+                            
                             ar6_regs[mod] = ar6_mask(template)
                             ar6_land[mod] = xr.where(ar6_regs[mod]>=0,1,0)
-                            maps[mod] = deepcopy(ar6_land[mod])
-                            cnt_regs[mod] = cnt_mask(sfDIR, # changes directory, correct elsewhere lower
-                                                     template)
-                            for c in continents.keys():
-                                cnt_areas[c] = grid_area[mod].where(cnt_regs[mod]==continents[c]).sum(dim=('lat','lon'))
-                            max_area = max(cnt_areas.values())
-                            for c in continents.keys():
-                                cnt_wts[mod][c] = cnt_areas[c]/max_area
+                            maps[mod] = ar6_land[mod]
+                            
+                            if agg == 'ar6':    
+                                ar6_areas[c] = {}
+                                ar6_wts[mod][c] = {}
+                                for i in continents[c]:
+                                    ar6_areas[c][i] = grid_area[mod].where(ar6_regs[mod]==i).sum(dim=('lat','lon'))
+                                max_area = max(ar6_areas[c].values())
+                                for i in continents[c]:
+                                    ar6_wts[mod][c][i] = ar6_areas[c][i]/max_area
+
+                            if agg == 'continental':
+                                cnt_regs[mod] = cnt_mask(sfDIR, # changes directory, correct elsewhere lower
+                                                        template)
+                                for c in continents.keys():
+                                    cnt_areas[c] = grid_area[mod].where(cnt_regs[mod]==continents[c]).sum(dim=('lat','lon'))
+                                max_area = max(cnt_areas.values())
+                                for c in continents.keys():
+                                    cnt_wts[mod][c] = cnt_areas[c]/max_area
+                                               
+                    # if agg == 'ar6':
+                    #     # ar6
+                    #     ar6_regs[mod] = ar6_mask(template)
+                    #     ar6_land[mod] = xr.where(ar6_regs[mod]>=0,1,0)
+                    #     for c in continents.keys():
+                    #         ar6_areas[c] = {}
+                    #         ar6_wts[mod][c] = {}
+                    #         for i in continents[c]:
+                    #             ar6_areas[c][i] = grid_area[mod].where(ar6_regs[mod]==i).sum(dim=('lat','lon'))
+                    #         max_area = max(ar6_areas[c].values())
+                    #         for i in continents[c]:
+                    #             ar6_wts[mod][c][i] = ar6_areas[c][i]/max_area
+                                
+                    # elif agg == 'continental':
+                    #     # continents
+                    #     cnt_regs[mod] = cnt_mask(sfDIR, # changes directory, correct elsewhere lower
+                    #                              template)
+                    #     for c in continents.keys():
+                    #         cnt_areas[c] = grid_area[mod].where(cnt_regs[mod]==continents[c]).sum(dim=('lat','lon'))
+                    #     max_area = max(cnt_areas.values())
+                    #     for c in continents.keys():
+                    #         cnt_wts[mod][c] = cnt_areas[c]/max_area                                    
                                            
                         i+=1
                         allmodels_pi_files[mod].append(rls)
@@ -453,10 +488,12 @@ def picontrol_subroutine(piDIR,
                                     var,
                                     freq=freq).where(maps[mod] == 1)
                         pi_ar6 = ar6_weighted_mean(continents, # weighted mean
-                                            da,
-                                            ar6_regs[mod],
-                                            nt,
-                                            ns)
+                                                   da,
+                                                   ar6_regs[mod],
+                                                   nt,
+                                                   ns,
+                                                   weight,
+                                                   ar6_wts[mod])
                         pi_ar6 = del_rows(pi_ar6) # remove tsteps with nans (temporal x spatial shaped matrix)
                         input_pi_ar6 = deepcopy(pi_ar6) # temporal centering
                         pi_ar6 = temp_center(ns,

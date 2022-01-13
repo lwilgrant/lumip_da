@@ -41,6 +41,7 @@ def obs_subroutine(obsDIR,
                    var,
                    maps,
                    ar6_regs,
+                   ar6_wts,
                    cnt_regs,
                    cnt_wts,
                    agg,
@@ -143,7 +144,9 @@ def obs_subroutine(obsDIR,
                                                 da,
                                                 ar6_regs[mod],
                                                 nt,
-                                                ns)
+                                                ns,
+                                                weight,
+                                                ar6_wts[mod])
                     obs_ar6 = del_rows(obs_ar6)
                     obs_mmm[obs].append(obs_ar6)
                     input_obs_ar6 = deepcopy(obs_ar6)

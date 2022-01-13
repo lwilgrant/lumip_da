@@ -41,6 +41,7 @@ def fingerprint_subroutine(obs_types,
                            exps,
                            models,
                            ar6_regs,
+                           ar6_wts,
                            cnt_regs,
                            cnt_wts,
                            weight,
@@ -273,10 +274,12 @@ def fingerprint_subroutine(obs_types,
 
                     # weighted mean
                     mod_ar6 = ar6_weighted_mean(continents,
-                                            mod_ens[mod][exp],
-                                            ar6_regs[mod],
-                                            nt,
-                                            ns)
+                                                mod_ens[mod][exp],
+                                                ar6_regs[mod],
+                                                nt,
+                                                ns,
+                                                weight,
+                                                ar6_wts[mod])
                     mod_ar6 = del_rows(mod_ar6) # remove tsteps with nans (temporal x spatial shaped matrix)
                     mmm[exp].append(mod_ar6) # set aside mod_ar6 for mmm global analysis of ar6 (will center after ensemble mean)
                     input_mod_ar6 = deepcopy(mod_ar6)

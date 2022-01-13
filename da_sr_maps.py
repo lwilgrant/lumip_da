@@ -36,6 +36,8 @@ def map_subroutine(map_files,
                    lulcc,
                    obs_types,
                    grid,
+                   agg,
+                   weight,
                    continents,
                    y1,
                    measure,
@@ -46,11 +48,13 @@ def map_subroutine(map_files,
     os.chdir(mapDIR)
     grid_area = {}
     maps = {}
-    ar6_regs = {}
-    ar6_land = {}
-    cnt_regs = {}
-    cnt_areas = {}
-    cnt_wts = {}
+    ar6_regs = {} # per model, data array of ar6 regions painted with integers from "continents[c]"
+    ar6_areas = {} # rerun per model, contains areas of each ar6 region for computing model weights for analyses with "agg = ar6"
+    ar6_wts = {} # per model, relative weights per continent (largest ar6 = 1)
+    ar6_land = {} # per model, land pixels
+    cnt_regs = {} # per model, data array of continents painted with integers from "continents[c]"
+    cnt_areas = {} # rerun per model, areas of each continent for computing model weights for global scale analysis with "agg = continental"
+    cnt_wts = {} # per model, continental weights (asia = 1)
     
     if grid == 'obs':
         
@@ -122,29 +126,38 @@ def map_subroutine(map_files,
             os.chdir(mapDIR)
             grid_area[mod] = xr.open_dataset(mod+'_gridarea.nc',decode_times=False)['cell_area']
             cnt_wts[mod] = {}
+            ar6_wts[mod] = {}
             i = 0
             
             for lu in lulcc:
                                     
                 # get ar6 and continents from lat/lon of sample model res luh2 file (only usnig luh2 for dimensions, not trusting data)
                 if i == 0:
+                    
                     template = xr.open_dataset(map_files[mod][lu],decode_times=False).cell_area.isel(time=0).squeeze(drop=True)
                     if 'height' in template.coords:
                         template = template.drop('height')
-                    # ar6
                     ar6_regs[mod] = ar6_mask(template)
-                    ar6_land[mod] = xr.where(ar6_regs[mod]>=0,1,0)
-                    # continents
-                    cnt_regs[mod] = cnt_mask(sfDIR, # changes directory, correct elsewhere lower
-                                             template)
-                    for c in continents.keys():
-                        cnt_areas[c] = grid_area[mod].where(cnt_regs[mod]==continents[c]).sum(dim=('lat','lon'))
-                    max_area = max(cnt_areas.values())
-                    for c in continents.keys():
-                        cnt_wts[mod][c] = cnt_areas[c]/max_area
-                    
-                        
-                    
+                    ar6_land[mod] = xr.where(ar6_regs[mod]>=0,1,0)                        
+                    if agg == 'ar6': # ar6
+                        for c in continents.keys():
+                            ar6_areas[c] = {}
+                            ar6_wts[mod][c] = {}
+                            for i in continents[c]:
+                                ar6_areas[c][i] = grid_area[mod].where(ar6_regs[mod]==i).sum(dim=('lat','lon'))
+                            max_area = max(ar6_areas[c].values())
+                            for i in continents[c]:
+                                ar6_wts[mod][c][i] = ar6_areas[c][i]/max_area
+                                
+                    elif agg == 'continental': # continents
+                        cnt_regs[mod] = cnt_mask(sfDIR, # changes directory, correct elsewhere lower
+                                                 template)
+                        for c in continents.keys():
+                            cnt_areas[c] = grid_area[mod].where(cnt_regs[mod]==continents[c]).sum(dim=('lat','lon'))
+                        max_area = max(cnt_areas.values())
+                        for c in continents.keys():
+                            cnt_wts[mod][c] = cnt_areas[c]/max_area
+
                 i += 1
                     
                 if measure == 'absolute_change':
@@ -187,6 +200,6 @@ def map_subroutine(map_files,
                     
                     maps[mod] = ar6_land[mod]
             
-    return maps,ar6_regs,ar6_land,cnt_regs,cnt_areas,cnt_wts,grid_area
+    return maps,ar6_regs,ar6_areas,ar6_wts,ar6_land,cnt_regs,cnt_areas,cnt_wts,grid_area
 
 # %%

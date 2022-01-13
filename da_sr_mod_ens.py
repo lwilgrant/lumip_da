@@ -56,6 +56,7 @@ def ensemble_subroutine(modDIR,
                         ns,
                         fp_files,
                         ar6_regs,
+                        ar6_wts,
                         cnt_regs,
                         cnt_wts):
 
@@ -187,7 +188,9 @@ def ensemble_subroutine(modDIR,
                                                     da,
                                                     ar6_regs[mod],
                                                     nt,
-                                                    ns)
+                                                    ns,
+                                                    weight,
+                                                    ar6_wts[mod])
                         mod_ar6 = del_rows(mod_ar6)
                         input_mod_ar6 = deepcopy(mod_ar6)
                         mod_ar6_center = temp_center(ns,

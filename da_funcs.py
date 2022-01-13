@@ -111,7 +111,9 @@ def ar6_weighted_mean(continents,
                       da,
                       ar6_regs,
                       nt,
-                      ns):
+                      ns,
+                      weight,
+                      ar6_wts):
     
     nt = len(da.time.values)
     matrix = np.zeros(shape=(nt,ns))
@@ -124,7 +126,11 @@ def ar6_weighted_mean(continents,
                 da_i_t = da_i.isel(time=t)
                 weights = np.cos(np.deg2rad(da_i_t.lat))
                 weights.name='weights'
-                da_i_t_w = da_i_t.weighted(weights).mean(('lon','lat')).values
+                if weight == 'no_weights':
+                    da_i_t_w = da_i_t.weighted(weights).mean(('lon','lat')).values
+                if weight == 'weights':
+                    da_i_t_w = da_i_t.weighted(weights).mean(('lon','lat')).values        
+                    da_i_t_w = da_i_t_w * ar6_wts[c]            
                 matrix[t,s]= da_i_t_w
             s += 1
             
