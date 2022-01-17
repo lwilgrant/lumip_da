@@ -91,7 +91,7 @@ flag_analysis=1   # 0: d&a on global scale (all chosen ar6 regions)
                   # 2: d&a on ar6 scale (scaling factor per ar6 region)
                   
 # << SELECT >>
-flag_data_agg=0   # 0: global d&a (via flag_analysis) w/ ar6 scale input points
+flag_data_agg=0   # 0: global d&a (via flag_analysis) w/ ar6 scale input points (want this for continental scale via flag_analysis)
                   # 1: global d&a w/ continental scale input points             
                   
 # << SELECT >>
@@ -99,7 +99,7 @@ flag_lulcc=0      # 0: forest loss
                   # 1: crop expansion
                   
 # << SELECT >>
-flag_grid=0       # 0: model grid resolution
+flag_grid=0       # 0: model grid resolution (decided on always using this; many options don't work otherwise)
                   # 1: uniform obs grid resolution
                   
 # << SELECT >>
@@ -107,7 +107,7 @@ flag_pi=1         # 0: only use pi from chosen models
                   # 1: use all available pi
                   
 # << SELECT >>
-flag_factor=2     # 0: 2-factor -> hist-noLu and lu
+flag_factor=0     # 0: 2-factor -> hist-noLu and lu
                   # 1: 1-factor -> historical
                   # 2: 1-factor -> hist-noLu
                   
@@ -126,8 +126,8 @@ flag_lulcc_measure=2    # 0: absolute change
                         # 2: all_pixels
                         
 # << SELECT >>
-flag_weight=1           # 0: no weights on continental means (not per pixel, which is automatic, but for overall area diff across continents when flag_data_agg == 1)
-                        # 1: continental weights (asia weight of 1, australia weight of ~0.18)    
+flag_weight=1           # 0: no weights on spatial means (not per pixel, which is automatic, but for overall area diff across continents when flag_data_agg == 1)
+                        # 1: weights (asia weight of 1, australia weight of ~0.18; same for ar6 within continents)    
                         
 # << SELECT >>
 flag_lu_technique=1     # 0: lu as mean of individual (historical - hist-nolu)
@@ -379,6 +379,7 @@ mod_ens,mod_ts_ens,nt = ensemble_subroutine(modDIR,
                                             ns,
                                             fp_files,
                                             ar6_regs,
+                                            ar6_wts,
                                             cnt_regs,
                                             cnt_wts)
 
@@ -394,98 +395,188 @@ ts_pickler(pklDIR,
 #%%============================================================================
 
 # mod fingerprint (nx is dummy var not used in OLS OF)
-os.chdir(curDIR)
-from da_sr_mod_fp import *
-fp,fp_continental,fp_ar6,nx = fingerprint_subroutine(obs_types,
-                                                     grid,
-                                                     agg,
-                                                     ns,
-                                                     nt,
-                                                     mod_ens,
-                                                     exps,
-                                                     models,
-                                                     ar6_regs,
-                                                     cnt_regs,
-                                                     cnt_wts,
-                                                     weight,
-                                                     continents,
-                                                     continent_names,
-                                                     exp_list)
+os.chdir(pklDIR)
+
+if not os.path.isfile('mod_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,bs_reps,t_ext)):
+
+    os.chdir(curDIR)
+    from da_sr_mod_fp import *
+    fp,fp_continental,fp_ar6,nx = fingerprint_subroutine(obs_types,
+                                                        grid,
+                                                        agg,
+                                                        ns,
+                                                        nt,
+                                                        mod_ens,
+                                                        exps,
+                                                        models,
+                                                        ar6_regs,
+                                                        ar6_wts,
+                                                        cnt_regs,
+                                                        cnt_wts,
+                                                        weight,
+                                                        continents,
+                                                        continent_names,
+                                                        exp_list)
+    dictionary = {
+        'global':fp,
+        'continental':fp_continental,
+        'ar6':fp_ar6
+    }
+        
+    input_pickler(pklDIR,
+                  dictionary,
+                  grid,
+                  pi,
+                  agg,
+                  weight,
+                  bs_reps,
+                  t_ext,
+                  obs_mod='mod')
+
+elif os.path.isfile('mod_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,bs_reps,t_ext)):
+    
+    pkl_file = open('mod_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,bs_reps,t_ext),'rb')
+    dictionary = pk.load(pkl_file)
+    pkl_file.close()
+    fp = dictionary['global']
+    fp_continental = dictionary['continental']
+    fp_ar6 = dictionary['ar6']
+
 
 #%%============================================================================
 
 # pi data
-os.chdir(curDIR)
-from da_sr_pi import *
-ctl_data,ctl_data_continental,ctl_data_ar6,pi_ts_ens = picontrol_subroutine(piDIR,
-                                                                            mapDIR,
-                                                                            allpiDIR,
-                                                                            sfDIR,
-                                                                            pi_files,
-                                                                            grid,
-                                                                            agg,
-                                                                            pi,
-                                                                            models,
-                                                                            obs_types,
-                                                                            continents,
-                                                                            continent_names,
-                                                                            var,
-                                                                            y1,
-                                                                            freq,
-                                                                            maps,
-                                                                            grid_area,
-                                                                            ar6_regs,
-                                                                            ar6_wts,
-                                                                            ar6_areas,
-                                                                            ar6_land,
-                                                                            cnt_regs,
-                                                                            cnt_wts,
-                                                                            cnt_areas,
-                                                                            weight,
-                                                                            ns,
-                                                                            nt)
+os.chdir(pklDIR)
 
-ts_pickler(pklDIR,
-           pi_ts_ens,
-           grid,
-           pi,
-           agg,
-           weight,
-           t_ext,
-           obs_mod='pic')
+if not os.path.isfile('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,bs_reps,t_ext)):
+
+    os.chdir(curDIR)
+    from da_sr_pi import *
+    ctl_data,ctl_data_continental,ctl_data_ar6,pi_ts_ens = picontrol_subroutine(piDIR,
+                                                                                mapDIR,
+                                                                                allpiDIR,
+                                                                                sfDIR,
+                                                                                pi_files,
+                                                                                grid,
+                                                                                agg,
+                                                                                pi,
+                                                                                models,
+                                                                                obs_types,
+                                                                                continents,
+                                                                                continent_names,
+                                                                                var,
+                                                                                y1,
+                                                                                freq,
+                                                                                maps,
+                                                                                grid_area,
+                                                                                ar6_regs,
+                                                                                ar6_wts,
+                                                                                ar6_areas,
+                                                                                ar6_land,
+                                                                                cnt_regs,
+                                                                                cnt_wts,
+                                                                                cnt_areas,
+                                                                                weight,
+                                                                                ns,
+                                                                                nt)
+    
+    dictionary = {
+        'global':ctl_data,
+        'continental':ctl_data_continental,
+        'ar6':ctl_data_ar6
+    }
+        
+    input_pickler(pklDIR,
+                  dictionary,
+                  grid,
+                  pi,
+                  agg,
+                  weight,
+                  bs_reps,
+                  t_ext,
+                  obs_mod='pic')    
+
+    ts_pickler(pklDIR,
+            pi_ts_ens,
+            grid,
+            pi,
+            agg,
+            weight,
+            t_ext,
+            obs_mod='pic')
+    
+elif os.path.isfile('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,bs_reps,t_ext)):    
+    
+    pkl_file = open('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,bs_reps,t_ext),'rb')
+    dictionary = pk.load(pkl_file)
+    pkl_file.close()
+    ctl_data = dictionary['global']
+    ctl_data_continental = dictionary['continental']
+    ctl_data_ar6 = dictionary['ar6']
 
 #%%============================================================================
 
 # obs data
-os.chdir(curDIR)
-from da_sr_obs import *
-obs_data,obs_data_continental,obs_data_ar6,obs_ts = obs_subroutine(obsDIR,
-                                                                   grid,
-                                                                   obs_files,
-                                                                   continents,
-                                                                   continent_names,
-                                                                   obs_types,
-                                                                   models,
-                                                                   y1,
-                                                                   var,
-                                                                   maps,
-                                                                   ar6_regs,
-                                                                   cnt_regs,
-                                                                   cnt_wts,
-                                                                   agg,
-                                                                   weight,
-                                                                   freq,
-                                                                   nt,
-                                                                   ns)
+os.chdir(pklDIR)
 
-ts_pickler(pklDIR,
-           obs_ts,
-           grid,
-           pi,
-           agg,
-           weight,
-           t_ext,
-           obs_mod='obs')
+if not os.path.isfile('obs_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,bs_reps,t_ext)):
+    
+    os.chdir(curDIR)
+    from da_sr_obs import *
+    obs_data,obs_data_continental,obs_data_ar6,obs_ts = obs_subroutine(obsDIR,
+                                                                    grid,
+                                                                    obs_files,
+                                                                    continents,
+                                                                    continent_names,
+                                                                    obs_types,
+                                                                    models,
+                                                                    y1,
+                                                                    var,
+                                                                    maps,
+                                                                    ar6_regs,
+                                                                    ar6_wts,
+                                                                    cnt_regs,
+                                                                    cnt_wts,
+                                                                    agg,
+                                                                    weight,
+                                                                    freq,
+                                                                    nt,
+                                                                    ns)
+    
+    dictionary = {
+        'global':obs_data,
+        'continental':obs_data_continental,
+        'ar6':obs_data_ar6
+    }
+        
+    input_pickler(pklDIR,
+                  dictionary,
+                  analysis,
+                  grid,
+                  pi,
+                  agg,
+                  weight,
+                  bs_reps,
+                  t_ext,
+                  obs_mod='obs')    
+    
+    ts_pickler(pklDIR,
+            obs_ts,
+            grid,
+            pi,
+            agg,
+            weight,
+            t_ext,
+            obs_mod='obs')    
+    
+elif os.path.isfile('obs_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,bs_reps,t_ext)):    
+
+    pkl_file = open('obs_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,bs_reps,t_ext),'rb')
+    dictionary = pk.load(pkl_file)
+    pkl_file.close()
+    obs_data = dictionary['global']
+    obs_data_continental = dictionary['continental']
+    obs_data_ar6 = dictionary['ar6']
 
 #%%============================================================================
 # detection & attribution 
@@ -585,45 +676,48 @@ if analysis == 'global':
 
 elif analysis == 'continental':
     
-    mod_ts_pkl = open('mod_ts_model-grid_196501-201412.pkl','rb')
-    mod_ts = pk.load(mod_ts_pkl)
-    mod_ts_pkl.close()
+    # mod_ts_pkl = open('mod_ts_model-grid_196501-201412.pkl','rb')
+    # mod_ts = pk.load(mod_ts_pkl)
+    # mod_ts_pkl.close()
     
-    obs_ts_pkl = open('obs_ts_model-grid_196501-201412.pkl','rb')
-    obs_ts = pk.load(obs_ts_pkl)
-    obs_ts_pkl.close()
+    # obs_ts_pkl = open('obs_ts_model-grid_196501-201412.pkl','rb')
+    # obs_ts = pk.load(obs_ts_pkl)
+    # obs_ts_pkl.close()
     
-    var_fin_pkl = open('var_fin_2-factor_model-grid_continental_196501-201412.pkl','rb')
-    var_fin = pk.load(var_fin_pkl)
-    var_fin_pkl.close()
+    # var_fin_pkl = open('var_fin_2-factor_model-grid_continental_196501-201412.pkl','rb')
+    # var_fin = pk.load(var_fin_pkl)
+    # var_fin_pkl.close()
     
-    exps_2f = ['hist-noLu','lu']
+    # exps_2f = ['hist-noLu','lu']
     
-    plot_scaling_continental(models,
-                             exps_2f,
-                             var_fin,
-                             continents,
-                             continent_names,
-                             mod_ts,
-                             obs_ts,
-                             flag_svplt,
-                             outDIR,
-                             lulcc_type,
-                             t_ext,
-                             freq,
-                             measure,
-                             var,
-                             obs_types)
+    # plot_scaling_continental(models,
+    #                          exps_2f,
+    #                          var_fin,
+    #                          continents,
+    #                          continent_names,
+    #                          mod_ts,
+    #                          obs_ts,
+    #                          flag_svplt,
+    #                          outDIR,
+    #                          lulcc_type,
+    #                          t_ext,
+    #                          freq,
+    #                          measure,
+    #                          var,
+    #                          obs_types)
     
     plot_scaling_map_continental(sfDIR,
                                  obs_types,
                                  pi,
+                                 agg,
+                                 weight,
                                  models,
                                  exp_list,
                                  continents,
                                  var_fin,
                                  grid,
                                  letters,
+                                 flag_svplt,
                                  outDIR)
 
 elif analysis == 'ar6':
@@ -637,6 +731,7 @@ elif analysis == 'ar6':
                          var_fin,
                          grid,
                          letters,
+                         flag_svplt,
                          outDIR)              
     
     

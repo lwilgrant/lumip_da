@@ -130,7 +130,7 @@ def ar6_weighted_mean(continents,
                     da_i_t_w = da_i_t.weighted(weights).mean(('lon','lat')).values
                 if weight == 'weights':
                     da_i_t_w = da_i_t.weighted(weights).mean(('lon','lat')).values        
-                    da_i_t_w = da_i_t_w * ar6_wts[c]            
+                    da_i_t_w = da_i_t_w * ar6_wts[c][i]            
                 matrix[t,s]= da_i_t_w
             s += 1
             
@@ -662,6 +662,29 @@ def da_run(y,
     beta[-1, 0] = pv_cons
     
     return beta,nb_runs_ctl,proj,U,yc,Z1c,Z2c,Xc,Cf1,Ft,beta_hat
+
+
+#%%============================================================================
+
+def input_pickler(pklDIR,
+                  dictionary,
+                  grid,
+                  pi,
+                  agg,
+                  weight,
+                  bs_reps,
+                  t_ext,
+                  obs_mod):
+    
+    os.chdir(pklDIR)
+    if obs_mod == 'mod':
+        pkl_file = open('mod_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,bs_reps,t_ext),'wb')
+    elif obs_mod == 'obs':
+        pkl_file = open('obs_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,bs_reps,t_ext),'wb')
+    elif obs_mod == 'pic':
+        pkl_file = open('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,bs_reps,t_ext),'wb')
+    pk.dump(dictionary,pkl_file)
+    pkl_file.close()
 
 #%%============================================================================
 
@@ -1254,12 +1277,15 @@ def plot_scaling_continental(models,
 def plot_scaling_map_continental(sfDIR,
                                  obs_types,
                                  pi,
+                                 agg,
+                                 weight,
                                  models,
                                  exp_list,
                                  continents,
                                  var_fin,
                                  grid,
                                  letters,
+                                 flag_svplt,
                                  outDIR):
     
     data = var_fin
@@ -1352,13 +1378,25 @@ def plot_scaling_map_continental(sfDIR,
                 l += 1
             j += 1
             
-        if exp_list == ['hist-noLu', 'lu']:
+        if flag_svplt == 0:
+            pass
+        elif flag_svplt == 1:
             
-            f.savefig(outDIR+'/continental_attribution_2-factor_{}_{}-grid_{}-pi.png'.format(obs,grid,pi),bbox_inches='tight',dpi=500)
-            
-        elif exp_list == ['historical','hist-noLu']:
-            
-            f.savefig(outDIR+'/continental_attribution_1-factor_{}_{}-grid_{}-pi.png'.format(obs,grid,pi),bbox_inches='tight',dpi=500)
+            if exp_list == ['hist-noLu', 'lu']:
+                
+                f.savefig(outDIR+'/continental_attribution_2-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight.png'.format(obs,grid,pi,agg,weight),bbox_inches='tight',dpi=500)
+                
+            elif exp_list == ['historical','hist-noLu']:
+                
+                f.savefig(outDIR+'/continental_attribution_1-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight.png'.format(obs,grid,pi,agg,weight),bbox_inches='tight',dpi=500)
+                
+            # if exp_list == ['hist-noLu','lu']:
+                
+            #     f.savefig(outDIR+'/global_attribution_2-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight.png'.format(obs,grid,pi,agg,weight),bbox_inches='tight',dpi=200)     
+                
+            # elif exp_list == ['historical','hist-noLu']:
+                
+            #     f.savefig(outDIR+'/global_attribution_1-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight.png'.format(obs,grid,pi,agg,weight),bbox_inches='tight',dpi=200)                                 
                 
 #%%============================================================================
                 
@@ -1371,6 +1409,7 @@ def plot_scaling_map_ar6(sfDIR,
                          var_fin,
                          grid,
                          letters,
+                         flag_svplt,
                          outDIR):
     
     data = var_fin
@@ -1458,13 +1497,18 @@ def plot_scaling_map_ar6(sfDIR,
                 i += 1
                 l += 1
             j += 1
-        if exp_list == ['hist-noLu', 'lu']:
             
-            f.savefig(outDIR+'/ar6_attribution_2-factor_{}_{}-grid_{}-pi.png'.format(obs,grid,pi),bbox_inches='tight',dpi=500)
+        if flag_svplt == 0:
+            pass
+        elif flag_svplt == 1:
             
-        elif exp_list == ['historical','hist-noLu']:
-            
-            f.savefig(outDIR+'/ar6_attribution_1-factor_{}_{}-grid_{}-pi.png'.format(obs,grid,pi),bbox_inches='tight',dpi=500)
+            if exp_list == ['hist-noLu', 'lu']:
+                
+                f.savefig(outDIR+'/ar6_attribution_2-factor_{}_{}-grid_{}-pi.png'.format(obs,grid,pi),bbox_inches='tight',dpi=500)
+                
+            elif exp_list == ['historical','hist-noLu']:
+                
+                f.savefig(outDIR+'/ar6_attribution_1-factor_{}_{}-grid_{}-pi.png'.format(obs,grid,pi),bbox_inches='tight',dpi=500)
     
 
 # # create legend with patche for hsitnolu and lu det/att levels

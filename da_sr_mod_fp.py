@@ -441,3 +441,5 @@ def fingerprint_subroutine(obs_types,
 
     return fp,fp_continental,fp_ar6,nx
 
+
+# %%
