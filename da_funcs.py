@@ -101,7 +101,7 @@ def cnt_mask(sfDIR,
     gpd_continents = gp.read_file('IPCC_WGII_continental_regions.shp')
     gpd_continents = gpd_continents[(gpd_continents.Region != 'Antarctica')&(gpd_continents.Region != 'Small Islands')]
     cnt_regs = rm.mask_geopandas(gpd_continents,lon,lat)
-    cnt_regs = cnt_regs.where((ar6_regs != 0)&(ar6_land == 1))
+    cnt_regs = cnt_regs.where((ar6_regs != 0)&(ar6_regs != 20)&(ar6_land == 1))
     
     return cnt_regs
 
@@ -150,8 +150,13 @@ def cnt_weighted_mean(continents,
     matrix = np.zeros(shape=(nt,ns))
     s = 0
     for c in continents.keys():
+        # if c != 'Africa':
         da_i = da.where(cnt_regs==continents[c],
-                        drop=True)                    
+                        drop=True)   
+        # elif c == 'Africa':
+            
+        #     da_i = da.where((cnt_regs==continents[c])&(),
+        #                     drop=True)               
         for t in np.arange(nt):
             da_i_t = da_i.isel(time=t)
             weights = np.cos(np.deg2rad(da_i_t.lat))
@@ -667,22 +672,22 @@ def da_run(y,
 #%%============================================================================
 
 def input_pickler(pklDIR,
+                  flag_factor,
                   dictionary,
                   grid,
                   pi,
                   agg,
                   weight,
-                  bs_reps,
                   t_ext,
                   obs_mod):
     
     os.chdir(pklDIR)
     if obs_mod == 'mod':
-        pkl_file = open('mod_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,bs_reps,t_ext),'wb')
+        pkl_file = open('mod_inputs_{}-flagfactor_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(flag_factor,grid,pi,agg,weight,t_ext),'wb')
     elif obs_mod == 'obs':
-        pkl_file = open('obs_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,bs_reps,t_ext),'wb')
+        pkl_file = open('obs_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(grid,pi,agg,weight,t_ext),'wb')
     elif obs_mod == 'pic':
-        pkl_file = open('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,bs_reps,t_ext),'wb')
+        pkl_file = open('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(grid,pi,agg,weight,t_ext),'wb')
     pk.dump(dictionary,pkl_file)
     pkl_file.close()
 
@@ -717,15 +722,16 @@ def pickler(curDIR,
             agg,
             weight,
             t_ext,
+            bs_reps,
             exp_list,
             pi):
     
     os.chdir(curDIR)
     if len(exp_list) == 2:
-        pkl_file = open('var_fin_2-factor_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}.pkl'.format(grid,analysis,pi,agg,weight,t_ext),'wb')
+        pkl_file = open('var_fin_2-factor_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}.pkl'.format(grid,analysis,pi,agg,weight,bs_reps,t_ext),'wb')
     elif len(exp_list) == 1:
         exp = exp_list[0]
-        pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}.pkl'.format(exp,grid,analysis,pi,agg,weight,t_ext),'wb')
+        pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}.pkl'.format(exp,grid,analysis,pi,agg,weight,bs_reps,t_ext),'wb')
     pk.dump(var_fin,pkl_file)
     pkl_file.close()
 
@@ -1510,27 +1516,484 @@ def plot_scaling_map_ar6(sfDIR,
                 
                 f.savefig(outDIR+'/ar6_attribution_1-factor_{}_{}-grid_{}-pi.png'.format(obs,grid,pi),bbox_inches='tight',dpi=500)
     
+#%%============================================================================
 
-# # create legend with patche for hsitnolu and lu det/att levels
-#     # include markers for  
+# WORKING ON PLOT OF AR6 AND CONTINENTAL VECTOR SHAPES INCLUDED          
+def plot_subregions(sfDIR,
+                    letters,
+                    flag_svplt,
+                    outDIR):
+    
+    ar6_vals = {}
+    ar6_vals['North America'] = [1,2,3,4,5,6,7]
+    ar6_vals['South America'] = [9,10,11,12,13,14,15]
+    ar6_vals['Europe'] = [16,17,18,19]
+    ar6_vals['Asia'] = [28,29,30,31,32,33,34,35,37,38]
+    ar6_vals['Africa'] = [21,22,23,24,25,26]
+    ar6_vals['Australia'] = [39,40,41,42]    
+    
+    cnt_vals = {}
+    cnt_vals['North America'] = 7
+    cnt_vals['Central and South America'] = 4
+    cnt_vals['Europe'] = 1
+    cnt_vals['Asia'] = 6
+    cnt_vals['Africa'] = 3
+    cnt_vals['Australia'] = 5        
+    
+    os.chdir(sfDIR)
+    
+    # new code
+    regions = gp.read_file('IPCC-WGI-reference-regions-v4.shp')
+    gpd_continents = gp.read_file('IPCC_WGII_continental_regions.shp')
+    gpd_continents = gpd_continents[(gpd_continents.Region != 'Antarctica')&(gpd_continents.Region != 'Small Islands')]
+    # regions = gp.clip(regions,gpd_continents)    
+    regions['keep'] = [0]*len(regions.Acronym)
+    
+    for c in ar6_vals.keys():
+        for ar6 in ar6_vals[c]:
+            regions.at[ar6,'Continent'] = c
+            regions.at[ar6,'keep'] = 1  
+              
+    regions = regions[regions.keep!=0]  
+    regions = regions.drop(columns='keep')
+    ar6_continents = regions.dissolve(by='Continent')
+    regions = gp.clip(regions,gpd_continents)  
+    
+    reg_cl = gp.clip(regions,gpd_continents)
+    reg_msk = reg_cl[(reg_cl.Acronym != 'SAH')&(reg_cl.Acronym != 'GIC')]
+    gpd_continents_cl = gp.clip(gpd_continents,reg_msk)  
+    
+    # area and weights
+    reg_msk['area'] = reg_msk['geometry'].area
+    
+    concat_list = []
+    for c in ar6_vals.keys():
+        reg_msk['wts'] = reg_msk.loc[pd.Index(ar6_vals[c])]['area'] / max(reg_msk.loc[pd.Index(ar6_vals[c])]['area'])
+        subset = reg_msk[reg_msk.Continent == c]
+        concat_list.append(subset)
+    gpd_ar6 = pd.concat(concat_list)
+    
+    
+    gpd_continents_cl['area'] = gpd_continents_cl['geometry'].area
+    gpd_continents_cl['wts'] = gpd_continents_cl['area'] / max(gpd_continents_cl['area'])
+    
+    col_cbticlbl = '0'   # colorbar color of tick labels
+    col_cbtic = '0.5'   # colorbar color of ticks
+    col_cbedg = '0.9'   # colorbar color of edge
+    cb_ticlen = 3.5   # colorbar length of ticks
+    cb_ticwid = 0.4   # colorbar thickness of ticks
+    cb_edgthic = 0   # colorbar thickness of edges between colors
+    cblabel = 'corr'  # colorbar label
+    sbplt_lw = 0.1   # linewidth on projection panels
+    cstlin_lw = 0.75   # linewidth for coastlines
+    
+    # fonts
+    title_font = 13
+    cbtitle_font = 20
+    tick_font = 11
+    legend_font=12    
+    
+    cb_x0 = 0.275
+    cb_y0 = 0.05
+    cb_xlen = 0.5
+    cb_ylen = 0.015    
+    
+    # identify colors
+    cmap = plt.cm.get_cmap('viridis_r')
+    
+    f, (ax_ar6,ax_cnt) = plt.subplots(
+        nrows=2,
+        ncols=1,
+        figsize=(8,6))
+    
+    cbax = f.add_axes([cb_x0, 
+                    cb_y0, 
+                    cb_xlen, 
+                    cb_ylen])    
+    
+    # weights per ar6
+    gpd_ar6.plot(
+        ax = ax_ar6,
+        column = 'wts',
+        cmap = cmap,
+        vmin = 0,
+        vmax = 1,
+        edgecolor='white',
+        linewidth = 0.3
+    )
+    
+    ar6_continents.plot(
+        ax = ax_ar6,
+        facecolor = 'none',
+        edgecolor = 'black',
+        linewidth = 1
+    )
+    
+    gpd_continents_cl.plot(
+        ax = ax_cnt,
+        column = 'wts',
+        cmap = cmap,
+        vmin = 0,
+        vmax = 1,
+        edgecolor='black',
+        linewidth = 0.3        
+    )
 
-# import pickle as pk
-# import geopandas as gp
-# import mapclassify as mc
-# os.chdir('/home/luke/documents/lumip/d_a/')
-# pkl_file = open('var_fin_ar6_v2.pkl','rb')
-# data = pk.load(pkl_file)
-# pkl_file.close()
+    i = 0
+    for ax in (ax_ar6,ax_cnt):    
+        ax.set_yticks([])
+        ax.set_xticks([])
+        ax.set_title(
+            letters[i],
+            loc='left',
+            fontweight='bold',
+            fontsize=10)    
+        i += 1
+    
+    cb = mpl.colorbar.ColorbarBase(ax=cbax, 
+                                   cmap=cmap,
+                                   orientation='horizontal',
+                                   extend='neither',
+                                   drawedges=False)
+    cb.set_label('Weights',
+                 size=title_font)
+    cb.ax.xaxis.set_label_position('top')
+    cb.ax.tick_params(labelcolor=col_cbticlbl,
+                      labelsize=tick_font,
+                      color=col_cbtic,
+                      length=cb_ticlen,
+                      width=cb_ticwid,
+                      direction='out')
+    cb.outline.set_edgecolor(col_cbedg)
+    cb.outline.set_linewidth(cb_edgthic)    
+    
+    if flag_svplt == 0:
+        pass
+    elif flag_svplt == 1:
+        f.savefig(outDIR+'/aggregation.png',bbox_inches='tight',dpi=500)    
+    
+    return cnt_vals
 
-# for obs in obs_types:
-#     print('')
-#     print(obs)
-#     for mod in models:
-#         print('')
-#         print(mod)
-#         for c in continents.keys():
-#             for ar6 in continents[c]:
-#                 print(ar6)
-#                 print('{} decomp for {} is: histnolu {} to {}, lu {} to {}'.format(obs,mod,var_fin[obs][mod]['hist-noLu'][ar6][2],var_fin[obs][mod]['hist-noLu'][ar6][0],var_fin[obs][mod]['lu'][ar6][2],var_fin[obs][mod]['lu'][ar6][0]))
-#                 print('')
+#%%============================================================================
+                
+def plot_scaling_map_combined(
+    sfDIR,
+    obs_types,
+    pi,
+    agg,
+    weight,
+    models,
+    exp_list,
+    var_fin_cnt,
+    var_fin_glb,
+    grid,
+    letters,
+    flag_svplt,
+    outDIR
+    ):
+    
+    continents = {}
+    continents['North America'] = [1,2,3,4,5,6,7]
+    continents['South America'] = [9,10,11,12,13,14,15]
+    continents['Europe'] = [16,17,18,19]
+    continents['Asia'] = [28,29,30,31,32,33,34,35,37,38]
+    continents['Africa'] = [21,22,23,24,25,26]
+    continents['Australia'] = [39,40,41,42]    
+    
+    # x ticks temporal OF insets
+    xticks_OF = np.arange(-0.5,2.5,0.5)
+    xtick_labels_OF = [None, '0', None, '1', None, '2']        
+    
+    # y ticks temporal OF insets
+    yticks_OF = np.arange(-0.5,2.5,0.5)
+    ytick_labels_OF = [None, '0', None, '1', None, '2']    
+    
+    # inset_font = 18
+    data_cnt = var_fin_cnt
+    data_glb = var_fin_glb
+    os.chdir(sfDIR)
+    
+    #test for merging ar6 into desired continent extents
+    regions = gp.read_file('IPCC-WGI-reference-regions-v4.shp')
+    gpd_continents = gp.read_file('IPCC_WGII_continental_regions.shp')
+    gpd_continents = gpd_continents[(gpd_continents.Region != 'Antarctica')&(gpd_continents.Region != 'Small Islands')]
+    regions = gp.clip(regions,gpd_continents)
+    regions['keep'] = [0]*len(regions.Acronym)
+    
+    for c in continents.keys():
+        for ar6 in continents[c]:
+            regions.at[ar6,'Continent'] = c
+            regions.at[ar6,'keep'] = 1
+    
+    regions = regions[regions.keep!=0]  
+    regions = regions.drop(columns='keep')
+    ar6_continents = regions.dissolve(by='Continent')
+
+    for obs in obs_types:
+        for mod in models:
+            for exp in exp_list:
+                ar6_continents['{}-grid {} {}'.format(obs,mod,exp)] = [1] * len(ar6_continents.Acronym)
+
+    for obs in obs_types:
+        for mod in models:
+            for exp in exp_list:
+                for c in continents.keys():
+                    ar6_continents.loc[c,'{}-grid {} {}'.format(obs,mod,exp)] = det_finder(data_cnt[obs][mod][exp][c])
+
+    if exp_list == ['hist-noLu', 'lu']:
+        
+        cmap_whole = plt.cm.get_cmap('PRGn')
+        hnolu_det = cmap_whole(0.40)
+        hnolu_att = cmap_whole(0.20)
+        lu_det = cmap_whole(0.65)
+        lu_att = cmap_whole(0.85)     
+        color_mapping = {}
+        color_mapping['lu'] = {1:lu_det,2:lu_att,3:'lightgrey'}
+        color_mapping['hist-noLu'] = {1:hnolu_det,2:hnolu_att,3:'lightgrey'}
+        
+        cols={}
+        median_cols={}
+        cols['hist-noLu'] = cmap_whole(0.25)
+        cols['lu'] = cmap_whole(0.75)
+        median_cols['hist-noLu'] = cmap_whole(0.05)
+        median_cols['lu'] = cmap_whole(0.95)        
+        
+    elif exp_list == ['historical','hist-noLu']:
+        
+        cmap_whole = plt.cm.get_cmap('BrBG')
+        hist_det = cmap_whole(0.40)
+        hist_att = cmap_whole(0.20)
+        hnolu_det = cmap_whole(0.65)
+        hnolu_att = cmap_whole(0.85)     
+        color_mapping = {}
+        color_mapping['historical'] = {1:hist_det,2:hist_att,3:'lightgrey'}
+        color_mapping['hist-noLu'] = {1:hnolu_det,2:hnolu_att,3:'lightgrey'}
+        
+        cols={}
+        median_cols={}
+        cols['historical'] = cmap_whole(0.25)
+        cols['hist-noLu'] = cmap_whole(0.75)
+        median_cols['historical'] = cmap_whole(0.05)
+        median_cols['hist-noLu'] = cmap_whole(0.95)          
+        
+    # OF data prep
+    b = {}
+    b_inf = {}
+    b_sup = {}
+    p = {}
+    err = {}
+
+    for obs in obs_types:
+        
+        # OF data prep
+        b[obs] = {}
+        b_inf[obs] = {}
+        b_sup[obs] = {}
+        p[obs] = {}
+        err[obs] = {}    
+        
+        for mod in models:
+            b[obs][mod] = {}
+            b_inf[obs][mod] = {}
+            b_sup[obs][mod] = {}
+            p[obs][mod] = {}
+            err[obs][mod] = {}
+            for exp in exp_list:
+                b[obs][mod][exp],\
+                b_inf[obs][mod][exp],\
+                b_sup[obs][mod][exp],\
+                p[obs][mod][exp] = scale_take(data_glb[obs][mod][exp])
+                err[obs][mod][exp] = np.stack([[b_inf[obs][mod][exp]],
+                                              [b_sup[obs][mod][exp]]],
+                                              axis=0)            
+        
+        f, axes = plt.subplots(nrows=len(models),ncols=len(exp_list)+1,figsize=(14,10))
+        
+        j = 0
+        
+        for row,mod in zip(axes[:,:2],models):
+            i = 0
+            for ax,exp in zip(row,exp_list):
+                ar6_continents.plot(ax=ax,
+                                    color=ar6_continents['{}-grid {} {}'.format(obs,mod,exp)].map(color_mapping[exp]),
+                                    edgecolor='black',
+                                    linewidth=0.3)
+                gpd_continents.boundary.plot(ax=ax,
+                                             edgecolor='black',
+                                             linewidth=0.3)
+                ax.set_yticks([])
+                ax.set_xticks([])
+                if j == 0:
+                    if exp == 'hist-noLu':
+                        exp_label = 'HISTNL'
+                    elif exp == 'lu':
+                        exp_label = 'LU'
+                    elif exp == 'historical':
+                        exp_label = 'HIST'
+                    ax.set_title(
+                        exp_label,
+                        loc='center',
+                        fontweight='bold',
+                        fontsize=10)
+                if i == 0:
+                    ax.text(-0.07, 0.55, 
+                            mod, 
+                            va='bottom', 
+                            ha='center',# # create legend with patche for hsitnolu and lu det/att levels
+                            fontweight='bold',
+                            rotation='vertical', 
+                            rotation_mode='anchor',
+                            transform=ax.transAxes)
+                i += 1
+            j += 1
+        
+        g = 0
+        for ax,mod in zip(axes[:,2],models):
+            
+            if exp_list == ['hist-noLu','lu']:
+
+                ax.errorbar(x=b[obs][mod]['hist-noLu'],
+                            y=b[obs][mod]['lu'],
+                            xerr=err[obs][mod]['hist-noLu'],
+                            fmt='o',
+                            markersize=3,
+                            ecolor=cols['hist-noLu'],
+                            markerfacecolor=median_cols['hist-noLu'],
+                            mec=cols['lu'],
+                            capsize=5,
+                            elinewidth=4,
+                            markeredgewidth=1)
+                
+                ax.errorbar(x=b[obs][mod]['hist-noLu'],
+                            y=b[obs][mod]['lu'],
+                            yerr=err[obs][mod]['lu'],
+                            fmt='o',
+                            markersize=3,
+                            ecolor=cols['lu'],
+                            markerfacecolor=median_cols['lu'],
+                            mec=cols['lu'],
+                            capsize=5,
+                            elinewidth=4,
+                            markeredgewidth=1)
+                
+            elif exp_list == ['historical','hist-noLu']:
+                
+                ax.errorbar(x=b[obs][mod]['hist-noLu'],
+                            y=b[obs][mod]['historical'],
+                            xerr=err[obs][mod]['hist-noLu'],
+                            fmt='o',
+                            markersize=3,
+                            ecolor=cols['hist-noLu'],
+                            markerfacecolor=median_cols['hist-noLu'],
+                            mec=cols['historical'],
+                            capsize=5,
+                            elinewidth=4,
+                            markeredgewidth=1)
+                
+                ax.errorbar(x=b[obs][mod]['hist-noLu'],
+                            y=b[obs][mod]['historical'],
+                            yerr=err[obs][mod]['historical'],
+                            fmt='o',
+                            markersize=3,
+                            ecolor=cols['historical'],
+                            markerfacecolor=median_cols['historical'],
+                            mec=cols['historical'],
+                            capsize=5,
+                            elinewidth=4,
+                            markeredgewidth=1)            
+            
+            ax.set_xticks([])
+            ax.set_xlim((-1,2))
+            ax.set_ylim((-1,2))
+            
+            ax.hlines(y=1,
+                    xmin=-1,
+                    xmax=2,
+                    colors='k',
+                    linestyle='dashed',
+                    linewidth=1)
+            ax.hlines(y=0,
+                    xmin=-1,
+                    xmax=2,
+                    colors='k',
+                    linestyle='solid',
+                    linewidth=0.25)
+            
+            ax.vlines(x=1,
+                    ymin=-1,
+                    ymax=2,
+                    colors='k',
+                    linestyle='dashed',
+                    linewidth=1)
+            ax.vlines(x=0,
+                    ymin=-1,
+                    ymax=2,
+                    colors='k',
+                    linestyle='solid',
+                    linewidth=0.25)
+            
+            ax.tick_params(axis="x",
+                        direction="in", 
+                        left="off",
+                        labelleft="on")
+            ax.tick_params(axis="y",
+                        direction="in")
+            
+            ax.yaxis.tick_right()
+            ax.set_yticks(yticks_OF)
+            ax.set_yticklabels([None, '0', None, '1', None, '2']) 
+            
+            if ax == axes.flatten()[-1]:
+                
+                ax.set_xlabel(r'$\beta_{HISTNL}$',
+                            fontsize=12,
+                            color=median_cols['hist-noLu'],
+                            fontweight='bold')
+                ax.set_xticks(xticks_OF)
+                ax.set_xticklabels([None, '0', None, '1', None, '2'])
+                
+            if exp_list == ['hist-noLu','lu']:
+            
+                ax.yaxis.set_label_position("right")
+                ax.set_ylabel(r'$\beta_{LU}$',
+                            fontsize=12,
+                            color=median_cols['lu'],
+                            fontweight='bold')
+                
+            elif exp_list == ['historical','hist-noLu']:
+                
+                ax.yaxis.set_label_position("right")
+                ax.set_ylabel(r'$\beta_{HIST}$',
+                            fontsize=12,
+                            color=median_cols['historical'],
+                            fontweight='bold')
+                
+            g += 1
+                
+    #                 # x ticks temporal OF insets
+    # xticks_OF = np.arange(-0.5,2.5,0.5)
+    # xtick_labels_OF = [None, '0', None, '1', None, '2']        
+    
+    # # y ticks temporal OF insets
+    # yticks_OF = np.arange(-0.5,2.5,0.5)
+    # ytick_labels_OF = [None, '0', None, '1', None, '2']    
+        
+        for l,ax in enumerate(axes.flatten()):
+            ax.set_title(
+                letters[l],
+                loc='left',
+                fontweight='bold',
+                fontsize=10)
+            
+        if flag_svplt == 0:
+            pass
+        elif flag_svplt == 1:
+            
+            if exp_list == ['hist-noLu', 'lu']:
+                
+                f.savefig(outDIR+'/combined_attribution_2-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight.png'.format(obs,grid,pi,agg,weight),bbox_inches='tight',dpi=500)
+                
+            elif exp_list == ['historical','hist-noLu']:
+                
+                f.savefig(outDIR+'/combined_attribution_1-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight.png'.format(obs,grid,pi,agg,weight),bbox_inches='tight',dpi=500)
 # %%
