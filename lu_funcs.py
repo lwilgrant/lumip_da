@@ -535,6 +535,7 @@ def lineplot(glm_ds,
              exps,
              letters,
              t_ext,
+             flag_svplt,
              outDIR):
     x=10
     y=10
@@ -666,7 +667,10 @@ def lineplot(glm_ds,
             handlelength=legend_entrylen, 
             handletextpad=legend_entrypad)
     
-    f.savefig(outDIR+'/global_mean_timeseries_{}.png'.format(t_ext))
+    if flag_svplt == 0:
+        pass
+    elif flag_svplt == 1:
+        f.savefig(outDIR+'/global_mean_timeseries_{}.png'.format(t_ext))
 
 #%%============================================================================
 
@@ -677,6 +681,7 @@ def trends_plot(stats_ds,
                 null_bnds_lc,
                 null_bnds_lu,
                 t_ext,
+                flag_svplt,
                 outDIR):
     
     col_cbticlbl = '0'   # colorbar color of tick labels
@@ -852,7 +857,10 @@ def trends_plot(stats_ds,
     cb_lc.outline.set_edgecolor(col_cbedg)
     cb_lc.outline.set_linewidth(cb_edgthic)
 
-    f.savefig(outDIR+'/lu_lc_trends_{}.png'.format(t_ext))
+    if flag_svplt == 0:
+        pass
+    elif flag_svplt == 1:
+        f.savefig(outDIR+'/lu_lc_trends_{}.png'.format(t_ext))
 
 #%%============================================================================
 
@@ -862,6 +870,7 @@ def corr_plot(stats_ds,
               letters,
               null_bnds_lc,
               t_ext,
+              flag_svplt,
               outDIR):
 
     # fig size
@@ -1016,5 +1025,275 @@ def corr_plot(stats_ds,
     cb.outline.set_edgecolor(col_cbedg)
     cb.outline.set_linewidth(cb_edgthic)
 
-    f.savefig(outDIR+'/lu_lc_correlation_{}.png'.format(t_ext))
+    if flag_svplt == 0:
+        pass
+    elif flag_svplt == 1:
+        f.savefig(outDIR+'/lu_lc_correlation_{}.png'.format(t_ext))
 
+#%%============================================================================
+
+def combined_plot(
+    stats_ds,
+    models,
+    letters,
+    lulcc,
+    null_bnds_lc,
+    null_bnds_lu,
+    t_ext,
+    flag_svplt,
+    outDIR):
+    
+    col_cbticlbl = '0'   # colorbar color of tick labels
+    col_cbtic = '0.5'   # colorbar color of ticks
+    col_cbedg = '0.9'   # colorbar color of edge
+    cb_ticlen = 3.5   # colorbar length of ticks
+    cb_ticwid = 0.4   # colorbar thickness of ticks
+    cb_edgthic = 0   # colorbar thickness of edges between colors
+    cblabel = 'corr'  # colorbar label
+    sbplt_lw = 0.1   # linewidth on projection panels
+    cstlin_lw = 0.75   # linewidth for coastlines
+
+    # fonts
+    title_font = 12
+    cbtitle_font = 20
+    tick_font = 10
+    legend_font=12
+
+    x=14
+    y=8
+
+    # placment lu trends cbar
+    cb_lu_x0 = 0.1275
+    cb_lu_y0 = 0.05
+    cb_lu_xlen = 0.225
+    cb_lu_ylen = 0.015
+
+    # placment lc trends cbar
+    cb_lc_x0 = 0.40175
+    cb_lc_y0 = 0.05
+    cb_lc_xlen = 0.225
+    cb_lc_ylen = 0.015
+    
+    # placment lu trends cbar
+    cb_corr_x0 = 0.675
+    cb_corr_y0 = 0.05
+    cb_corr_xlen = 0.225
+    cb_corr_ylen = 0.015
+
+    # extent
+    east = 180
+    west = -180
+    north = 80
+    south = -60
+    extent = [west,east,south,north]
+    
+    # identify colors
+    cmap_whole = plt.cm.get_cmap('RdBu_r')
+    cmap55 = cmap_whole(0.01)
+    cmap50 = cmap_whole(0.05)   #blue
+    cmap45 = cmap_whole(0.1)
+    cmap40 = cmap_whole(0.15)
+    cmap35 = cmap_whole(0.2)
+    cmap30 = cmap_whole(0.25)
+    cmap25 = cmap_whole(0.3)
+    cmap20 = cmap_whole(0.325)
+    cmap10 = cmap_whole(0.4)
+    cmap5 = cmap_whole(0.475)
+    cmap0 = 'gray'
+    cmap_5 = cmap_whole(0.525)
+    cmap_10 = cmap_whole(0.6)
+    cmap_20 = cmap_whole(0.625)
+    cmap_25 = cmap_whole(0.7)
+    cmap_30 = cmap_whole(0.75)
+    cmap_35 = cmap_whole(0.8)
+    cmap_40 = cmap_whole(0.85)
+    cmap_45 = cmap_whole(0.9)
+    cmap_50 = cmap_whole(0.95)  #red
+    cmap_55 = cmap_whole(0.99)
+
+    colors = [cmap_45,cmap_35,cmap_25,cmap_10,
+                cmap0,
+                cmap10,cmap25,cmap35,cmap45]
+
+    # declare list of colors for discrete colormap of colorbar
+    cmap_list_corr = mpl.colors.ListedColormap(colors,N=len(colors))
+
+    # colorbar args
+    values_corr = [-1,-.75,-.50,-.25,-0.01,0.01,.25,.5,.75,1]
+    tick_locs_corr = [-1,-.75,-.50,-.25,0,.25,.5,.75,1]
+    tick_labels_corr = ['-1','-0.75','-0.50','-0.25','0','0.25','0.50','0.75','1']
+    norm_corr = mpl.colors.BoundaryNorm(values_corr,cmap_list_corr.N)    
+
+    cmap_list_lu,tick_locs_lu,tick_labels_lu,norm_lu,levels_lu = colormap_details('RdBu',
+                                                                                  data_lumper(stats_ds,
+                                                                                              models,
+                                                                                              maptype='lu'),
+                                                                                  null_bnds_lu)
+
+    cmap_list_lc,tick_locs_lc,tick_labels_lc,norm_lc,levels_lc = colormap_details('BrBG_r',
+                                                                                  data_lumper(stats_ds,
+                                                                                              models,
+                                                                                              maptype='lc'),
+                                                                                  null_bnds_lc)
+
+
+    for lc in lulcc:
+        
+        f, axes = plt.subplots(nrows=len(models),
+                            ncols=3,
+                            figsize=(x,y),
+                            subplot_kw={'projection':ccrs.PlateCarree()})
+
+        cbax_lu = f.add_axes([cb_lu_x0, 
+                            cb_lu_y0, 
+                            cb_lu_xlen, 
+                            cb_lu_ylen])
+        cbax_lc = f.add_axes([cb_lc_x0, 
+                            cb_lc_y0, 
+                            cb_lc_xlen, 
+                            cb_lc_ylen])
+        cbax_corr = f.add_axes([cb_corr_x0, 
+                                cb_corr_y0, 
+                                cb_corr_xlen, 
+                                cb_corr_ylen])    
+
+        i = 0
+
+
+        for mod,row_axes in zip(models,axes):
+            
+            stats_ds[mod]['lu_slope'].plot(ax=row_axes[0],
+                                        cmap=cmap_list_lu,
+                                        cbar_ax=cbax_lu,
+                                        levels=levels_lu,
+                                        extend='both',
+                                        center=0,
+                                        add_labels=False)
+            
+            stats_ds[mod]['{}_slope'.format(lc)].plot(ax=row_axes[1],
+                                                cmap=cmap_list_lc,
+                                                cbar_ax=cbax_lc,
+                                                levels=levels_lc,
+                                                extend='both',
+                                                center=0,
+                                                add_labels=False)
+            
+            plottable = stats_ds[mod]['lu-{}_corr'.format(lc)].where((stats_ds[mod]['{}_slope'.format(lc)]<null_bnds_lc[0])|\
+                                                                        (stats_ds[mod]['{}_slope'.format(lc)]>null_bnds_lc[1]))
+            
+            plottable.plot(ax=row_axes[2],
+                            transform=ccrs.PlateCarree(),
+                            cmap=cmap_list_corr,
+                            cbar_ax=cbax_corr,
+                            levels=values_corr,
+                            center=0,
+                            add_labels=False)
+            
+            for ax,column in zip(row_axes,['LU response',lc,'corr(LU,{})'.format(lc)]):
+                
+                ax.set_extent(extent,
+                            crs=ccrs.PlateCarree())
+                ax.set_title(letters[i],
+                            loc='left',
+                            fontsize = title_font,
+                            fontweight='bold')
+                ax.coastlines(linewidth=cstlin_lw)
+                
+                if column == 'LU response':
+                    
+                        if mod == 'CanESM5':
+                            height = 0.3
+                        else:
+                            height= 0
+                        ax.text(-0.1,
+                                height,
+                                mod,
+                                fontsize=title_font,
+                                fontweight='bold',
+                                rotation='vertical',
+                                transform=ax.transAxes)
+                
+                if i < 3:
+                    
+                    ax.set_title(column,
+                                loc='center',
+                                fontsize = title_font,
+                                fontweight='bold')
+                    
+                i += 1
+
+        # lu response pattern colorbar
+        cb_lu = mpl.colorbar.ColorbarBase(ax=cbax_lu, 
+                                        cmap=cmap_list_lu,
+                                        norm=norm_lu,
+                                        spacing='uniform',
+                                        orientation='horizontal',
+                                        extend='both',
+                                        ticks=tick_locs_lu,
+                                        drawedges=False)
+        cb_lu.set_label('LU trends (°C/5-years)',
+                        size=title_font)
+        cb_lu.ax.xaxis.set_label_position('top')
+        cb_lu.ax.tick_params(labelcolor=col_cbticlbl,
+                            labelsize=tick_font,
+                            color=col_cbtic,
+                            length=cb_ticlen,
+                            width=cb_ticwid,
+                            direction='out'); 
+        cb_lu.ax.set_xticklabels(tick_labels_lu,
+                                rotation=45)
+        cb_lu.outline.set_edgecolor(col_cbedg)
+        cb_lu.outline.set_linewidth(cb_edgthic)
+
+        # lc pattern colorbar
+        cb_lc = mpl.colorbar.ColorbarBase(ax=cbax_lc, 
+                                        cmap=cmap_list_lc,
+                                        norm=norm_lc,
+                                        spacing='uniform',
+                                        orientation='horizontal',
+                                        extend='both',
+                                        ticks=tick_locs_lc,
+                                        drawedges=False)
+        cb_lc.set_label('{} trends (%/5-years)'.format(lc),
+                        size=title_font)
+        cb_lc.ax.xaxis.set_label_position('top')
+        cb_lc.ax.tick_params(labelcolor=col_cbticlbl,
+                            labelsize=tick_font,
+                            color=col_cbtic,
+                            length=cb_ticlen,
+                            width=cb_ticwid,
+                            direction='out'); 
+        cb_lc.ax.set_xticklabels(tick_labels_lc,
+                                rotation=45)
+        cb_lc.outline.set_edgecolor(col_cbedg)
+        cb_lc.outline.set_linewidth(cb_edgthic)
+        
+        # corr lu + lc
+        cb = mpl.colorbar.ColorbarBase(ax=cbax_corr, 
+                                    cmap=cmap_list_corr,
+                                    norm=norm_corr,
+                                    spacing='uniform',
+                                    orientation='horizontal',
+                                    extend='neither',
+                                    ticks=tick_locs_corr,
+                                    drawedges=False)
+        cb.set_label('Correlation',
+                    size=title_font)
+        cb.ax.xaxis.set_label_position('top')
+        cb.ax.tick_params(labelcolor=col_cbticlbl,
+                        labelsize=tick_font,
+                        color=col_cbtic,
+                        length=cb_ticlen,
+                        width=cb_ticwid,
+                        direction='out'); 
+        cb.ax.set_xticklabels(tick_labels_corr,
+                            rotation=45)
+        cb.outline.set_edgecolor(col_cbedg)
+        cb.outline.set_linewidth(cb_edgthic)        
+
+        if flag_svplt == 0:
+            pass
+        elif flag_svplt == 1:
+            f.savefig(outDIR+'/combined_trends_corr_{}_{}.png'.format(lc,t_ext))
+
+# %%

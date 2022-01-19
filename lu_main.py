@@ -300,6 +300,7 @@ lineplot(glm_ds,
          exps,
          letters,
          t_ext,
+         flag_svplt,
          outDIR)
         
 #%%============================================================================
@@ -312,6 +313,7 @@ trends_plot(stats_ds,
             null_bnds_lc,
             null_bnds_lu,
             t_ext,
+            flag_svplt,
             outDIR)
     
 #%%============================================================================
@@ -323,6 +325,20 @@ corr_plot(stats_ds,
           letters,
           null_bnds_lc,
           t_ext,
+          flag_svplt,
           outDIR)
 
+#%%============================================================================
+
+# plot figures combined
+combined_plot(
+    stats_ds,
+    models,
+    letters,
+    lulcc,
+    null_bnds_lc,
+    null_bnds_lu,
+    t_ext,
+    flag_svplt,
+    outDIR)
 # %%
