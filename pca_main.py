@@ -70,6 +70,7 @@ obsDIR = os.path.join(curDIR, 'obs')
 modDIR = os.path.join(curDIR, 'mod')
 piDIR = os.path.join(curDIR, 'pi')
 mapDIR = os.path.join(curDIR, 'map')
+pklDIR = os.path.join(curDIR, 'pickle')
 outDIR = os.path.join(curDIR, 'figures')
 
 # bring in functions
@@ -87,7 +88,7 @@ flag_pickle=1     # 0: do not pickle objects
                   # 1: pickle objects after sections 'read' and 'analyze'
 
 # << SELECT >>
-flag_svplt=0      # 0: do not save plot
+flag_svplt=1      # 0: do not save plot
                   # 1: save plot in picDIR
                   
 # << SELECT >>
@@ -361,15 +362,29 @@ sig_noise,lulcc = pca_sn(scale,
 #%%============================================================================
 
 # pickle eof + sig/noise information
-os.chdir(curDIR)
+os.chdir(pklDIR)
 pkl_file = open('pca_{}_{}_{}_{}.pkl'.format(scale,t_ext,stat,freq),'wb')
 pk.dump([solver_dict,eof_dict,pc,pspc,sig_noise,lulcc],pkl_file)
 pkl_file.close()
 
 #%%============================================================================
 
+# get samples per lat across models
+sn_smps = {}
+for lat in lat_ranges.keys():
+    sn_smps[lat] = []
+    for mod in models:
+        for item in sig_noise['pic_S_N_{}_{}'.format(mod,lat)].sel(landcover='treeFrac'):
+            sn_smps[lat].append(float(item.values))
+lat_pcts = {}
+for lat in lat_ranges.keys():
+    lat_pcts[lat] = {}
+    for pct in [66,90,99]:
+        lat_pcts[lat][str(pct)] = np.percentile(sn_smps[lat],pct)
+
 # plot signal to noise ratio 
 sig_noise_plot(sig_noise,
+               lat_pcts,
                eof_dict,
                scale,
                lulcc,
@@ -378,6 +393,7 @@ sig_noise_plot(sig_noise,
                lat_ranges,
                letters,
                t_ext,
+               flag_svplt,
                outDIR)
 
 

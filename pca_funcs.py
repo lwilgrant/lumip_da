@@ -103,14 +103,14 @@ def standard_data(da):
 
 #%%==============================================================================   
 
-def pickler(curDIR,
+def pickler(pklDIR,
             var_fin,
             analysis,
             grid,
             t_ext,
             exp_list):
     
-    os.chdir(curDIR)
+    os.chdir(pklDIR)
     if len(exp_list) == 2:
         pkl_file = open('var_fin_2-factor_{}-grid_{}_{}.pkl'.format(grid,analysis,t_ext),'wb')
     elif len(exp_list) == 1:
@@ -345,6 +345,7 @@ def colormap_details(sequence_string,
 #%%==============================================================================
 
 def sig_noise_plot(sig_noise,
+                   lat_pcts,
                    eof_dict,
                    scale,
                    lulcc,
@@ -353,6 +354,7 @@ def sig_noise_plot(sig_noise,
                    lat_ranges,
                    letters,
                    t_ext,
+                   flag_svplt,
                    outDIR):
 
     x=7
@@ -751,24 +753,46 @@ def sig_noise_plot(sig_noise,
                           zorder=10)                 
                     
                 # likelihood s/n for detectability
-                ax.vlines(x=0.95,
+                # lat_pcts[lat][str(pct)]
+                # ax.vlines(x=0.95,
+                #           ymin=0,
+                #           ymax=0.1,
+                #           colors='indianred',
+                #           label=None,
+                #           zorder=30)
+                ax.vlines(x=lat_pcts[ltr]['66'],
                           ymin=0,
                           ymax=0.1,
                           colors='indianred',
-                          label=None,
-                          zorder=30)
-                ax.vlines(x=1.64,
+                          lw=1,
+                          label='likely',
+                          zorder=30)                
+                # ax.vlines(x=1.64,
+                #           ymin=0,
+                #           ymax=0.1,
+                #           colors='firebrick',
+                #           label=None,
+                #           zorder=30)
+                ax.vlines(x=lat_pcts[ltr]['90'],
                           ymin=0,
                           ymax=0.1,
                           colors='firebrick',
-                          label=None,
-                          zorder=30)
-                ax.vlines(x=2.57,
+                          lw=2,
+                          label='very likely',
+                          zorder=30)                
+                # ax.vlines(x=2.57,
+                #           ymin=0,
+                #           ymax=0.1,
+                #           colors='maroon',
+                #           label=None,
+                #           zorder=30)
+                ax.vlines(x=lat_pcts[ltr]['99'],
                           ymin=0,
                           ymax=0.1,
                           colors='maroon',
-                          label=None,
-                          zorder=30)
+                          lw=3,
+                          label='virtually certain',
+                          zorder=30)                
                 
                 
             for ax in ax_set:
@@ -903,11 +927,15 @@ def sig_noise_plot(sig_noise,
                              length=cb_ticlen,
                              width=cb_ticwid,
                              direction='out'); 
-        cb.ax.set_xticklabels(tick_labels)
+        cb.ax.set_xticklabels(tick_labels,
+                              rotation=45)
         cb.outline.set_edgecolor(col_cbedg)
         cb.outline.set_linewidth(cb_edgthic)
 
-        f.savefig(outDIR+'/pca_noise_{}_{}.png'.format(scale,t_ext))
+        if flag_svplt == 0:
+            pass
+        elif flag_svplt == 1:
+            f.savefig(outDIR+'/pca_noise_{}_{}.png'.format(scale,t_ext))
             
 #%%==============================================================================
 
