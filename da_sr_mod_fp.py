@@ -283,8 +283,10 @@ def fingerprint_subroutine(obs_types,
                     mod_ar6 = del_rows(mod_ar6) # remove tsteps with nans (temporal x spatial shaped matrix)
                     mmm[exp].append(mod_ar6) # set aside mod_ar6 for mmm global analysis of ar6 (will center after ensemble mean)
                     input_mod_ar6 = deepcopy(mod_ar6)
-                    mod_ar6_center = temp_center(ns,
-                                                input_mod_ar6)  # temporal centering
+                    mod_ar6_center = temp_center(
+                        nt,
+                        ns,
+                        input_mod_ar6)  # temporal centering
                     fp_data[mod][exp] = mod_ar6_center.flatten() # 1-D mod array to go into DA
                     fp_data_continental[mod][exp] = {} # 1-D mod arrays per continent for continental DA
                     fp_data_ar6[mod][exp] = {} # 1-D mod arrays per continent for ar6 DA
@@ -325,8 +327,10 @@ def fingerprint_subroutine(obs_types,
                 ens, _ = ensembler(mmm[exp],
                                 ax=0)
                 input_ens = deepcopy(ens)
-                ens_center = temp_center(ns,
-                                        input_ens)
+                ens_center = temp_center(
+                    nt,
+                    ns,
+                    input_ens)
                 fp_data['mmm'][exp] = ens_center.flatten()
                 fp_data_continental['mmm'][exp] = {}
                 fp_data_ar6['mmm'][exp] = {}
@@ -337,8 +341,10 @@ def fingerprint_subroutine(obs_types,
                     ens, _ = ensembler(mmm_c[exp][c],
                                     ax=0)
                     input_ens = deepcopy(ens)
-                    ens_center = temp_center(n,
-                                            ens)
+                    ens_center = temp_center(
+                        nt,
+                        n,
+                        ens)
                     fp_data_continental['mmm'][exp][c] = ens_center.flatten()
 
                     for ar6 in continents[c]:
@@ -412,8 +418,10 @@ def fingerprint_subroutine(obs_types,
                     mod_cnt = del_rows(mod_cnt) # remove tsteps with nans (temporal x spatial shaped matrix)
                     mmm[exp].append(mod_cnt) # set aside mod_ar6 for mmm global analysis of ar6 (will center after ensemble mean)
                     input_mod_cnt = deepcopy(mod_cnt)
-                    mod_cnt_center = temp_center(ns,
-                                                 input_mod_cnt)  # temporal centering
+                    mod_cnt_center = temp_center(
+                        nt,
+                        ns,
+                        input_mod_cnt)  # temporal centering
                     fp_data[mod][exp] = mod_cnt_center.flatten() # 1-D mod array to go into DA
 
             # mmm of individual model means for global + continental
@@ -424,8 +432,10 @@ def fingerprint_subroutine(obs_types,
                 ens, _ = ensembler(mmm[exp],
                                 ax=0)
                 input_ens = deepcopy(ens)
-                ens_center = temp_center(ns,
-                                        input_ens)
+                ens_center = temp_center(
+                    nt,
+                    ns,
+                    input_ens)
                 fp_data['mmm'][exp] = ens_center.flatten()
                         
             # select fp data for analysis

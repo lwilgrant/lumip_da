@@ -179,7 +179,10 @@ def ensemble_subroutine(modDIR,
                                  freq=freq)
                     da = da.where(lc == 1)
                     if i == 0:
-                        nt = len(da.time.values)
+                        try:
+                            nt = len(da.time.values)
+                        except:
+                            nt = 1
                     i += 1
                     
                     if agg == 'ar6':
@@ -193,8 +196,10 @@ def ensemble_subroutine(modDIR,
                                                     ar6_wts[mod])
                         mod_ar6 = del_rows(mod_ar6)
                         input_mod_ar6 = deepcopy(mod_ar6)
-                        mod_ar6_center = temp_center(ns,
-                                                    input_mod_ar6)
+                        mod_ar6_center = temp_center(
+                            nt,
+                            ns,
+                            input_mod_ar6)
                         mod_ts_ens[mod][exp].append(mod_ar6_center)
                         mod_ts_ens['mmm'][exp].append(mod_ar6_center)
                         
@@ -209,8 +214,10 @@ def ensemble_subroutine(modDIR,
                                                     cnt_wts[mod])
                         mod_cnt = del_rows(mod_cnt)
                         input_mod_cnt = deepcopy(mod_cnt)
-                        mod_cnt_center = temp_center(ns,
-                                                    input_mod_cnt)
+                        mod_cnt_center = temp_center(
+                            nt,
+                            ns,
+                            input_mod_cnt)
                         mod_ts_ens[mod][exp].append(mod_cnt_center)
                         mod_ts_ens['mmm'][exp].append(mod_cnt_center)      
                                           

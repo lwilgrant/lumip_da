@@ -77,9 +77,9 @@ from da_funcs import *
 
 # adjust these flag settings for analysis choices only change '<< SELECT >>' lines
 
-# << SELECT >>
-flag_pickle=1     # 0: do not pickle objects
-                  # 1: pickle objects after sections 'read' and 'analyze'
+# # << SELECT >>
+# flag_pickle=0     # 0: do not pickle objects
+#                   # 1: pickle objects after sections 'read' and 'analyze'
 
 # << SELECT >>
 flag_svplt=1      # 0: do not save plot
@@ -145,6 +145,7 @@ flag_len=0        # 0: 50
 # << SELECT >>
 flag_resample=0    # 0: 5 year block means
                    # 1: 10 year block means
+                   # 2: 2, 25 yr block means which are subtracted to collapse time dim
 
 # << SELECT >>
 flag_var=0   # 0: tasmax
@@ -212,7 +213,8 @@ start_years = [1915,
 lengths = [50,
            100]
 resample=['5Y',
-          '10Y']
+          '10Y',
+          '25Y']
 variables = ['tasmax']
 regressions = ['OLS',
                'TLS']
@@ -314,6 +316,11 @@ letters = ['a', 'b', 'c',
            'v', 'w', 'x',
            'y', 'z']
 
+nx = {}
+for mod in models:
+    nx[mod] = []
+nx['mmm'] = []
+
 #==============================================================================
 # get data 
 #==============================================================================
@@ -385,21 +392,21 @@ mod_ens,mod_ts_ens,nt = ensemble_subroutine(modDIR,
                                             cnt_regs,
                                             cnt_wts)
 
-ts_pickler(pklDIR,
-           mod_ts_ens,
-           grid,
-           pi,
-           agg,
-           weight,
-           t_ext,
-           obs_mod='mod')
+# ts_pickler(pklDIR,
+#            mod_ts_ens,
+#            grid,
+#            pi,
+#            agg,
+#            weight,
+#            t_ext,
+#            obs_mod='mod')
 
 #%%============================================================================
 
 # mod fingerprint (nx is dummy var not used in OLS OF)
 os.chdir(pklDIR)
 
-if not os.path.isfile('mod_inputs_{}-flagfactor_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(flag_factor,grid,pi,agg,weight,t_ext)):
+if not os.path.isfile('mod_inputs_{}-flagfactor_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(flag_factor,grid,pi,agg,weight,freq,t_ext)):
 
     os.chdir(curDIR)
     from da_sr_mod_fp import *
@@ -432,25 +439,25 @@ if not os.path.isfile('mod_inputs_{}-flagfactor_{}-grid_{}-pi_{}-agg_{}-weight_{
                   pi,
                   agg,
                   weight,
+                  freq,
                   t_ext,
                   obs_mod='mod')
 
-elif os.path.isfile('mod_inputs_{}-flagfactor_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(flag_factor,grid,pi,agg,weight,t_ext)):
+elif os.path.isfile('mod_inputs_{}-flagfactor_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(flag_factor,grid,pi,agg,weight,freq,t_ext)):
     
-    pkl_file = open('mod_inputs_{}-flagfactor_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(flag_factor,grid,pi,agg,weight,t_ext),'rb')
+    pkl_file = open('mod_inputs_{}-flagfactor_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(flag_factor,grid,pi,agg,weight,freq,t_ext),'rb')
     dictionary = pk.load(pkl_file)
     pkl_file.close()
     fp = dictionary['global']
     fp_continental = dictionary['continental']
     fp_ar6 = dictionary['ar6']
 
-
 #%%============================================================================
 
 # pi data
 os.chdir(pklDIR)
 
-if not os.path.isfile('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(grid,pi,agg,weight,t_ext)):
+if not os.path.isfile('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,freq,t_ext)):
 
     os.chdir(curDIR)
     from da_sr_pi import *
@@ -495,21 +502,22 @@ if not os.path.isfile('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(
                   pi,
                   agg,
                   weight,
+                  freq,
                   t_ext,
                   obs_mod='pic')    
 
-    ts_pickler(pklDIR,
-            pi_ts_ens,
-            grid,
-            pi,
-            agg,
-            weight,
-            t_ext,
-            obs_mod='pic')
+    # ts_pickler(pklDIR,
+    #         pi_ts_ens,
+    #         grid,
+    #         pi,
+    #         agg,
+    #         weight,
+    #         t_ext,
+    #         obs_mod='pic')
     
-elif os.path.isfile('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(grid,pi,agg,weight,t_ext)):    
+elif os.path.isfile('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,freq,t_ext)):    
     
-    pkl_file = open('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(grid,pi,agg,weight,t_ext),'rb')
+    pkl_file = open('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,freq,t_ext),'rb')
     dictionary = pk.load(pkl_file)
     pkl_file.close()
     ctl_data = dictionary['global']
@@ -521,7 +529,7 @@ elif os.path.isfile('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(gr
 # obs data
 os.chdir(pklDIR)
 
-if not os.path.isfile('obs_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(grid,pi,agg,weight,t_ext)):
+if not os.path.isfile('obs_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,freq,t_ext)):
     
     os.chdir(curDIR)
     from da_sr_obs import *
@@ -558,21 +566,22 @@ if not os.path.isfile('obs_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(
                   pi,
                   agg,
                   weight,
+                  freq,
                   t_ext,
                   obs_mod='obs')    
     
-    ts_pickler(pklDIR,
-            obs_ts,
-            grid,
-            pi,
-            agg,
-            weight,
-            t_ext,
-            obs_mod='obs')    
+    # ts_pickler(pklDIR,
+    #         obs_ts,
+    #         grid,
+    #         pi,
+    #         agg,
+    #         weight,
+    #         t_ext,
+    #         obs_mod='obs')    
     
-elif os.path.isfile('obs_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(grid,pi,agg,weight,t_ext)):    
+elif os.path.isfile('obs_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,freq,t_ext)):    
 
-    pkl_file = open('obs_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(grid,pi,agg,weight,t_ext),'rb')
+    pkl_file = open('obs_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,freq,t_ext),'rb')
     dictionary = pk.load(pkl_file)
     pkl_file.close()
     obs_data = dictionary['global']
@@ -631,6 +640,7 @@ pickler(pklDIR,
         grid,
         agg,
         weight,
+        freq,
         t_ext,
         bs_reps,
         exp_list,
@@ -656,7 +666,7 @@ if analysis != 'combined':
         elif start_exp == 'hist-noLu':
             second_exp = 'historical'
         os.chdir(pklDIR)
-        pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}.pkl'.format(second_exp,grid,analysis,pi,agg,weight,bs_reps,t_ext),'rb')
+        pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}_{}.pkl'.format(second_exp,grid,analysis,pi,agg,weight,bs_reps,freq,t_ext),'rb')
         var_fin_2 = pk.load(pkl_file)
         pkl_file.close()
         
@@ -747,11 +757,11 @@ elif analysis == 'combined':
         
         os.chdir(pklDIR)
         
-        pkl_file_cnt = open('var_fin_2-factor_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}.pkl'.format(grid,'continental',pi,'ar6',weight,bs_reps,t_ext),'rb')
+        pkl_file_cnt = open('var_fin_2-factor_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}_{}.pkl'.format(grid,'continental',pi,'ar6',weight,bs_reps,freq,t_ext),'rb')
         var_fin_cnt = pk.load(pkl_file_cnt)
         pkl_file_cnt.close()
         
-        pkl_file_glb = open('var_fin_2-factor_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}.pkl'.format(grid,'global',pi,'continental',weight,bs_reps,t_ext),'rb')
+        pkl_file_glb = open('var_fin_2-factor_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}_{}.pkl'.format(grid,'global',pi,'continental',weight,bs_reps,freq,t_ext),'rb')
         var_fin_glb = pk.load(pkl_file_glb) 
         pkl_file_glb.close()       
 
@@ -764,19 +774,19 @@ elif analysis == 'combined':
             second_exp = 'historical'
             
         os.chdir(pklDIR)
-        pkl_file_cnt = open('var_fin_1-factor_{}_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}.pkl'.format(start_exp,grid,'continental',pi,'ar6',weight,bs_reps,t_ext),'rb')
+        pkl_file_cnt = open('var_fin_1-factor_{}_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}_{}.pkl'.format(start_exp,grid,'continental',pi,'ar6',weight,bs_reps,freq,t_ext),'rb')
         var_fin_cnt = pk.load(pkl_file_cnt)
         pkl_file_cnt.close()
         
-        pkl_file_cnt_2 = open('var_fin_1-factor_{}_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}.pkl'.format(second_exp,grid,'continental',pi,'ar6',weight,bs_reps,t_ext),'rb')
+        pkl_file_cnt_2 = open('var_fin_1-factor_{}_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}_{}.pkl'.format(second_exp,grid,'continental',pi,'ar6',weight,bs_reps,freq,t_ext),'rb')
         var_fin_cnt_2 = pk.load(pkl_file_cnt_2)
         pkl_file_cnt_2.close()        
         
-        pkl_file_glb = open('var_fin_1-factor_{}_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}.pkl'.format(start_exp,grid,'global',pi,'continental',weight,bs_reps,t_ext),'rb')
+        pkl_file_glb = open('var_fin_1-factor_{}_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}_{}.pkl'.format(start_exp,grid,'global',pi,'continental',weight,bs_reps,freq,t_ext),'rb')
         var_fin_glb = pk.load(pkl_file_glb)
         pkl_file_glb.close()
         
-        pkl_file_glb_2 = open('var_fin_1-factor_{}_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}.pkl'.format(second_exp,grid,'global',pi,'continental',weight,bs_reps,t_ext),'rb')
+        pkl_file_glb_2 = open('var_fin_1-factor_{}_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}_{}.pkl'.format(second_exp,grid,'global',pi,'continental',weight,bs_reps,freq,t_ext),'rb')
         var_fin_glb_2 = pk.load(pkl_file_glb_2)
         pkl_file_glb_2.close()        
         
@@ -794,7 +804,6 @@ elif analysis == 'combined':
         sfDIR,
         obs_types,
         pi,
-        agg,
         weight,
         models,
         exp_list,
@@ -802,6 +811,7 @@ elif analysis == 'combined':
         var_fin_glb,
         grid,
         letters,
+        freq,
         flag_svplt,
         outDIR
         )    

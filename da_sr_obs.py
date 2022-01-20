@@ -150,8 +150,10 @@ def obs_subroutine(obsDIR,
                     obs_ar6 = del_rows(obs_ar6)
                     obs_mmm[obs].append(obs_ar6)
                     input_obs_ar6 = deepcopy(obs_ar6)
-                    obs_ar6_center = temp_center(ns,
-                                                input_obs_ar6)
+                    obs_ar6_center = temp_center(
+                        nt,
+                        ns,
+                        input_obs_ar6)
                     obs_ts[obs][mod] = obs_ar6_center
                     obs_data[obs][mod] = obs_ar6_center.flatten()
                     obs_data_continental[obs][mod] = {}
@@ -185,8 +187,10 @@ def obs_subroutine(obsDIR,
                 # mmm of individual obs series for global + continental + ar6
                 obs_ens,_ = ensembler(obs_mmm[obs],
                                         ax=0)
-                obs_ts[obs]['mmm'] = temp_center(ns,
-                                                    obs_ens)
+                obs_ts[obs]['mmm'] = temp_center(
+                    nt,
+                    ns,
+                    obs_ens)
                 obs_data[obs]['mmm'] = obs_ens.flatten()
                 obs_data_continental[obs]['mmm'] = {}
                 obs_data_ar6[obs]['mmm'] = {}
@@ -196,8 +200,10 @@ def obs_subroutine(obsDIR,
                     obs_ens,_ = ensembler(obs_mmm_c[obs][c],
                                             ax=0)
                     n = len(continents[c])
-                    obs_data_continental[obs]['mmm'][c] = temp_center(n,
-                                                                        obs_ens).flatten()
+                    obs_data_continental[obs]['mmm'][c] = temp_center(
+                        nt,
+                        n,
+                        obs_ens).flatten()
                     
                     for ar6 in continents[c]:
                         
@@ -224,8 +230,10 @@ def obs_subroutine(obsDIR,
                     obs_cnt = del_rows(obs_cnt)
                     obs_mmm[obs].append(obs_cnt)
                     input_obs_cnt = deepcopy(obs_cnt)
-                    obs_cnt_center = temp_center(ns,
-                                                input_obs_cnt)
+                    obs_cnt_center = temp_center(
+                        nt,
+                        ns,
+                        input_obs_cnt)
                     obs_ts[obs][mod] = obs_cnt_center
                     obs_data[obs][mod] = obs_cnt_center.flatten()
                     obs_data_continental[obs][mod] = {}
@@ -234,8 +242,10 @@ def obs_subroutine(obsDIR,
                 # mmm of individual obs series for global + continental + ar6
                 obs_ens,_ = ensembler(obs_mmm[obs],
                                         ax=0)
-                obs_ts[obs]['mmm'] = temp_center(ns,
-                                                    obs_ens)
+                obs_ts[obs]['mmm'] = temp_center(
+                    nt,
+                    ns,
+                    obs_ens)
                 obs_data[obs]['mmm'] = obs_ens.flatten()                    
             
     return obs_data,obs_data_continental,obs_data_ar6,obs_ts

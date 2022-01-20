@@ -272,8 +272,10 @@ def picontrol_subroutine(piDIR,
                                         ns)
                     pi_ar6 = del_rows(pi_ar6) # remove tsteps with nans (temporal x spatial shaped matrix)
                     input_pi_ar6 = deepcopy(pi_ar6) # temporal centering
-                    pi_ar6 = temp_center(ns,
-                                        input_pi_ar6)
+                    pi_ar6 = temp_center(
+                        nt,
+                        ns,
+                        input_pi_ar6)
                     pi_ts_ens[mod].append(pi_ar6)
                         
                     if picm <= min_pi_samp:
@@ -474,8 +476,10 @@ def picontrol_subroutine(piDIR,
                                                    ar6_wts[mod])
                         pi_ar6 = del_rows(pi_ar6) # remove tsteps with nans (temporal x spatial shaped matrix)
                         input_pi_ar6 = deepcopy(pi_ar6) # temporal centering
-                        pi_ar6 = temp_center(ns,
-                                            input_pi_ar6)
+                        pi_ar6 = temp_center(
+                            nt,
+                            ns,
+                            input_pi_ar6)
                             
                         # if picm <= min_pi_samp:
                             
@@ -547,8 +551,10 @@ def picontrol_subroutine(piDIR,
                         
                         pi_cnt = del_rows(pi_cnt) # remove tsteps with nans (temporal x spatial shaped matrix)
                         input_pi_cnt = deepcopy(pi_cnt) # temporal centering
-                        pi_cnt = temp_center(ns,
-                                             input_pi_cnt)
+                        pi_cnt = temp_center(
+                            nt,
+                            ns,
+                            input_pi_cnt)
                             
                         pi_ts_ens.append(pi_cnt) 
                         pi_data.append(pi_cnt.flatten()) # 1-D pi array to go into pi-chunks for DA

@@ -72,6 +72,11 @@ def nc_read(file,
                      closed='left',
                      label='left').mean('time') #this mean doesn't make sense for land cover maps
     
+    # for freq of 25Y, collapse time dimenson by taking diff of 2 25 yr periods
+    if freq == '25Y':
+        
+        da = da.isel(time=-1) - da.isel(time=0)
+    
     return da
 
 #%%============================================================================
@@ -115,24 +120,36 @@ def ar6_weighted_mean(continents,
                       weight,
                       ar6_wts):
     
-    nt = len(da.time.values)
+    # nt = len(da.time.values)
     matrix = np.zeros(shape=(nt,ns))
     s = 0
     for c in continents.keys():
         for i in continents[c]:
             da_i = da.where(ar6_regs==i,
-                            drop=True)                    
-            for t in np.arange(nt):
-                da_i_t = da_i.isel(time=t)
-                weights = np.cos(np.deg2rad(da_i_t.lat))
+                            drop=True)   
+            if nt > 1:                 
+                for t in np.arange(nt):
+                    da_i_t = da_i.isel(time=t)
+                    weights = np.cos(np.deg2rad(da_i_t.lat))
+                    weights.name='weights'
+                    if weight == 'no_weights':
+                        da_i_t_w = da_i_t.weighted(weights).mean(('lon','lat')).values
+                    if weight == 'weights':
+                        da_i_t_w = da_i_t.weighted(weights).mean(('lon','lat')).values        
+                        da_i_t_w = da_i_t_w * ar6_wts[c][i]            
+                    matrix[t,s]= da_i_t_w
+            elif nt == 1:
+                t = 0
+                weights = np.cos(np.deg2rad(da_i.lat))
                 weights.name='weights'
                 if weight == 'no_weights':
-                    da_i_t_w = da_i_t.weighted(weights).mean(('lon','lat')).values
+                    da_i_w = da_i.weighted(weights).mean(('lon','lat')).values
                 if weight == 'weights':
-                    da_i_t_w = da_i_t.weighted(weights).mean(('lon','lat')).values        
-                    da_i_t_w = da_i_t_w * ar6_wts[c][i]            
-                matrix[t,s]= da_i_t_w
+                    da_i_w = da_i.weighted(weights).mean(('lon','lat')).values        
+                    da_i_w = da_i_w * ar6_wts[c][i]            
+                matrix[t,s]= da_i_w
             s += 1
+                
             
     return matrix
 
@@ -146,28 +163,34 @@ def cnt_weighted_mean(continents,
                       weight,
                       cnt_wts):
     
-    nt = len(da.time.values)
+    # nt = len(da.time.values)
     matrix = np.zeros(shape=(nt,ns))
     s = 0
     for c in continents.keys():
-        # if c != 'Africa':
         da_i = da.where(cnt_regs==continents[c],
-                        drop=True)   
-        # elif c == 'Africa':
-            
-        #     da_i = da.where((cnt_regs==continents[c])&(),
-        #                     drop=True)               
-        for t in np.arange(nt):
-            da_i_t = da_i.isel(time=t)
-            weights = np.cos(np.deg2rad(da_i_t.lat))
+                        drop=True) 
+        if nt > 1:             
+            for t in np.arange(nt):
+                da_i_t = da_i.isel(time=t)
+                weights = np.cos(np.deg2rad(da_i_t.lat))
+                weights.name='weights'
+                if weight == 'no_weights': # do not weigh based on continent size
+                    da_i_t_w = da_i_t.weighted(weights).mean(('lon','lat')).values
+                elif weight == 'weights':
+                    da_i_t_w = da_i_t.weighted(weights).mean(('lon','lat')).values
+                    da_i_t_w = da_i_t_w * cnt_wts[c]
+                matrix[t,s]= da_i_t_w
+        elif nt == 1:
+            t = 0
+            weights = np.cos(np.deg2rad(da_i.lat))
             weights.name='weights'
             if weight == 'no_weights': # do not weigh based on continent size
-                da_i_t_w = da_i_t.weighted(weights).mean(('lon','lat')).values
+                da_i_w = da_i.weighted(weights).mean(('lon','lat')).values
             elif weight == 'weights':
-                da_i_t_w = da_i_t.weighted(weights).mean(('lon','lat')).values
-                da_i_t_w = da_i_t_w * cnt_wts[c]
-            matrix[t,s]= da_i_t_w
-        s += 1
+                da_i_w = da_i.weighted(weights).mean(('lon','lat')).values
+                da_i_w = da_i_w * cnt_wts[c]
+            matrix[t,s]= da_i_w
+        s += 1            
             
     return matrix
 
@@ -194,14 +217,21 @@ def del_rows(matrix):
 
 #%%============================================================================
 
-def temp_center(ns,
-                mod_ar6):
+def temp_center(
+    nt,
+    ns,
+    mod_ar6):
     
-    for s in np.arange(ns):
-        arr = mod_ar6[:,s]
-        arr_mean = np.mean(arr)
-        arr_center = arr - arr_mean
-        mod_ar6[:,s] = arr_center
+    if nt > 1:
+        for s in np.arange(ns):
+            arr = mod_ar6[:,s]
+            arr_mean = np.mean(arr)
+            arr_center = arr - arr_mean
+            mod_ar6[:,s] = arr_center
+            
+    elif nt == 1:
+        arr_mean = np.mean(mod_ar6)
+        mod_ar6 = mod_ar6 - arr_mean   
         
     return mod_ar6
 
@@ -581,13 +611,17 @@ def da_run(y,
     half_1_end = int(np.floor(nb_runs_ctl / 2))
     Z1 = Z[:,:half_1_end]
     if nb_runs_ctl % 2 == 0:
-        Z2 = Z[:,half_1_end]
+        Z2 = Z[:,half_1_end:]
     else:
         Z2 = Z[:,half_1_end+1:]
     
     # Spatio-temporal dimension after reduction
-    n_red = n_st - n_spa
-    U = projfullrank(nbts, n_spa)
+    if nbts > 1:
+        n_red = n_st - n_spa
+        U = projfullrank(nbts, n_spa)
+    elif nbts == 1: # case where I regress with collapsed time dimension and each point is a signal
+        n_red = n_st - nbts # therefore treating ns as nt
+        U = projfullrank(n_spa, nbts)
     
     # Project all input data 
     yc = np.dot(U, y)
@@ -678,16 +712,17 @@ def input_pickler(pklDIR,
                   pi,
                   agg,
                   weight,
+                  freq,
                   t_ext,
                   obs_mod):
     
     os.chdir(pklDIR)
     if obs_mod == 'mod':
-        pkl_file = open('mod_inputs_{}-flagfactor_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(flag_factor,grid,pi,agg,weight,t_ext),'wb')
+        pkl_file = open('mod_inputs_{}-flagfactor_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(flag_factor,grid,pi,agg,weight,freq,t_ext),'wb')
     elif obs_mod == 'obs':
-        pkl_file = open('obs_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(grid,pi,agg,weight,t_ext),'wb')
+        pkl_file = open('obs_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,freq,t_ext),'wb')
     elif obs_mod == 'pic':
-        pkl_file = open('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}.pkl'.format(grid,pi,agg,weight,t_ext),'wb')
+        pkl_file = open('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,freq,t_ext),'wb')
     pk.dump(dictionary,pkl_file)
     pkl_file.close()
 
@@ -721,6 +756,7 @@ def pickler(curDIR,
             grid,
             agg,
             weight,
+            freq,
             t_ext,
             bs_reps,
             exp_list,
@@ -728,10 +764,10 @@ def pickler(curDIR,
     
     os.chdir(curDIR)
     if len(exp_list) == 2:
-        pkl_file = open('var_fin_2-factor_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}.pkl'.format(grid,analysis,pi,agg,weight,bs_reps,t_ext),'wb')
+        pkl_file = open('var_fin_2-factor_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}_{}.pkl'.format(grid,analysis,pi,agg,weight,bs_reps,freq,t_ext),'wb')
     elif len(exp_list) == 1:
         exp = exp_list[0]
-        pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}.pkl'.format(exp,grid,analysis,pi,agg,weight,bs_reps,t_ext),'wb')
+        pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}_{}.pkl'.format(exp,grid,analysis,pi,agg,weight,bs_reps,freq,t_ext),'wb')
     pk.dump(var_fin,pkl_file)
     pkl_file.close()
 
@@ -773,6 +809,7 @@ def plot_scaling_global(models,
                         weight,
                         exp_list,
                         var_fin,
+                        freq,
                         flag_svplt,
                         outDIR):
     
@@ -973,11 +1010,11 @@ def plot_scaling_global(models,
             
             if exp_list == ['hist-noLu','lu']:
                 
-                f.savefig(outDIR+'/global_attribution_2-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight.png'.format(obs,grid,pi,agg,weight),bbox_inches='tight',dpi=200)     
+                f.savefig(outDIR+'/global_attribution_2-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight_{}.png'.format(obs,grid,pi,agg,weight,freq),bbox_inches='tight',dpi=200)     
                 
             elif exp_list == ['historical','hist-noLu']:
                 
-                f.savefig(outDIR+'/global_attribution_1-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight.png'.format(obs,grid,pi,agg,weight),bbox_inches='tight',dpi=200)     
+                f.savefig(outDIR+'/global_attribution_1-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight_{}.png'.format(obs,grid,pi,agg,weight,freq),bbox_inches='tight',dpi=200)     
   
 
 #%%============================================================================    
@@ -1291,6 +1328,7 @@ def plot_scaling_map_continental(sfDIR,
                                  var_fin,
                                  grid,
                                  letters,
+                                 freq,
                                  flag_svplt,
                                  outDIR):
     
@@ -1390,11 +1428,11 @@ def plot_scaling_map_continental(sfDIR,
             
             if exp_list == ['hist-noLu', 'lu']:
                 
-                f.savefig(outDIR+'/continental_attribution_2-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight.png'.format(obs,grid,pi,agg,weight),bbox_inches='tight',dpi=500)
+                f.savefig(outDIR+'/continental_attribution_2-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight_{}.png'.format(obs,grid,pi,agg,weight,freq),bbox_inches='tight',dpi=500)
                 
             elif exp_list == ['historical','hist-noLu']:
                 
-                f.savefig(outDIR+'/continental_attribution_1-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight.png'.format(obs,grid,pi,agg,weight),bbox_inches='tight',dpi=500)
+                f.savefig(outDIR+'/continental_attribution_1-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight_{}.png'.format(obs,grid,pi,agg,weight,freq),bbox_inches='tight',dpi=500)
                 
             # if exp_list == ['hist-noLu','lu']:
                 
@@ -1680,7 +1718,6 @@ def plot_scaling_map_combined(
     sfDIR,
     obs_types,
     pi,
-    agg,
     weight,
     models,
     exp_list,
@@ -1688,6 +1725,7 @@ def plot_scaling_map_combined(
     var_fin_glb,
     grid,
     letters,
+    freq,
     flag_svplt,
     outDIR
     ):
@@ -1991,9 +2029,9 @@ def plot_scaling_map_combined(
             
             if exp_list == ['hist-noLu', 'lu']:
                 
-                f.savefig(outDIR+'/combined_attribution_2-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight.png'.format(obs,grid,pi,agg,weight),bbox_inches='tight',dpi=500)
+                f.savefig(outDIR+'/combined_attribution_2-factor_{}_{}-grid_{}-pi_{}-weight_{}.png'.format(obs,grid,pi,weight,freq),bbox_inches='tight',dpi=500)
                 
             elif exp_list == ['historical','hist-noLu']:
                 
-                f.savefig(outDIR+'/combined_attribution_1-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight.png'.format(obs,grid,pi,agg,weight),bbox_inches='tight',dpi=500)
+                f.savefig(outDIR+'/combined_attribution_1-factor_{}_{}-grid_{}-pi_{}-weight_{}.png'.format(obs,grid,pi,weight,freq),bbox_inches='tight',dpi=500)
 # %%
