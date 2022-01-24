@@ -244,10 +244,14 @@ labels['Africa'] = ['WAF','CAF','NEAF','SEAF','SWAF','ESAF']
 labels['Australia'] = ['NAU','CAU','EAU','SAU']
 
 lat_ranges = {}
-lat_ranges['boreal'] = slice(51.5,89.5)
-lat_ranges['tropics'] = slice(-23.5,23.5)
+lat_ranges['boreal'] = slice(50,90)
+lat_ranges['tropics'] = slice(-50,23)
 # lat_ranges['temperate_south'] = slice(-50.5,-24.5)
-lat_ranges['temperate_north'] = slice(24.5,50.5)
+lat_ranges['temperate_north'] = slice(23,50)
+# lat_ranges['boreal'] = slice(51.5,89.5)
+# lat_ranges['tropics'] = slice(-23.5,23.5)
+# # lat_ranges['temperate_south'] = slice(-50.5,-24.5)
+# lat_ranges['temperate_north'] = slice(24.5,50.5)
 
 letters = ['a', 'b', 'c',
            'd', 'e', 'f',

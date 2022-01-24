@@ -870,7 +870,8 @@ def sig_noise_plot(sig_noise,
             gl.ylabels_left = False
             gl.ylabels_right = False
             gl.xlines = False
-            gl.ylocator = mticker.FixedLocator([89.5,51.5,23.5,-23.5])
+            # gl.ylocator = mticker.FixedLocator([89.5,51.5,23.5,-23.5])
+            gl.ylocator = mticker.FixedLocator([90,50,23,-50])
             gl.xformatter = LONGITUDE_FORMATTER
             gl.yformatter = LATITUDE_FORMATTER
             ax.set_extent(extent,
@@ -897,7 +898,8 @@ def sig_noise_plot(sig_noise,
                                     color=colors['pi'])
             ax.add_artist(con)            
             
-            for ax_in,y_m1 in zip(ax_set,[51.5,23.5,-23.5]):
+            # for ax_in,y_m1 in zip(ax_set,[51.5,23.5,-23.5]):
+            for ax_in,y_m1 in zip(ax_set,[50,23,-50]):
                 
                 x_h = 4
                 y_h1 = 0
