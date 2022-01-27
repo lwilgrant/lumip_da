@@ -109,7 +109,7 @@ flag_lu_technique=1     # 0: lu as mean of individual (historical - hist-nolu)
                         # 1: lu as mean(historical) - mean(hist-nolu)
 
 # << SELECT >>
-flag_y1=1         # 0: 1915
+flag_y1=0         # 0: 1915
                   # 1: 1965
 
 # << SELECT >>
@@ -270,106 +270,113 @@ letters = ['a', 'b', 'c',
 
 #%%============================================================================
 from pca_sr_file_alloc import *
-map_files,grid_files,mod_files,pi_files = file_subroutine(mapDIR,
-                                                          modDIR,
-                                                          piDIR,
-                                                          stat,
-                                                          lulcc,
-                                                          y1,
-                                                          y2,
-                                                          t_ext,
-                                                          models,
-                                                          exps,
-                                                          var)
+map_files,grid_files,mod_files,pi_files = file_subroutine(
+    mapDIR,
+    modDIR,
+    piDIR,
+    stat,
+    lulcc,
+    y1,
+    y2,
+    t_ext,
+    models,
+    exps,
+    var)
 
 #%%============================================================================
 
 # luh2 maps and ar6 regions
 os.chdir(curDIR)
 from pca_sr_maps import *
-maps,ar6_regs,ar6_land = map_subroutine(map_files,
-                                        models,
-                                        mapDIR,
-                                        flag_temp_center,
-                                        flag_standardize,
-                                        lulcc,
-                                        y1,
-                                        measure,
-                                        freq)            
+maps,ar6_regs,ar6_land = map_subroutine(
+    map_files,
+    models,
+    mapDIR,
+    flag_temp_center,
+    flag_standardize,
+    lulcc,
+    y1,
+    measure,
+    freq)            
 
 #%%============================================================================
 
 # mod ensembles
 os.chdir(curDIR)
 from pca_sr_mod_ens import *
-mod_ens,mod_data = ensemble_subroutine(modDIR,
-                                       models,
-                                       exps,
-                                       flag_temp_center,
-                                       flag_standardize,
-                                       mod_files,
-                                       var,
-                                       lu_techn,
-                                       y1,
-                                       freq,
-                                       ar6_land)
+mod_ens,mod_data,mod_rls = ensemble_subroutine(
+    modDIR,
+    models,
+    exps,
+    flag_temp_center,
+    flag_standardize,
+    mod_files,
+    var,
+    lu_techn,
+    y1,
+    freq,
+    ar6_land)
 
 #%%============================================================================
 
 # pi data
 os.chdir(curDIR)
 from pca_sr_pi import *
-pi_data = picontrol_subroutine(piDIR,
-                               pi_files,
-                               models,
-                               flag_temp_center,
-                               flag_standardize,
-                               var,
-                               y1,
-                               freq,
-                               ar6_land)
+pi_data = picontrol_subroutine(
+    piDIR,
+    pi_files,
+    models,
+    flag_temp_center,
+    flag_standardize,
+    var,
+    y1,
+    freq,
+    ar6_land)
            
 #%%============================================================================
 
 # pca work
 os.chdir(curDIR)
 from pca_sr_eof_proj import *
-solver_dict,eof_dict,pc,pspc = pca_subroutine(lulcc,
-                                              models,
-                                              maps,
-                                              mod_ens,
-                                              mod_data,
-                                              pi_data,
-                                              continents,
-                                              lat_ranges,
-                                              ar6_regs,
-                                              scale,
-                                              flag_inverse)
+solver_dict,eof_dict,pc,pspc = pca_subroutine(
+    lulcc,
+    models,
+    maps,
+    mod_ens,
+    mod_rls,
+    pi_data,
+    continents,
+    lat_ranges,
+    ar6_regs,
+    scale,
+    flag_inverse)
     
 #%%============================================================================
 
 # pca work
 os.chdir(curDIR)
 from pca_sr_sig_noise import *
-sig_noise,lulcc = pca_sn(scale,
-                         models,
-                         lulcc,
-                         mod_data,
-                         pi_data,
-                         continents,
-                         lat_ranges,
-                         pspc,
-                         pc,
-                         flag_inverse)
+sig_noise,lulcc = pca_sn(
+    scale,
+    models,
+    lulcc,
+    mod_data,
+    pi_data,
+    continents,
+    lat_ranges,
+    pspc,
+    pc,
+    flag_inverse)
 
 
 #%%============================================================================
 
 # pickle eof + sig/noise information
-os.chdir(pklDIR)
-pkl_file = open('pca_{}_{}_{}_{}.pkl'.format(scale,t_ext,stat,freq),'wb')
-pk.dump([solver_dict,eof_dict,pc,pspc,sig_noise,lulcc],pkl_file)
-pkl_file.close()
+if flag_pickle == 1:
+    os.chdir(pklDIR)
+    pkl_file = open('pca_{}_{}_{}_{}.pkl'.format(scale,t_ext,stat,freq),'wb')
+    pk.dump([solver_dict,eof_dict,pc,pspc,sig_noise,lulcc],pkl_file)
+    pkl_file.close()
 
 #%%============================================================================
 

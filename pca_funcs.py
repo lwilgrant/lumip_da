@@ -765,7 +765,7 @@ def sig_noise_plot(sig_noise,
                           ymax=0.1,
                           colors='indianred',
                           lw=1,
-                          label='likely',
+                          label='66%',
                           zorder=30)                
                 # ax.vlines(x=1.64,
                 #           ymin=0,
@@ -778,7 +778,7 @@ def sig_noise_plot(sig_noise,
                           ymax=0.1,
                           colors='firebrick',
                           lw=2,
-                          label='very likely',
+                          label='90%',
                           zorder=30)                
                 # ax.vlines(x=2.57,
                 #           ymin=0,
@@ -791,7 +791,7 @@ def sig_noise_plot(sig_noise,
                           ymax=0.1,
                           colors='maroon',
                           lw=3,
-                          label='virtually certain',
+                          label='99%',
                           zorder=30)                
                 
                 

@@ -52,45 +52,62 @@ def ensemble_subroutine(modDIR,
 
     os.chdir(modDIR)
     mod_data = {}
+    mod_rls = {}
     mod_ens = {}
     
     for mod in models:
         
         mod_data[mod] = {}
+        mod_rls[mod] = {}
         mod_ens[mod] = {}
         
         for exp in exps:
             
-            mod_data[mod][exp] = []    
+            mod_data[mod][exp] = []  
+            mod_rls[mod][exp] = []  
             
             for file in mod_files[mod][exp]:
             
-                da = nc_read(file,
-                             y1,
-                             var,
-                             flag_temp_center,
-                             flag_standardize,
-                             freq=freq)
-                mod_data[mod][exp].append(da.where(ar6_land[mod]==1))
+                da_data = nc_read(
+                    file,
+                    y1,
+                    var,
+                    flag_temp_center,
+                    flag_standardize=0,
+                    freq=freq)
+                mod_data[mod][exp].append(da_data.where(ar6_land[mod]==1))
             
+                da_rls = nc_read(
+                    file,
+                    y1,
+                    var,
+                    flag_temp_center,
+                    flag_standardize,
+                    freq=freq)
+                mod_rls[mod][exp].append(da_rls.where(ar6_land[mod]==1))                
             
-            # concat_dim = np.arange(len(pi_data[mod]))
-            # aligned = xr.concat(pi_data[mod],dim=concat_dim)
-            # pi_data[mod] = aligned
-            # pi_data[mod] = pi_data[mod].rename({'concat_dim':'rls'})
             concat_dim = np.arange(len(mod_data[mod][exp]))
             aligned = xr.concat(mod_data[mod][exp],
                                 dim=concat_dim)
             mod_ens[mod][exp] = da_ensembler(deepcopy(mod_data[mod][exp]))
             mod_data[mod][exp] = aligned
             mod_data[mod][exp] = mod_data[mod][exp].rename({'concat_dim':'rls'})
+            
+            concat_dim = np.arange(len(mod_rls[mod][exp]))
+            aligned = xr.concat(
+                mod_rls[mod][exp],
+                dim=concat_dim)
+            mod_rls[mod][exp] = aligned
+            mod_rls[mod][exp] = mod_rls[mod][exp].rename({'concat_dim':'rls'})            
         
         
         if lu_techn == 'mean':
         
             mod_ens[mod]['lu'] = mod_ens[mod]['historical'] - mod_ens[mod]['hist-noLu']
+            
+        mod_ens[mod]['lu'] = standard_data(mod_ens[mod]['lu'])
         
-    return mod_ens,mod_data
+    return mod_ens,mod_data,mod_rls
 #%%============================================================================
 
                 
