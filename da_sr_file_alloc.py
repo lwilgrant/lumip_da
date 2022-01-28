@@ -51,6 +51,13 @@ def file_subroutine(mapDIR,
     fp_files = {}
     pi_files = {}
     obs_files = {}
+    
+    nx = {}
+    # nx['CanESM5'] = np.asarray(([7,7]))
+    # nx['CNRM-ESM2-1'] = np.asarray(([3,3]))
+    # nx['IPSL-CM6A-LR'] = np.asarray(([4,4]))
+    # nx['UKESM1-0-LL'] = np.asarray(([4,4]))
+    # nx['mmm'] = np.asarray(([4,4]))    
 
     #==============================================================================
             
@@ -101,8 +108,11 @@ def file_subroutine(mapDIR,
     for mod in models:
         
         fp_files[mod] = {}
+        nx[mod] = {}
         
         for exp in exps:
+            
+            e_i = 0
             
             if grid == 'obs':
                 
@@ -137,7 +147,13 @@ def file_subroutine(mapDIR,
                             and 'unmasked' in file\
                             and not 'ensmean' in file]:
                         
-                    fp_files[mod][exp].append(file)                
+                    fp_files[mod][exp].append(file)  
+                    e_i += 1
+                
+                if exp == 'historical' or exp == 'hist-noLu':    
+                    nx[mod][exp] = e_i
+        
+        nx[mod] = np.array([[nx[mod]['historical'],nx[mod]['hist-noLu']]])
                     
     #==============================================================================
     
@@ -251,4 +267,4 @@ def file_subroutine(mapDIR,
                     
                     obs_files[obs][mod] = file
 
-    return     map_files,grid_files,fp_files,pi_files,obs_files
+    return     map_files,grid_files,fp_files,pi_files,obs_files,nx

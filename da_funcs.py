@@ -628,7 +628,7 @@ def da_run(y,
     Z1c = np.dot(U, Z1)
     Z2c = np.dot(U, Z2)
     Xc = np.dot(U, X)
-    proj = np.identity(X.shape[1])
+    proj = np.identity(X.shape[1]) # already took factorial LU, so no need for proj to use dot to decipher histnl + lu from hist, histnl
     
     # Statistical estimation
     ## Regularised covariance matrix
@@ -695,6 +695,7 @@ def da_run(y,
             pv_cons = 1 - sps.f.cdf(d_cons / (n_red-I), n_red-I, NZ2)
         else:
             pv_cons = np.nan
+        Ft = np.nan # added because existing code wanted this out of function, so TLS didn't work
     
     beta = np.zeros((4, I))
     beta[:-1, :] = np.concatenate((beta_hat_inf, beta_hat, beta_hat_sup))
@@ -714,15 +715,16 @@ def input_pickler(pklDIR,
                   weight,
                   freq,
                   t_ext,
+                  reg,
                   obs_mod):
     
     os.chdir(pklDIR)
     if obs_mod == 'mod':
-        pkl_file = open('mod_inputs_{}-flagfactor_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(flag_factor,grid,pi,agg,weight,freq,t_ext),'wb')
+        pkl_file = open('mod_inputs_{}-flagfactor_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}_{}.pkl'.format(flag_factor,grid,pi,agg,weight,freq,t_ext,reg),'wb')
     elif obs_mod == 'obs':
-        pkl_file = open('obs_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,freq,t_ext),'wb')
+        pkl_file = open('obs_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}_{}.pkl'.format(grid,pi,agg,weight,freq,t_ext,reg),'wb')
     elif obs_mod == 'pic':
-        pkl_file = open('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format(grid,pi,agg,weight,freq,t_ext),'wb')
+        pkl_file = open('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}_{}.pkl'.format(grid,pi,agg,weight,freq,t_ext,reg),'wb')
     pk.dump(dictionary,pkl_file)
     pkl_file.close()
 
@@ -758,16 +760,19 @@ def pickler(curDIR,
             weight,
             freq,
             t_ext,
+            reg,
             bs_reps,
             exp_list,
             pi):
     
     os.chdir(curDIR)
     if len(exp_list) == 2:
-        pkl_file = open('var_fin_2-factor_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}_{}.pkl'.format(grid,analysis,pi,agg,weight,bs_reps,freq,t_ext),'wb')
+        pkl_file = open('var_fin_2-factor_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}_{}_{}.pkl'.format(
+            grid,analysis,pi,agg,weight,bs_reps,freq,t_ext,reg),'wb')
     elif len(exp_list) == 1:
         exp = exp_list[0]
-        pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}_{}.pkl'.format(exp,grid,analysis,pi,agg,weight,bs_reps,freq,t_ext),'wb')
+        pkl_file = open('var_fin_1-factor_{}_{}-grid_{}_{}-pi_{}-agg_{}-weight_{}-bsreps_{}_{}_{}.pkl'.format(
+            exp,grid,analysis,pi,agg,weight,bs_reps,freq,t_ext,reg),'wb')
     pk.dump(var_fin,pkl_file)
     pkl_file.close()
 
@@ -810,6 +815,7 @@ def plot_scaling_global(models,
                         exp_list,
                         var_fin,
                         freq,
+                        reg,
                         flag_svplt,
                         outDIR):
     
@@ -949,6 +955,9 @@ def plot_scaling_global(models,
                         loc='center',
                         fontweight='bold',
                         fontsize=inset_font)
+            ax.set_xticks([])
+            ax.set_xlim((-1,2))
+            ax.set_ylim((-1,2))
             
             count += 1
             
@@ -985,21 +994,21 @@ def plot_scaling_global(models,
             ax.tick_params(axis="y",
                         direction="in")
             
-            ax.set_xlabel(r'$\beta_{hist-noLu}$',
+            ax.set_xlabel(r'$\beta_{HISTNL}$',
                         fontsize=20,
                         color=median_cols['hist-noLu'],
                         fontweight='bold')
             
         if exp_list == ['hist-noLu','lu']:
         
-            ax1.set_ylabel(r'$\beta_{lu}$',
+            ax1.set_ylabel(r'$\beta_{LU}$',
                         fontsize=20,
                         color=median_cols['lu'],
                         fontweight='bold')
             
         elif exp_list == ['historical','hist-noLu']:
             
-            ax1.set_ylabel(r'$\beta_{historical}$',
+            ax1.set_ylabel(r'$\beta_{HIST}$',
                         fontsize=20,
                         color=median_cols['historical'],
                         fontweight='bold')
@@ -1010,11 +1019,11 @@ def plot_scaling_global(models,
             
             if exp_list == ['hist-noLu','lu']:
                 
-                f.savefig(outDIR+'/global_attribution_2-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight_{}.png'.format(obs,grid,pi,agg,weight,freq),bbox_inches='tight',dpi=200)     
+                f.savefig(outDIR+'/global_attribution_2-factor_{}_{}_{}-grid_{}-pi_{}-agg_{}-weight_{}.png'.format(reg,obs,grid,pi,agg,weight,freq),bbox_inches='tight',dpi=200)     
                 
             elif exp_list == ['historical','hist-noLu']:
                 
-                f.savefig(outDIR+'/global_attribution_1-factor_{}_{}-grid_{}-pi_{}-agg_{}-weight_{}.png'.format(obs,grid,pi,agg,weight,freq),bbox_inches='tight',dpi=200)     
+                f.savefig(outDIR+'/global_attribution_1-factor_{}_{}_{}-grid_{}-pi_{}-agg_{}-weight_{}.png'.format(reg,obs,grid,pi,agg,weight,freq),bbox_inches='tight',dpi=200)     
   
 
 #%%============================================================================    
@@ -1031,6 +1040,7 @@ def plot_scaling_continental(models,
                              lulcc_type,
                              t_ext,
                              freq,
+                             reg,
                              measure,
                              var,
                              obs_types):
@@ -1726,6 +1736,7 @@ def plot_scaling_map_combined(
     grid,
     letters,
     freq,
+    reg,
     flag_svplt,
     outDIR
     ):
@@ -1845,7 +1856,14 @@ def plot_scaling_map_combined(
                                               [b_sup[obs][mod][exp]]],
                                               axis=0)            
         
-        f, axes = plt.subplots(nrows=len(models),ncols=len(exp_list)+1,figsize=(14,10))
+        f, axes = plt.subplots(
+            nrows=len(models),
+            ncols=len(exp_list)+1,
+            gridspec_kw={
+                'width_ratios':[2,2,1],
+                'height_ratios':[1,1,1,1,1]},
+            
+            figsize=(12,10))
         
         j = 0
         
@@ -2029,9 +2047,11 @@ def plot_scaling_map_combined(
             
             if exp_list == ['hist-noLu', 'lu']:
                 
-                f.savefig(outDIR+'/combined_attribution_2-factor_{}_{}-grid_{}-pi_{}-weight_{}.png'.format(obs,grid,pi,weight,freq),bbox_inches='tight',dpi=500)
+                f.savefig(outDIR+'/combined_attribution_2-factor_{}_{}-grid_{}-pi_{}-weight_{}_{}.png'.format(
+                    obs,grid,pi,weight,freq,reg),bbox_inches='tight',dpi=500)
                 
             elif exp_list == ['historical','hist-noLu']:
                 
-                f.savefig(outDIR+'/combined_attribution_1-factor_{}_{}-grid_{}-pi_{}-weight_{}.png'.format(obs,grid,pi,weight,freq),bbox_inches='tight',dpi=500)
+                f.savefig(outDIR+'/combined_attribution_1-factor_{}_{}-grid_{}-pi_{}-weight_{}_{}.png'.format(
+                    obs,grid,pi,weight,freq,reg),bbox_inches='tight',dpi=500)
 # %%

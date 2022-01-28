@@ -57,7 +57,6 @@ def fingerprint_subroutine(obs_types,
     fp_continental = {} # contains histnolu and lu ar6-weighted mean arrays for continental analysis
     fp_data_ar6 = {}  # data cross all exps/models/obs as ar6-weighted mean arrays per ar6
     fp_ar6 = {}  # contains histnolu and lu ar6-weighted mean arrays for ar6 analysis
-    nx = {}
 
     # lists for ensemble of mod_ar6 tstep x region arrays and continental slices
     mmm = {}  # for global analysis of ar6 weighted means
@@ -102,14 +101,12 @@ def fingerprint_subroutine(obs_types,
             fp_continental[mod] = {}
             fp_data_ar6[mod] = {}
             fp_ar6[mod] = {}
-            nx[mod] = {}
 
             for exp in exps:
 
                 fp_data[mod][exp] = {}
                 fp_data_continental[mod][exp] = {}
                 fp_data_ar6[mod][exp] = {}
-                nx[mod][exp] = {}
 
                 for obs in obs_types:
 
@@ -268,7 +265,6 @@ def fingerprint_subroutine(obs_types,
                 fp_continental[mod] = {}
                 fp_data_ar6[mod] = {}
                 fp_ar6[mod] = {}
-                nx[mod] = {}
 
                 for exp in exps:
 
@@ -403,7 +399,6 @@ def fingerprint_subroutine(obs_types,
 
                 fp_data[mod] = {}
                 fp[mod] = {}
-                nx[mod] = {}
 
                 for exp in exps:
 
@@ -449,7 +444,7 @@ def fingerprint_subroutine(obs_types,
             fp['mmm'] = np.stack(fp_stack,
                                 axis=0)
 
-    return fp,fp_continental,fp_ar6,nx
+    return fp,fp_continental,fp_ar6
 
 
 # %%

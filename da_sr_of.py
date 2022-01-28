@@ -72,7 +72,6 @@ def of_subroutine(grid,
     beta_hat = {}
 
     models.append('mmm')   
-    nx['mmm'] = [] 
 
     if grid == 'obs':
         
