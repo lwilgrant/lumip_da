@@ -425,7 +425,46 @@ def of_subroutine(grid,
                         ctl = ctl_data[mod]
                     elif pi == 'allpi':
                         ctl = ctl_data
-                    omega = omega_samples[mod]
+                        
+                    nbts = nt
+                    n_spa = ns
+                    n_st = n_spa * nbts               
+                    # Spatio-temporal dimension after reduction
+                    if nbts > 1:
+                        n_red = n_st - n_spa
+                        U = projfullrank(nbts, n_spa)
+                    elif nbts == 1: # case where I regress with collapsed time dimension and each point is a signal
+                        n_red = n_st - nbts # therefore treating ns as nt
+                        U = projfullrank(n_spa, nbts)                                   
+                    
+                    cov_omega = {}
+                    booties = {}
+                    
+                    for exp in exp_list:
+                        
+                        if exp == "historical":
+                            runs = nx[mod][0]
+                        elif exp == "hist-noLu":
+                            runs = nx[mod][1]
+                        
+                        omega = omega_samples[mod][exp]
+                        omega = np.transpose(np.matrix(mod))
+                        omega = np.dot(U, omega)
+                        booties[exp] = []
+                    
+                        for i in np.arange(1000):
+                            booty = []
+                            for r in np.arange(len(runs)):
+                                index = np.random.randint(0,len(omega.shape[1]))
+                                booty.append(omega[:,index])
+                            booties[exp].append(np.mean(booty))
+                        
+                        omega = np.stack(booties[exp],axis=0)
+                        omega = np.transpose(np.matrix(omega))
+                        cov_omega[exp] = np.dot(omega,omega.T) / omega.shape[1]
+                                      
+                    
+                    
                     nb_runs_x= nx[mod]
                     
                     if bs_reps == 0: # for no bs, run ROF once

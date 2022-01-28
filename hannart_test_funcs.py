@@ -615,6 +615,8 @@ def da_run(y,
         Z2 = Z[:,half_1_end:]
     else:
         Z2 = Z[:,half_1_end+1:]
+        
+    
     
     # Spatio-temporal dimension after reduction
     if nbts > 1:
@@ -634,11 +636,35 @@ def da_run(y,
     # Statistical estimation
     ## Regularised covariance matrix
     Cf = regC(Z1c.T)
+    
+    # normal covariance matrices from split samples
+    cov_Z1 = np.dot(Z1c,Z1c.T) / Z1c.shape[1]
+    cov_Z1_inv = np.real(spla.inv(cov_Z1))
+    cov_Z2 = np.dot(Z2c,Z2c.T) / Z2c.shape[1]
+    cov_Z2_inv = np.real(spla.inv(cov_Z2))
+    
+    
+    
+    x_0 = Xc
+    
+    # beta_0 = 
+    
+    def beta_calc(
+        X,
+        cov,
+        y,
+        proj):
+        
+        cov_inv = np.real(spla.inv(cov))
+        Ft = np.transpose(np.dot(np.dot(spla.inv(np.dot(np.dot(X.T,cov_inv), X)), X.T), cov_inv))
+        b = np.dot(np.dot(y.T, Ft), proj.T)
+        
+        return b
+    
+    
+    
+    
     Cf1 = np.real(spla.inv(Cf))
-    #Matrix is singular and may not have a square root. can be ignored
-    Cf12 = np.real(spla.inv(spla.sqrtm(Cf)))
-    #Matrix is singular and may not have a square root. can be ignored
-    Cfp12 = np.real(spla.sqrtm(Cf))
     
     if reg == 'OLS':
         ## OLS algorithm

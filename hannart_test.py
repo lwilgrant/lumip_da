@@ -308,22 +308,23 @@ letters = ['a', 'b', 'c',
 #==============================================================================
 
 #%%============================================================================
-from da_sr_file_alloc import *
-map_files,grid_files,fp_files,pi_files,obs_files = file_subroutine(mapDIR,
-                                                                   modDIR,
-                                                                   piDIR,
-                                                                   allpiDIR,
-                                                                   obsDIR,
-                                                                   grid,
-                                                                   pi,
-                                                                   obs_types,
-                                                                   lulcc,
-                                                                   y1,
-                                                                   y2,
-                                                                   t_ext,
-                                                                   models,
-                                                                   exps,
-                                                                   var)
+from hannart_test_sr_file_alloc import *
+map_files,grid_files,fp_files,pi_files,obs_files,nx = file_subroutine(
+    mapDIR,
+    modDIR,
+    piDIR,
+    allpiDIR,
+    obsDIR,
+    grid,
+    pi,
+    obs_types,
+    lulcc,
+    y1,
+    y2,
+    t_ext,
+    models,
+    exps,
+    var)
 
 
 #%%============================================================================
@@ -578,12 +579,7 @@ elif os.path.isfile('obs_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}.pkl'.format
 # optimal fingerprinting
 os.chdir(curDIR)
 # bs_reps = 10 # TEMPORARY FUDGING BS_REPS
-nx = {}
-nx['CanESM5'] = np.asarray(([7,7]))
-nx['CNRM-ESM2-1'] = np.asarray(([3,3]))
-nx['IPSL-CM6A-LR'] = np.asarray(([4,4]))
-nx['UKESM1-0-LL'] = np.asarray(([4,4]))
-nx['mmm'] = np.asarray(([4,4]))
+nx['mmm'] = np.asarray(([94,18]))
 from hannart_test_sr_of import *
 var_sfs,\
 var_ctlruns,\
