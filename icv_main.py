@@ -46,6 +46,8 @@ os.chdir(curDIR)
 
 # data input directories
 pklDIR = os.path.join(curDIR, 'pickle')
+piDIR = os.path.join(curDIR, 'pi')
+modDIR = os.path.join(curDIR, 'mod')
 sfDIR = os.path.join(curDIR, 'shapefiles')
 outDIR = os.path.join(curDIR, 'figures')
 
@@ -65,6 +67,10 @@ flag_svplt=1      # 0: do not save plot
 # << SELECT >>
 flag_data_agg=1   # 0: global d&a (via flag_analysis) w/ ar6 scale input points (want this for continental scale via flag_analysis)
                   # 1: global d&a w/ continental scale input points             
+                             
+# << SELECT >>
+flag_equal_var=True   # True; pic and LU have equal variance at population level
+                      # False; pic and LU have unequal variances at population level                          
                              
 # << SELECT >>
 flag_grid=0       # 0: model grid resolution (decided on always using this; many options don't work otherwise)
@@ -341,7 +347,8 @@ for mod in models:
                     nobs1=mn,
                     mean2=pic_tm,
                     std2=np.sqrt(pic_tv),
-                    nobs2=picn
+                    nobs2=picn,
+                    equal_var=flag_equal_var
                 )
                 _,sp = scp.ttest_ind_from_stats(
                     mean1=s,
@@ -349,7 +356,8 @@ for mod in models:
                     nobs1=mn,
                     mean2=pic_sm,
                     std2=np.sqrt(pic_sv),
-                    nobs2=picn
+                    nobs2=picn,
+                    equal_var=flag_equal_var
                 )
                 df = df.append(
                     {'trnd':t,
@@ -385,7 +393,8 @@ for mod in models:
                 nobs1=mn,
                 mean2=pic_tm,
                 std2=np.sqrt(pic_tv),
-                nobs2=picn
+                nobs2=picn,
+                equal_var=flag_equal_var
             )
             _,sp = scp.ttest_ind_from_stats(
                 mean1=s,
@@ -393,7 +402,8 @@ for mod in models:
                 nobs1=mn,
                 mean2=pic_sm,
                 std2=np.sqrt(pic_sv),
-                nobs2=picn
+                nobs2=picn,
+                equal_var=flag_equal_var
             )
             df = df.append(
                 {'trnd':t,
@@ -414,7 +424,7 @@ cmap_whole = plt.cm.get_cmap('PRGn')
 color_mapping = {
     1:cmap_whole(0.85),
     2:cmap_whole(0.7),
-    3:cmap_whole(0.55),
+    3:cmap_whole(0.6),
     4:'lightgrey'
 }
 
@@ -483,5 +493,32 @@ for ax_row,mod in zip(axes,models):
         ax.set_yticks([])
         ax.set_xticks([])                   
         i += 1
-                
+        if (mod == 'UKESM1-0-LL') & (ax == ax_row[0]):
+            handles = [
+                Rectangle((0,0),1,1,color=color_mapping[1]),
+                Rectangle((0,0),1,1,color=color_mapping[2]),
+                Rectangle((0,0),1,1,color=color_mapping[3]),
+                Rectangle((0,0),1,1,color=color_mapping[4])
+            ]
+            labels = [
+                'p < 0.01',
+                'p < 0.05',
+                'p < 0.10',
+                'p > 0.10',
+            ]
+            ax.legend(
+                handles,
+                labels,
+                bbox_to_anchor=(0.4,-0.1,1.5,0.1),
+                ncol=4,
+                mode="expand",
+                frameon=False        
+            )
+
+if flag_svplt == 0:
+    pass
+elif flag_svplt == 1:    
+    f.savefig(outDIR+'/significance_LU_{}-agg_{}-equal_var.png'.format(
+        agg,flag_equal_var),bbox_inches='tight',dpi=500)
+  
 # %%
