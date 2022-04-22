@@ -49,6 +49,21 @@ def file_subroutine(
     fp_files = {}
     pi_files = {}
     nx = {}  
+    
+    #==============================================================================
+    
+    # grid files
+    os.chdir(mapDIR)
+    
+    for mod in models:
+            
+        for file in [
+            file for file in sorted(os.listdir(mapDIR))\
+            if file == '{}_gridarea.nc'.format(mod)
+        ]:
+                
+            grid_files[mod] = file
+                    
 
     #==============================================================================
     
@@ -91,38 +106,21 @@ def file_subroutine(
     # pi files
     os.chdir(piDIR)
     
-    if pi == 'model':
         
-        for mod in models:
-                
-            pi_files[mod] = []
-        
-            for file in [
-                file for file in sorted(os.listdir(piDIR))\
-                if var in file\
-                and mod in file\
-                and t_ext in file\
-                and not obs_types[0] in file\
-                and not obs_types[1] in file\
-                and 'unmasked' in file
-            ]:
-                
-                pi_files[mod].append(file)
-    
-    # use all available pi chunks
-    elif pi == 'allpi':
+    for mod in models:
             
-        pi_files = []
+        pi_files[mod] = []
     
         for file in [
-            file for file in sorted(os.listdir(allpiDIR))\
+            file for file in sorted(os.listdir(piDIR))\
             if var in file\
+            and mod in file\
             and t_ext in file\
             and not obs_types[0] in file\
             and not obs_types[1] in file\
             and 'unmasked' in file
         ]:
-            
-            pi_files.append(file)
-
+                
+            pi_files[mod].append(file)
+    
     return     map_files,grid_files,fp_files,pi_files,nx

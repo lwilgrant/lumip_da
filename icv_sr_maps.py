@@ -30,22 +30,24 @@ from icv_funcs import *
 def map_subroutine(
     models,
     mapDIR,
+    sfDIR,
     grid_files,
 ):
     
     # map data
     os.chdir(mapDIR)
-    grid_area = {}
     ar6_regs = {} # per model, data array of ar6 regions painted with integers from "continents[c]"
+    cnt_regs = {}
 
     for mod in models:
         
         os.chdir(mapDIR)
         template = xr.open_dataset(grid_files[mod],decode_times=False)['cell_area']
-        if 'height' in grid_area[mod].coords:
+        if 'height' in template.coords:
             template = template.drop('height')
         ar6_regs[mod] = ar6_mask(template)
+        cnt_regs[mod] = cnt_mask(sfDIR,template)
 
-    return ar6_regs
+    return ar6_regs,cnt_regs
 
 # %%

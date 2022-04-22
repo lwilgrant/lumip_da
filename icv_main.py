@@ -47,7 +47,9 @@ os.chdir(curDIR)
 # data input directories
 pklDIR = os.path.join(curDIR, 'pickle')
 piDIR = os.path.join(curDIR, 'pi')
+allpiDIR = os.path.join(curDIR, 'allpi')
 modDIR = os.path.join(curDIR, 'mod')
+mapDIR = os.path.join(curDIR, 'map')
 sfDIR = os.path.join(curDIR, 'shapefiles')
 outDIR = os.path.join(curDIR, 'figures')
 
@@ -61,11 +63,15 @@ from icv_funcs import *
 # adjust these flag settings for analysis choices only change '<< SELECT >>' lines
 
 # << SELECT >>
-flag_svplt=1      # 0: do not save plot
+flag_svplt=0      # 0: do not save plot
                   # 1: save plot in picDIR
+
+# << SELECT >>
+flag_data_source=1 # 0: pickled weighted means (ar6/cnt from flag_data_agg) from da_*.py
+                   # 1: read in data fresh; sample per pixel per rls for sample per ar6/cnt                
                   
 # << SELECT >>
-flag_data_agg=1   # 0: global d&a (via flag_analysis) w/ ar6 scale input points (want this for continental scale via flag_analysis)
+flag_data_agg=0   # 0: global d&a (via flag_analysis) w/ ar6 scale input points (want this for continental scale via flag_analysis)
                   # 1: global d&a w/ continental scale input points             
                              
 # << SELECT >>
@@ -239,101 +245,104 @@ nx['CNRM-ESM2-1'] = np.asarray(([11,3]))
 nx['IPSL-CM6A-LR'] = np.asarray(([32,4]))
 nx['UKESM1-0-LL'] = np.asarray(([16,4]))
 
+#%%============================================================================
+# run 
 #==============================================================================
-# get data 
-#==============================================================================
-    
-#%%============================================================================
 
-# mod fingerprint (nx is dummy var not used in OLS OF)
-os.chdir(pklDIR)
-if os.path.isfile('mod_inputs_{}-flagfactor_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}_{}.pkl'.format(
-    flag_factor,grid,pi,agg,weight,freq,t_ext,reg)):
-    
-    pkl_file = open('mod_inputs_{}-flagfactor_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}_{}.pkl'.format(
-        flag_factor,grid,pi,agg,weight,freq,t_ext,reg),'rb')
-    dictionary = pk.load(pkl_file)
-    pkl_file.close()
-    fp = dictionary['global']
-    fp_continental = dictionary['continental']
-    fp_ar6 = dictionary['ar6']
+if flag_data_source == 0:
 
-#%%============================================================================
+    # mod fingerprint (nx is dummy var not used in OLS OF)
+    os.chdir(pklDIR)
+    if os.path.isfile('mod_inputs_{}-flagfactor_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}_{}.pkl'.format(
+        flag_factor,grid,pi,agg,weight,freq,t_ext,reg)):
+        
+        pkl_file = open('mod_inputs_{}-flagfactor_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}_{}.pkl'.format(
+            flag_factor,grid,pi,agg,weight,freq,t_ext,reg),'rb')
+        dictionary = pk.load(pkl_file)
+        pkl_file.close()
+        fp = dictionary['global']
+        fp_continental = dictionary['continental']
+        fp_ar6 = dictionary['ar6']
 
-# pi data
-os.chdir(pklDIR)
-if os.path.isfile('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}_{}.pkl'.format(
-    grid,pi,agg,weight,freq,t_ext,reg)):    
-    
-    pkl_file = open('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}_{}.pkl'.format(
-        grid,pi,agg,weight,freq,t_ext,reg),'rb')
-    dictionary = pk.load(pkl_file)
-    pkl_file.close()
-    ctl_data = dictionary['global']
-    ctl_data_continental = dictionary['continental']
-    ctl_data_ar6 = dictionary['ar6']
+    # pi data
+    os.chdir(pklDIR)
+    if os.path.isfile('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}_{}.pkl'.format(
+        grid,pi,agg,weight,freq,t_ext,reg)):    
+        
+        pkl_file = open('pic_inputs_{}-grid_{}-pi_{}-agg_{}-weight_{}_{}_{}.pkl'.format(
+            grid,pi,agg,weight,freq,t_ext,reg),'rb')
+        dictionary = pk.load(pkl_file)
+        pkl_file.close()
+        ctl_data = dictionary['global']
+        ctl_data_continental = dictionary['continental']
+        ctl_data_ar6 = dictionary['ar6']
 
-#%%============================================================================
+    # dataframes
+    regions,df = df_build(
+        sfDIR,
+        agg,
+        continents,
+        models
+    )
 
-# dataframes
-os.chdir(sfDIR)
-if agg == 'ar6':
-    frame = {
-        'trnd':[],
-        'sgnl':[],
-        'trnd_var':[],
-        'sgnl_var':[],
-        'trnd_p':[],
-        'sgnl_p':[],
-        'mod':[],
-        'ar6':[]
-    }
-elif agg == 'continental':
-    frame = {
-        'trnd':[],
-        'sgnl':[],
-        'trnd_var':[],
-        'sgnl_var':[],
-        'trnd_p':[],
-        'sgnl_p':[],
-        'mod':[],
-        'continent':[]        
-    }    
-df = pd.DataFrame(data=frame)
-regions = gp.read_file('IPCC-WGI-reference-regions-v4.shp')
-gpd_continents = gp.read_file('IPCC_WGII_continental_regions.shp')
-gpd_continents = gpd_continents[
-    (gpd_continents.Region != 'Antarctica')&(gpd_continents.Region != 'Small Islands')
-] 
-regions = gp.clip(regions,gpd_continents)
-regions['keep'] = [0]*len(regions.Acronym)
-
-for c in continents.keys():
-    for ar6 in continents[c]:
-        regions.at[ar6,'Continent'] = c
-        regions.at[ar6,'keep'] = 1  
-            
-regions = regions[regions.keep!=0]  
-regions = regions.drop(columns='keep')
-
-add_cols = []
-for mod in models:
-    for var in ['trnd','sgnl']:
-        add_cols.append('{}_{}-p'.format(mod,var))
-regions = pd.concat([regions,pd.DataFrame(columns=add_cols)])
-if agg == 'continental':
-    regions = regions.dissolve(by='Continent')
-
-for mod in models:
-    for c in continents.keys():
-        if agg == 'ar6':
-            for ar6 in continents[c]:
-                y = fp_ar6[mod][ar6][1]
+    for mod in models:
+        for c in continents.keys():
+            if agg == 'ar6':
+                for ar6 in continents[c]:
+                    
+                    y = fp_ar6[mod][ar6][1]
+                    x = np.arange(1,len(y)+1)
+                    t = np.polyfit(x,y,1)[0]
+                    s = np.mean(y[int(len(y)/2):]) - np.mean(y[:int(len(y)/2)])
+                    mn = nx[mod][1]
+                    pic = np.transpose(ctl_data_ar6[ar6])
+                    picn = pic.shape[1]
+                    pic_tv = np.var(np.polyfit(x,pic,1)[0,:])
+                    pic_sv = np.var((np.mean(pic[int(pic.shape[0]/2):],axis=0) - np.mean(pic[:int(pic.shape[0]/2)],axis=0)))
+                    pic_tm = np.mean(np.polyfit(x,pic,1)[0,:])
+                    pic_sm = np.mean((np.mean(pic[int(pic.shape[0]/2):],axis=0) - np.mean(pic[:int(pic.shape[0]/2)],axis=0)))
+                    tv = np.reciprocal(nx[mod].astype('float'))[0]*pic_tv + np.reciprocal(nx[mod].astype('float'))[1]*pic_tv
+                    sv = np.reciprocal(nx[mod].astype('float'))[0]*pic_sv + np.reciprocal(nx[mod].astype('float'))[1]*pic_sv
+                    _,tp = scp.ttest_ind_from_stats(
+                        mean1=t,
+                        std1=np.sqrt(tv),
+                        nobs1=mn,
+                        mean2=pic_tm,
+                        std2=np.sqrt(pic_tv),
+                        nobs2=picn,
+                        equal_var=flag_equal_var
+                    )
+                    _,sp = scp.ttest_ind_from_stats(
+                        mean1=s,
+                        std1=np.sqrt(sv),
+                        nobs1=mn,
+                        mean2=pic_sm,
+                        std2=np.sqrt(pic_sv),
+                        nobs2=picn,
+                        equal_var=flag_equal_var
+                    )
+                    df = df.append(
+                        {'trnd':t,
+                        'sgnl':s,
+                        'pic_trnd':pic_tm,
+                        'pic_sgnl':pic_sm,
+                        'trnd_var':tv,
+                        'sgnl_var':sv,
+                        'trnd_p':tp,
+                        'sgnl_p':sp,
+                        'mod':mod,
+                        'ar6':ar6
+                        },
+                        ignore_index=True
+                    )
+            elif agg == 'continental':
+                
+                y = fp[mod][1]
                 x = np.arange(1,len(y)+1)
                 t = np.polyfit(x,y,1)[0]
                 s = np.mean(y[int(len(y)/2):]) - np.mean(y[:int(len(y)/2)])
                 mn = nx[mod][1]
-                pic = np.transpose(ctl_data_ar6[ar6])
+                pic = np.transpose(ctl_data)
                 picn = pic.shape[1]
                 pic_tv = np.var(np.polyfit(x,pic,1)[0,:])
                 pic_sv = np.var((np.mean(pic[int(pic.shape[0]/2):],axis=0) - np.mean(pic[:int(pic.shape[0]/2)],axis=0)))
@@ -369,57 +378,212 @@ for mod in models:
                     'trnd_p':tp,
                     'sgnl_p':sp,
                     'mod':mod,
-                    'ar6':ar6
+                    'continent':c
                     },
                     ignore_index=True
-                )
-        elif agg == 'continental':
-            y = fp[mod][1]
-            x = np.arange(1,len(y)+1)
-            t = np.polyfit(x,y,1)[0]
-            s = np.mean(y[int(len(y)/2):]) - np.mean(y[:int(len(y)/2)])
-            mn = nx[mod][1]
-            pic = np.transpose(ctl_data)
-            picn = pic.shape[1]
-            pic_tv = np.var(np.polyfit(x,pic,1)[0,:])
-            pic_sv = np.var((np.mean(pic[int(pic.shape[0]/2):],axis=0) - np.mean(pic[:int(pic.shape[0]/2)],axis=0)))
-            pic_tm = np.mean(np.polyfit(x,pic,1)[0,:])
-            pic_sm = np.mean((np.mean(pic[int(pic.shape[0]/2):],axis=0) - np.mean(pic[:int(pic.shape[0]/2)],axis=0)))
-            tv = np.reciprocal(nx[mod].astype('float'))[0]*pic_tv + np.reciprocal(nx[mod].astype('float'))[1]*pic_tv
-            sv = np.reciprocal(nx[mod].astype('float'))[0]*pic_sv + np.reciprocal(nx[mod].astype('float'))[1]*pic_sv
-            _,tp = scp.ttest_ind_from_stats(
-                mean1=t,
-                std1=np.sqrt(tv),
-                nobs1=mn,
-                mean2=pic_tm,
-                std2=np.sqrt(pic_tv),
-                nobs2=picn,
-                equal_var=flag_equal_var
-            )
-            _,sp = scp.ttest_ind_from_stats(
-                mean1=s,
-                std1=np.sqrt(sv),
-                nobs1=mn,
-                mean2=pic_sm,
-                std2=np.sqrt(pic_sv),
-                nobs2=picn,
-                equal_var=flag_equal_var
-            )
-            df = df.append(
-                {'trnd':t,
-                'sgnl':s,
-                'pic_trnd':pic_tm,
-                'pic_sgnl':pic_sm,
-                'trnd_var':tv,
-                'sgnl_var':sv,
-                'trnd_p':tp,
-                'sgnl_p':sp,
-                'mod':mod,
-                'continent':c
-                },
-                ignore_index=True
-            )            
+                )            
+#%%============================================================================
 
+if flag_data_source == 1:
+    
+    from icv_sr_file_alloc import *
+    map_files,grid_files,fp_files,pi_files,nx = file_subroutine(
+        mapDIR,
+        modDIR,
+        piDIR,
+        allpiDIR,
+        pi,
+        obs_types,
+        lulcc,
+        y1,
+        y2,
+        t_ext,
+        models,
+        exps,
+        var
+    )
+
+    from icv_sr_maps import *
+    ar6_regs,cnt_regs = map_subroutine(
+        models,
+        mapDIR,
+        sfDIR,
+        grid_files,
+    )    
+
+    from icv_sr_mod_ens import *
+    mod_data = ensemble_subroutine(
+        modDIR,
+        models,
+        exps,
+        var,
+        y1,
+        freq,
+        fp_files,
+    )    
+
+    from icv_sr_pi import *
+    pi_data = picontrol_subroutine(
+        piDIR,
+        pi_files,
+        models,
+        var,
+        y1,
+        freq,
+    ) 
+
+    regions,df = df_build(
+        sfDIR,
+        agg,
+        continents,
+        models
+    )
+
+    for mod in models:
+        for c in continents.keys():
+            if agg == 'ar6':
+                for ar6 in continents[c]:
+                    
+                    # mod sampling for trends (t) and delta (dlt)
+                    m_smpl = mod_data[mod].where(ar6_regs[mod]==ar6)
+                    t,_,_ = vectorize_lreg(
+                        m_smpl,
+                        da_x=None
+                    )
+                    t = nan_rm(
+                        t,
+                        ar6_regs,
+                        ar6,
+                        mod
+                    )
+                    dlt_end = m_smpl.isel(time=slice(int(len(m_smpl.time)/2),None))
+                    dlt_strt = m_smpl.isel(time=slice(None,int(len(m_smpl.time)/2)))
+                    dlt = dlt_end - dlt_strt
+                    dlt = nan_rm(
+                        dlt,
+                        ar6_regs,
+                        ar6,
+                        mod
+                    )
+                    mn = t.shape[0]
+                    
+                    # pic sampling for trends (t) and delta (dlt)
+                    pic_smpl = pi_data[mod].where(ar6_regs[mod]==ar6)
+                    pic_t,_,_ = vectorize_lreg(
+                        pic_smpl,
+                        da_x=None
+                    )
+                    pic_t = nan_rm(
+                        pic_t,
+                        ar6_regs,
+                        ar6,
+                        mod
+                    )
+                    pic_dlt_end = pic_smpl.isel(time=slice(int(len(pic_smpl.time)/2),None))
+                    pic_dlt_strt = pic_smpl.isel(time=slice(None,int(len(pic_smpl.time)/2)))
+                    pic_dlt = pic_dlt_end - pic_dlt_strt
+                    pic_dlt = nan_rm(
+                        pic_dlt,
+                        ar6_regs,
+                        ar6,
+                        mod
+                    )
+                    pn = pic_t.shape[0]                    
+                    pic_tv = np.var(pic_t)
+                    pic_dltv = np.var(pic_dlt)
+
+                    if pi == 'allpi':
+                        tv = np.reciprocal(nx[mod].astype('float'))[0]*pic_tv + np.reciprocal(nx[mod].astype('float'))[1]*pic_tv # t variance
+                        dltv = np.reciprocal(nx[mod].astype('float'))[0]*pic_dltv + np.reciprocal(nx[mod].astype('float'))[1]*pic_dltv # dlt variance
+                    elif pi == 'pi':
+                        tv = pic_tv
+                        dltv = pic_dltv
+                    
+                    # t sig test P(X)
+                    t = np.mean(t)
+                    if t > 0:
+                        
+                    
+                    scp.norm.isf(
+                        q=0.025,
+                        loc=0, # popmean pic_t assumed 0 (calc'd earlier for variance)
+                        scale=tv # 
+                    )
+                    _,sp = scp.ttest_ind_from_stats(
+                        mean1=s,
+                        std1=np.sqrt(sv),
+                        nobs1=mn,
+                        mean2=pic_sm,
+                        std2=np.sqrt(pic_sv),
+                        nobs2=picn,
+                        equal_var=flag_equal_var
+                    )
+                    df = df.append(
+                        {'trnd':t,
+                        'sgnl':s,
+                        'pic_trnd':pic_tm,
+                        'pic_sgnl':pic_sm,
+                        'trnd_var':tv,
+                        'sgnl_var':sv,
+                        'trnd_p':tp,
+                        'sgnl_p':sp,
+                        'mod':mod,
+                        'ar6':ar6
+                        },
+                        ignore_index=True
+                    )
+            elif agg == 'continental':
+
+                y = fp[mod][1]
+                x = np.arange(1,len(y)+1)
+                t = np.polyfit(x,y,1)[0]
+                s = np.mean(y[int(len(y)/2):]) - np.mean(y[:int(len(y)/2)])
+                mn = nx[mod][1]
+                pic = np.transpose(ctl_data)
+                picn = pic.shape[1]
+                pic_tv = np.var(np.polyfit(x,pic,1)[0,:])
+                pic_sv = np.var((np.mean(pic[int(pic.shape[0]/2):],axis=0) - np.mean(pic[:int(pic.shape[0]/2)],axis=0)))
+                pic_tm = np.mean(np.polyfit(x,pic,1)[0,:])
+                pic_sm = np.mean((np.mean(pic[int(pic.shape[0]/2):],axis=0) - np.mean(pic[:int(pic.shape[0]/2)],axis=0)))
+                tv = np.reciprocal(nx[mod].astype('float'))[0]*pic_tv + np.reciprocal(nx[mod].astype('float'))[1]*pic_tv
+                sv = np.reciprocal(nx[mod].astype('float'))[0]*pic_sv + np.reciprocal(nx[mod].astype('float'))[1]*pic_sv
+                _,tp = scp.ttest_ind_from_stats(
+                    mean1=t,
+                    std1=np.sqrt(tv),
+                    nobs1=mn,
+                    mean2=pic_tm,
+                    std2=np.sqrt(pic_tv),
+                    nobs2=picn,
+                    equal_var=flag_equal_var
+                )
+                _,sp = scp.ttest_ind_from_stats(
+                    mean1=s,
+                    std1=np.sqrt(sv),
+                    nobs1=mn,
+                    mean2=pic_sm,
+                    std2=np.sqrt(pic_sv),
+                    nobs2=picn,
+                    equal_var=flag_equal_var
+                )
+                df = df.append(
+                    {'trnd':t,
+                    'sgnl':s,
+                    'pic_trnd':pic_tm,
+                    'pic_sgnl':pic_sm,
+                    'trnd_var':tv,
+                    'sgnl_var':sv,
+                    'trnd_p':tp,
+                    'sgnl_p':sp,
+                    'mod':mod,
+                    'continent':c
+                    },
+                    ignore_index=True
+                )                
+
+
+#%%============================================================================
+
+# plot
 cmap_whole = plt.cm.get_cmap('PRGn')  
 color_mapping = {
     1:cmap_whole(0.85),
@@ -520,5 +684,5 @@ if flag_svplt == 0:
 elif flag_svplt == 1:    
     f.savefig(outDIR+'/significance_LU_{}-agg_{}-equal_var.png'.format(
         agg,flag_equal_var),bbox_inches='tight',dpi=500)
-  
+
 # %%

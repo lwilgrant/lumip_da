@@ -23,7 +23,7 @@ Created on Wed Jul  1 16:52:49 2020
 import os
 import xarray as xr
 from copy import deepcopy
-from da_funcs import *
+from icv_funcs import *
 
 
 #%%============================================================================
@@ -34,7 +34,6 @@ def ensemble_subroutine(
     models,
     exps,
     var,
-    lu_techn,
     y1,
     freq,
     fp_files,
@@ -64,12 +63,11 @@ def ensemble_subroutine(
                     freq=freq
                 )
                 mod_data[mod][exp].append(da)
-            
-            mod_ens[mod][exp] = da_ensembler(mod_data[mod][exp])
-        
-        if lu_techn == 'mean':
-        
-            mod_ens[mod]['lu'] = mod_ens[mod]['historical'] - mod_ens[mod]['hist-noLu']
+                
+            concat_dim = np.arange(len(mod_data[mod][exp]))
+            aligned = xr.concat(mod_data[mod][exp],dim=concat_dim)
+            mod_data[mod][exp] = aligned
+            mod_data[mod][exp] = mod_data[mod][exp].rename({'concat_dim':'rls'})
 
-    return mod_ens
+    return mod_data
 # %%

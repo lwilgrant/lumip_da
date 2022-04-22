@@ -25,7 +25,7 @@ Created on Wed Jul  1 16:52:49 2020
 import os
 import xarray as xr
 from copy import deepcopy
-from da_funcs import *
+from icv_funcs import *
 
 
 #%%============================================================================
@@ -58,6 +58,11 @@ def picontrol_subroutine(
                 freq=freq
             )
             pi_data[mod].append(da)
+            
+        concat_dim = np.arange(len(pi_data[mod]))
+        aligned = xr.concat(pi_data[mod],dim=concat_dim)
+        pi_data[mod] = aligned
+        pi_data[mod] = pi_data[mod].rename({'concat_dim':'rls'})
         
     return pi_data
 
