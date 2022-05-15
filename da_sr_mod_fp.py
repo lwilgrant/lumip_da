@@ -32,22 +32,24 @@ from da_funcs import *
 # %%============================================================================
 
 # mod data
-def fingerprint_subroutine(obs_types,
-                           grid,
-                           agg,
-                           ns,
-                           nt,
-                           mod_ens,
-                           exps,
-                           models,
-                           ar6_regs,
-                           ar6_wts,
-                           cnt_regs,
-                           cnt_wts,
-                           weight,
-                           continents,
-                           continent_names,
-                           exp_list):
+def fingerprint_subroutine(
+    obs_types,
+    grid,
+    agg,
+    ns,
+    nt,
+    mod_ens,
+    exps,
+    models,
+    ar6_regs,
+    ar6_wts,
+    cnt_regs,
+    cnt_wts,
+    weight,
+    continents,
+    continent_names,
+    exp_list
+):
 
 
     # fingerprint dictionaries
@@ -111,11 +113,13 @@ def fingerprint_subroutine(obs_types,
                 for obs in obs_types:
 
                     # weighted mean
-                    mod_ar6 = ar6_weighted_mean(continents,
-                                            mod_ens[mod][exp][obs],
-                                            ar6_regs[obs],
-                                            nt,
-                                            ns)
+                    mod_ar6 = ar6_weighted_mean(
+                        continents,
+                        mod_ens[mod][exp][obs],
+                        ar6_regs[obs],
+                        nt,
+                        ns
+                    )
                     mod_ar6 = del_rows(mod_ar6) # remove tsteps with nans (temporal x spatial shaped matrix)
                     mmm[exp][obs].append(mod_ar6) # set aside mod_ar6 for mmm global analysis of ar6 (will center after ensemble mean)
                     input_mod_ar6 = deepcopy(mod_ar6)
@@ -269,20 +273,23 @@ def fingerprint_subroutine(obs_types,
                 for exp in exps:
 
                     # weighted mean
-                    mod_ar6 = ar6_weighted_mean(continents,
-                                                mod_ens[mod][exp],
-                                                ar6_regs[mod],
-                                                nt,
-                                                ns,
-                                                weight,
-                                                ar6_wts[mod])
+                    mod_ar6 = ar6_weighted_mean(
+                        continents,
+                        mod_ens[mod][exp],
+                        ar6_regs[mod],
+                        nt,
+                        ns,
+                        weight,
+                        ar6_wts[mod]
+                    )
                     mod_ar6 = del_rows(mod_ar6) # remove tsteps with nans (temporal x spatial shaped matrix)
                     mmm[exp].append(mod_ar6) # set aside mod_ar6 for mmm global analysis of ar6 (will center after ensemble mean)
                     input_mod_ar6 = deepcopy(mod_ar6)
                     mod_ar6_center = temp_center(
-                        nt,
-                        ns,
-                        input_mod_ar6)  # temporal centering
+                            nt,
+                            ns,
+                            input_mod_ar6
+                        )  # temporal centering
                     fp_data[mod][exp] = mod_ar6_center.flatten() # 1-D mod array to go into DA
                     fp_data_continental[mod][exp] = {} # 1-D mod arrays per continent for continental DA
                     fp_data_ar6[mod][exp] = {} # 1-D mod arrays per continent for ar6 DA
@@ -320,13 +327,16 @@ def fingerprint_subroutine(obs_types,
 
             for exp in exps:
 
-                ens, _ = ensembler(mmm[exp],
-                                ax=0)
+                ens, _ = ensembler(
+                    mmm[exp],
+                    ax=0
+                )
                 input_ens = deepcopy(ens)
                 ens_center = temp_center(
                     nt,
                     ns,
-                    input_ens)
+                    input_ens
+                )
                 fp_data['mmm'][exp] = ens_center.flatten()
                 fp_data_continental['mmm'][exp] = {}
                 fp_data_ar6['mmm'][exp] = {}
@@ -334,19 +344,24 @@ def fingerprint_subroutine(obs_types,
                 for c in continents.keys():
 
                     n = len(continents[c])
-                    ens, _ = ensembler(mmm_c[exp][c],
-                                    ax=0)
+                    ens, _ = ensembler(
+                        mmm_c[exp][c],
+                        ax=0
+                    )
                     input_ens = deepcopy(ens)
                     ens_center = temp_center(
                         nt,
                         n,
-                        ens)
+                        ens
+                    )
                     fp_data_continental['mmm'][exp][c] = ens_center.flatten()
 
                     for ar6 in continents[c]:
                         
-                        ens = np.mean(mmm_ar6[exp][ar6],
-                                    axis=0)
+                        ens = np.mean(
+                            mmm_ar6[exp][ar6],
+                            axis=0
+                        )
                         ens_center = ens - np.mean(ens)
                         fp_data_ar6['mmm'][exp][ar6] = ens_center.flatten()
                         
@@ -354,38 +369,50 @@ def fingerprint_subroutine(obs_types,
             for mod in models:
 
                 fp_stack = [fp_data[mod][exp] for exp in fp_data[mod].keys() if exp in exp_list]
-                fp[mod] = np.stack(fp_stack,
-                                axis=0)
+                fp[mod] = np.stack(
+                    fp_stack,
+                    axis=0
+                )
 
                 for c in continents.keys():
 
                     fp_stack = [fp_data_continental[mod][exp][c] for exp in fp_data_continental[mod].keys() if exp in exp_list]
-                    fp_continental[mod][c] = np.stack(fp_stack,
-                                                    axis=0)
+                    fp_continental[mod][c] = np.stack(
+                        fp_stack,
+                        axis=0
+                    )
 
                     for ar6 in continents[c]:
 
                         fp_stack = [fp_data_ar6[mod][exp][ar6] for exp in fp_data_ar6[mod].keys() if exp in exp_list]
-                        fp_ar6[mod][ar6] = np.stack(fp_stack,
-                                                    axis=0)
+                        fp_ar6[mod][ar6] = np.stack(
+                            fp_stack,
+                            axis=0
+                        )
                 
             fp_stack = [fp_data['mmm'][exp] for exp in fp_data['mmm'].keys() if exp in exp_list]
-            fp['mmm'] = np.stack(fp_stack,
-                                axis=0)
+            fp['mmm'] = np.stack(
+                fp_stack,
+                axis=0
+            )
             fp_continental['mmm'] = {}
             fp_ar6['mmm'] = {}
 
             for c in continents.keys():
                 
                 fp_stack = [fp_data_continental['mmm'][exp][c] for exp in fp_data_continental['mmm'].keys() if exp in exp_list]
-                fp_continental['mmm'][c] = np.stack(fp_stack,
-                                                    axis=0)
+                fp_continental['mmm'][c] = np.stack(
+                    fp_stack,
+                    axis=0
+                )
                 
                 for ar6 in continents[c]:
                     
                     fp_stack = [fp_data_ar6['mmm'][exp][ar6] for exp in fp_data_ar6['mmm'].keys() if exp in exp_list]
-                    fp_ar6['mmm'][ar6] = np.stack(fp_stack,
-                                                axis=0)
+                    fp_ar6['mmm'][ar6] = np.stack(
+                        fp_stack,
+                        axis=0
+                    )
               
         # aggregate at continental level
         if agg == 'continental':
@@ -403,20 +430,23 @@ def fingerprint_subroutine(obs_types,
                 for exp in exps:
 
                     # weighted mean
-                    mod_cnt = cnt_weighted_mean(continents,
-                                                mod_ens[mod][exp],
-                                                cnt_regs[mod],
-                                                nt,
-                                                ns,
-                                                weight,
-                                                cnt_wts[mod])
+                    mod_cnt = cnt_weighted_mean(
+                        continents,
+                        mod_ens[mod][exp],
+                        cnt_regs[mod],
+                        nt,
+                        ns,
+                        weight,
+                        cnt_wts[mod]
+                    )
                     mod_cnt = del_rows(mod_cnt) # remove tsteps with nans (temporal x spatial shaped matrix)
                     mmm[exp].append(mod_cnt) # set aside mod_ar6 for mmm global analysis of ar6 (will center after ensemble mean)
                     input_mod_cnt = deepcopy(mod_cnt)
                     mod_cnt_center = temp_center(
                         nt,
                         ns,
-                        input_mod_cnt)  # temporal centering
+                        input_mod_cnt
+                    )  # temporal centering
                     fp_data[mod][exp] = mod_cnt_center.flatten() # 1-D mod array to go into DA
 
             # mmm of individual model means for global + continental
@@ -424,25 +454,32 @@ def fingerprint_subroutine(obs_types,
 
             for exp in exps:
 
-                ens, _ = ensembler(mmm[exp],
-                                ax=0)
+                ens, _ = ensembler(
+                    mmm[exp],
+                    ax=0
+                )
                 input_ens = deepcopy(ens)
                 ens_center = temp_center(
                     nt,
                     ns,
-                    input_ens)
+                    input_ens
+                )
                 fp_data['mmm'][exp] = ens_center.flatten()
                         
             # select fp data for analysis
             for mod in models:
 
                 fp_stack = [fp_data[mod][exp] for exp in fp_data[mod].keys() if exp in exp_list]
-                fp[mod] = np.stack(fp_stack,
-                                axis=0)
+                fp[mod] = np.stack(
+                    fp_stack,
+                    axis=0
+                )
                 
             fp_stack = [fp_data['mmm'][exp] for exp in fp_data['mmm'].keys() if exp in exp_list]
-            fp['mmm'] = np.stack(fp_stack,
-                                axis=0)
+            fp['mmm'] = np.stack(
+                fp_stack,
+                axis=0
+            )
 
     return fp,fp_continental,fp_ar6
 

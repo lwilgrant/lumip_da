@@ -1904,7 +1904,7 @@ def plot_scaling_map_combined(
                 if mod == 'mmm':
                     handles = [Rectangle((0,0),1,1,color=color_mapping[exp][2]),
                                Rectangle((0,0),1,1,color=color_mapping[exp][1])]
-                    labels = [r'$\beta$' + u"\u00B1" + '90%' + '$\it{CI}$' + '=1',
+                    labels = [r'$\beta$' + u"\u00B1" + '90%' + '$\it{CI}$' + r'$\ni$'+'1',
                               r'$\beta$' + u"\u00B1" + '90%' + '$\it{CI}$' + '>0']
                     ax.legend(handles,
                               labels,
@@ -1912,20 +1912,6 @@ def plot_scaling_map_combined(
                               ncol=2,
                               mode="expand",
                               frameon=False)
-                        
-                        
-    #                         legendcols = [col_pimean,col_histmean,col_rcp26mean,col_rcp60mean,col_rcp85mean,col_fill]
-    # handles = [Line2D([0],[0],linestyle='-',lw=legend_lw,color=legendcols[0]),\
-    #            Line2D([0],[0],linestyle='-',lw=legend_lw,color=legendcols[1]),\
-    #            Line2D([0],[0],linestyle='-',lw=legend_lw,color=legendcols[2]),\
-    #            Line2D([0],[0],linestyle='-',lw=legend_lw,color=legendcols[3]),\
-    #            Line2D([0],[0],linestyle='-',lw=legend_lw,color=legendcols[4]),\
-    #            Rectangle((0,0),1,1,color=legendcols[5])]
-    # labels= [lab_pimean,lab_histmean,lab_26mean,lab_60mean,lab_85mean,lab_fill]
-    # ax1.legend(handles, labels, bbox_to_anchor=(x0, y0, xlen, ylen), loc=3,   #bbox: (x, y, width, height)
-    #            ncol=6,fontsize=legend_font, mode="expand", borderaxespad=0.,\
-    #            frameon=False, columnspacing=0.05, handlelength=legend_entrylen, handletextpad=legend_entrypad)
-                        
                         
                 i += 1
             j += 1

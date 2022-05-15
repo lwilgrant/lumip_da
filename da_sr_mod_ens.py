@@ -38,27 +38,29 @@ from da_funcs import *
 #%%============================================================================
 
 # mod data
-def ensemble_subroutine(modDIR,
-                        maps,
-                        models,
-                        exps,
-                        var,
-                        lu_techn,
-                        measure,
-                        lulcc_type,
-                        y1,
-                        grid,
-                        agg,
-                        weight,
-                        freq,
-                        obs_types,
-                        continents,
-                        ns,
-                        fp_files,
-                        ar6_regs,
-                        ar6_wts,
-                        cnt_regs,
-                        cnt_wts):
+def ensemble_subroutine(
+    modDIR,
+    maps,
+    models,
+    exps,
+    var,
+    lu_techn,
+    measure,
+    lulcc_type,
+    y1,
+    grid,
+    agg,
+    weight,
+    freq,
+    obs_types,
+    continents,
+    ns,
+    fp_files,
+    ar6_regs,
+    ar6_wts,
+    cnt_regs,
+    cnt_wts
+):
 
     os.chdir(modDIR)
     mod_data = {}
@@ -106,20 +108,24 @@ def ensemble_subroutine(modDIR,
                 
                     for file in fp_files[mod][exp][obs]:
                     
-                        da = nc_read(file,
-                                     y1,
-                                     var,
-                                     obs=obs,
-                                     freq=freq)
+                        da = nc_read(
+                            file,
+                            y1,
+                            var,
+                            obs=obs,
+                            freq=freq
+                        )
                         da = da.where(lc == 1)
                         if i == 0:
                             nt = len(da.time.values)
                         i += 1
-                        mod_ar6 = ar6_weighted_mean(continents,
-                                                da,
-                                                ar6_regs[obs],
-                                                nt,
-                                                ns)
+                        mod_ar6 = ar6_weighted_mean(
+                            continents,
+                            da,
+                            ar6_regs[obs],
+                            nt,
+                            ns
+                        )
                         mod_ar6 = del_rows(mod_ar6)
                         input_mod_ar6 = deepcopy(mod_ar6)
                         mod_ar6_center = temp_center(ns,
@@ -173,10 +179,12 @@ def ensemble_subroutine(modDIR,
                 
                 for file in fp_files[mod][exp]:
                 
-                    da = nc_read(file,
-                                 y1,
-                                 var,
-                                 freq=freq)
+                    da = nc_read(
+                        file,
+                        y1,
+                        var,
+                        freq=freq
+                    )
                     da = da.where(lc == 1)
                     if i == 0:
                         try:
@@ -187,37 +195,43 @@ def ensemble_subroutine(modDIR,
                     
                     if agg == 'ar6':
                         
-                        mod_ar6 = ar6_weighted_mean(continents,
-                                                    da,
-                                                    ar6_regs[mod],
-                                                    nt,
-                                                    ns,
-                                                    weight,
-                                                    ar6_wts[mod])
+                        mod_ar6 = ar6_weighted_mean(
+                            continents,
+                            da,
+                            ar6_regs[mod],
+                            nt,
+                            ns,
+                            weight,
+                            ar6_wts[mod]
+                        )
                         mod_ar6 = del_rows(mod_ar6)
                         input_mod_ar6 = deepcopy(mod_ar6)
                         mod_ar6_center = temp_center(
                             nt,
                             ns,
-                            input_mod_ar6)
+                            input_mod_ar6
+                        )
                         mod_ts_ens[mod][exp].append(mod_ar6_center)
                         mod_ts_ens['mmm'][exp].append(mod_ar6_center)
                         
                     elif agg == 'continental':
                         
-                        mod_cnt = cnt_weighted_mean(continents,
-                                                    da,
-                                                    cnt_regs[mod],
-                                                    nt,
-                                                    ns,
-                                                    weight,
-                                                    cnt_wts[mod])
+                        mod_cnt = cnt_weighted_mean(
+                            continents,
+                            da,
+                            cnt_regs[mod],
+                            nt,
+                            ns,
+                            weight,
+                            cnt_wts[mod]
+                        )
                         mod_cnt = del_rows(mod_cnt)
                         input_mod_cnt = deepcopy(mod_cnt)
                         mod_cnt_center = temp_center(
                             nt,
                             ns,
-                            input_mod_cnt)
+                            input_mod_cnt
+                        )
                         mod_ts_ens[mod][exp].append(mod_cnt_center)
                         mod_ts_ens['mmm'][exp].append(mod_cnt_center)      
                                           

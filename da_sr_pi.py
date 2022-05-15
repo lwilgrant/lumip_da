@@ -31,33 +31,35 @@ from da_funcs import *
 #%%============================================================================
 
 # mod data
-def picontrol_subroutine(piDIR,
-                         mapDIR,
-                         allpiDIR,
-                         sfDIR,
-                         pi_files,
-                         grid,
-                         agg,
-                         pi,
-                         models,
-                         obs_types,
-                         continents,
-                         continent_names,
-                         var,
-                         y1,
-                         freq,
-                         maps,
-                         grid_area,
-                         ar6_regs,
-                         ar6_wts,
-                         ar6_areas,
-                         ar6_land,
-                         cnt_regs,
-                         cnt_wts,
-                         cnt_areas,
-                         weight,
-                         ns,
-                         nt):
+def picontrol_subroutine(
+    piDIR,
+    mapDIR,
+    allpiDIR,
+    sfDIR,
+    pi_files,
+    grid,
+    agg,
+    pi,
+    models,
+    obs_types,
+    continents,
+    continent_names,
+    var,
+    y1,
+    freq,
+    maps,
+    grid_area,
+    ar6_regs,
+    ar6_wts,
+    ar6_areas,
+    ar6_land,
+    cnt_regs,
+    cnt_wts,
+    cnt_areas,
+    weight,
+    ns,
+    nt
+):
 
     # pi data
     os.chdir(piDIR)
@@ -117,20 +119,26 @@ def picontrol_subroutine(piDIR,
                 for file in pi_files[mod][obs]:
                     
                     # mod data and coords for ar6 mask
-                    da = nc_read(file,
-                                y1,
-                                var,
-                                obs=obs,
-                                freq=freq).where(maps[obs] == 1)
-                    pi_ar6 = ar6_weighted_mean(continents, # weighted mean
-                                           da,
-                                           ar6_regs[obs],
-                                           nt,
-                                           ns)
+                    da = nc_read(
+                        file,
+                        y1,
+                        var,
+                        obs=obs,
+                        freq=freq
+                    ).where(maps[obs] == 1)
+                    pi_ar6 = ar6_weighted_mean(
+                        continents, # weighted mean
+                        da,
+                        ar6_regs[obs],
+                        nt,
+                        ns
+                    )
                     pi_ar6 = del_rows(pi_ar6) # remove tsteps with nans (temporal x spatial shaped matrix)
                     input_pi_ar6 = deepcopy(pi_ar6) # temporal centering
-                    pi_ar6 = temp_center(ns,
-                                         input_pi_ar6)
+                    pi_ar6 = temp_center(
+                        ns,
+                        input_pi_ar6
+                    )
                     pi_ts_ens[mod][obs].append(pi_ar6)
                     
                     if picm <= min_pi_samp:
