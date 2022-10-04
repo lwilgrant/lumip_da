@@ -76,7 +76,7 @@ flag_data_agg=1   # 0: global d&a (via flag_analysis) w/ ar6 scale input points 
                   # 1: global d&a w/ continental scale input points             
                   
 # << SELECT >>
-flag_lulcc=0      # 0: forest loss
+flag_lulcc=0      # 0: forest loss (this option is meaningless as I decided to use all pixels in each ar6 region)
                   # 1: crop expansion
                   
 # << SELECT >>
@@ -85,7 +85,7 @@ flag_grid=0       # 0: model grid resolution (decided on always using this; many
                   
 # << SELECT >>
 flag_pi=1         # 0: only use pi from chosen models
-                  # 1: use all available pi
+                  # 1: use all available pi (end analysis is to always use option 1)
 
 # << SELECT >>
 flag_factor=1     # 0: 2-factor -> hist-noLu and lu
@@ -108,7 +108,7 @@ flag_lulcc_measure=2    # 0: absolute change
                         
 # << SELECT >>
 flag_weight=1           # 0: no weights on spatial means (not per pixel, which is automatic, but for overall area diff across continents when flag_data_agg == 1)
-                        # 1: weights (asia weight of 1, australia weight of ~0.18; same for ar6 within continents)    
+                        # 1: weights (asia weight of 1, australia weight of ~0.18; same for ar6 within continents; publication decision)    
                         
 # << SELECT >>
 flag_lu_technique=1     # 0: lu as mean of individual (historical - hist-nolu)
@@ -119,11 +119,11 @@ flag_y1=1         # 0: 1915
                   # 1: 1965
 
 # << SELECT >>
-flag_len=0        # 0: 50
+flag_len=0        # 0: 50 (publication decision)
                   # 1: 100
 
 # << SELECT >>
-flag_resample=0    # 0: 5 year block means
+flag_resample=0    # 0: 5 year block means (publication decision)
                    # 1: 10 year block means
                    # 2: 2, 25 yr block means which are subtracted to collapse time dim
 
@@ -297,13 +297,13 @@ letters = ['a', 'b', 'c',
            'y', 'z']
 
 
-#==============================================================================
+#%%============================================================================
 # get data 
 #==============================================================================
 
 if analysis != 'combined': # run analysis if flag_analysis!=3
     
-#%%============================================================================
+#============================================================================
     from da_sr_file_alloc import *
     map_files,grid_files,fp_files,pi_files,obs_files,nx = file_subroutine(
         mapDIR,
@@ -323,7 +323,7 @@ if analysis != 'combined': # run analysis if flag_analysis!=3
         var
     )
 
-#%%============================================================================
+#============================================================================
 
     # luh2 maps and ar6 regions
     os.chdir(curDIR)
@@ -345,7 +345,7 @@ if analysis != 'combined': # run analysis if flag_analysis!=3
         thresh
     )    
 
-#%%============================================================================
+#============================================================================
 
     # mod ensembles
     os.chdir(curDIR)
@@ -374,7 +374,7 @@ if analysis != 'combined': # run analysis if flag_analysis!=3
         cnt_wts
     )
 
-#%%============================================================================
+#============================================================================
 
     # mod fingerprint (nx is dummy var not used in OLS OF)
     os.chdir(pklDIR)
@@ -434,7 +434,7 @@ if analysis != 'combined': # run analysis if flag_analysis!=3
         fp_continental = dictionary['continental']
         fp_ar6 = dictionary['ar6']
 
-#%%============================================================================
+#============================================================================
 
     # pi data
     os.chdir(pklDIR)
@@ -505,7 +505,7 @@ if analysis != 'combined': # run analysis if flag_analysis!=3
         ctl_data_continental = dictionary['continental']
         ctl_data_ar6 = dictionary['ar6']
 
-#%%============================================================================
+#============================================================================
 
     # obs data
     os.chdir(pklDIR)
@@ -568,7 +568,7 @@ if analysis != 'combined': # run analysis if flag_analysis!=3
         obs_data_continental = dictionary['continental']
         obs_data_ar6 = dictionary['ar6']
 
-#%%============================================================================
+#============================================================================
 # detection & attribution 
 #==============================================================================
 
@@ -637,6 +637,10 @@ if analysis != 'combined': # run analysis if flag_analysis!=3
         exp_list,
         pi
     )
+    
+else:
+    
+    pass
            
 #%%============================================================================
 # plotting scaling factors
@@ -792,7 +796,7 @@ elif analysis == 'combined':
         reg,
         flag_svplt,
         outDIR
-    )    
+    )
          
     
     

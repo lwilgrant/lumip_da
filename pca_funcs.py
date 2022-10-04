@@ -216,15 +216,16 @@ def lengther(mask):
 
 def data_lumper(dataset,
                 models,
-                scale):
+                scale,
+                lulcc_type):
     
     data = np.empty(1)
     for mod in models:
         if scale == 'global':
-            mod_data = dataset[mod]['treeFrac'].values.flatten()
+            mod_data = dataset[mod][lulcc_type].values.flatten()
         elif scale == 'latitudinal':
             for ltr in ['boreal','temperate_north','tropics']:
-                mod_data = dataset[mod]['treeFrac'][ltr].values.flatten()
+                mod_data = dataset[mod][lulcc_type][ltr].values.flatten()
         data = np.append(data,mod_data)
                         
     data = data[~np.isnan(data)]
@@ -355,7 +356,8 @@ def sig_noise_plot(sig_noise,
                    letters,
                    t_ext,
                    flag_svplt,
-                   outDIR):
+                   outDIR,
+                   lulcc_type):
 
     x=7
     y=6
@@ -374,8 +376,6 @@ def sig_noise_plot(sig_noise,
     le_y0 = 0.4
     le_xlen = 0.2
     le_ylen = 0.5
-
-    legend_font = 5
     
     # space between entries
     legend_entrypad = 0.5
@@ -397,7 +397,7 @@ def sig_noise_plot(sig_noise,
     title_font = 11
     cbtitle_font = 11
     tick_font = 10
-    legend_font=10
+    legend_font=14
 
     # placment eof cbar
     cb_x0 = 1.05
@@ -415,7 +415,8 @@ def sig_noise_plot(sig_noise,
     cmap_list,_,_,_,_ = colormap_details('BrBG_r',
                                         data_lumper(eof_dict,
                                                     models,
-                                                    scale))
+                                                    scale,
+                                                    lulcc_type))
     levels = np.around(np.arange(-0.04,0.045,0.005),decimals=3)
     levels = np.delete(levels,np.where(levels==0))
     tick_labels = np.around(np.arange(-0.04,0.045,0.01),decimals=3)
@@ -557,10 +558,12 @@ def sig_noise_plot(sig_noise,
                 ax.xaxis.set_ticklabels(np.arange(-4,5,2))
             
             if i == 0:
-                ax.legend(frameon=False,
-                        bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
-                        fontsize=legend_font,
-                        labelspacing=legend_entrypad)
+                ax.legend(
+                    frameon=False,
+                    bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
+                    fontsize=legend_font,
+                    labelspacing=legend_entrypad
+                )
                 
             i += 1
             
@@ -628,12 +631,10 @@ def sig_noise_plot(sig_noise,
         colors['pi'] = 'lightgray'
 
         # legend location
-        le_x0 = 0.65
+        le_x0 = 0.75
         le_y0 = -1.2
         le_xlen = 0.2
         le_ylen = 0.5
-
-        legend_font = 5
         
         # space between entries
         legend_entrypad = 0.5
@@ -655,7 +656,7 @@ def sig_noise_plot(sig_noise,
         title_font = 11
         cbtitle_font = 11
         tick_font = 10
-        legend_font=10        
+        legend_font=14        
             
         # placment eof cbar
         cb_x0 = 0.5725
@@ -706,13 +707,13 @@ def sig_noise_plot(sig_noise,
         cmap_list,_,_,_,_ = colormap_details('BrBG_r',
                                             data_lumper(eof_dict,
                                                         models,
-                                                        scale))
+                                                        scale,
+                                                        lulcc_type))
         levels = np.around(np.arange(-0.04,0.045,0.005),decimals=3)
         levels = np.delete(levels,np.where(levels==0))
         tick_labels = np.around(np.arange(-0.04,0.045,0.01),decimals=3)
         tick_locs = tick_labels
         norm = mpl.colors.BoundaryNorm(levels,cmap_list.N)
-
 
         i = 0        
 
@@ -734,23 +735,26 @@ def sig_noise_plot(sig_noise,
                              fit=sts.norm,
                              fit_kws={"color":colors['pi']},
                              color = colors['pi'],
-                             label='PIC',
+                            #  label='PIC',
+                             label=r'$\mathregular{t_{PIC}}$',
                              kde=False)
                     
                 # plot lu s/n
-                ax.vlines(x=np.abs(sig_noise['lu_S_N'].sel(models=mod,landcover='treeFrac',lat_keys=ltr)),
+                # ax.vlines(x=np.abs(sig_noise['lu_S_N'].sel(models=mod,landcover='treeFrac',lat_keys=ltr)),
+                ax.vlines(x=np.abs(sig_noise['lu_S_N'].sel(models=mod,landcover=lulcc_type,lat_keys=ltr)),
                           ymin=0,
                           ymax=0.5,
                           colors=colors['lu_treeFrac'],
-                          label='LU mean',
+                        #   label='LU',
+                          label=r'$\mathregular{t_{LU}}$',
                           zorder=20)     
                 # plot lu rls s/n
-                ax.vlines(x=np.abs(sig_noise['lu_rls_S_N_{}_{}'.format(mod,ltr)].sel(landcover='treeFrac')),
-                          ymin=0,
-                          ymax=0.5,
-                          colors=colors['lu_treeFrac_rls'],
-                          label='LU rls',
-                          zorder=10)                 
+                # ax.vlines(x=np.abs(sig_noise['lu_rls_S_N_{}_{}'.format(mod,ltr)].sel(landcover='treeFrac')),
+                #           ymin=0,
+                #           ymax=0.5,
+                #           colors=colors['lu_treeFrac_rls'],
+                #           label='LU rls',
+                #           zorder=10)                 
                     
                 # likelihood s/n for detectability
                 # lat_pcts[lat][str(pct)]
@@ -795,14 +799,19 @@ def sig_noise_plot(sig_noise,
                           zorder=30)                
                 
                 
-            for ax in ax_set:
+            for ax,lat_label in zip(ax_set,['Boreal','Temperate-north','Tropical \n to temperate-south']):
                 
                 if ax == ax_set[0]:
                     
                     ax.set_title(letters[i],
                                  loc='left',
-                                 fontweight='bold')         
-                           
+                                 fontweight='bold')  
+                if mod == 'UKESM1-0-LL':
+                    ax.text(.05,
+                            .75,
+                            lat_label,
+                            horizontalalignment='left',
+                            transform=ax.transAxes)
                 ax.spines['right'].set_visible(False)
                 ax.spines['top'].set_visible(False)
                 ax.set_title(None)
@@ -820,11 +829,13 @@ def sig_noise_plot(sig_noise,
                     
                 if mod == models[-1]:
                     
-                    ax_set[-1].legend(frameon=False,
-                                      ncol=3,
-                                      bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
-                                      fontsize=legend_font,
-                                      labelspacing=legend_entrypad)                
+                    ax_set[-1].legend(
+                        frameon=False,
+                        ncol=3,
+                        bbox_to_anchor=(le_x0, le_y0, le_xlen, le_ylen),
+                        fontsize=legend_font,
+                        labelspacing=legend_entrypad
+                    )                
             
             ax = ax_set[1]
             
@@ -852,7 +863,8 @@ def sig_noise_plot(sig_noise,
             
             for ltr in lat_ranges:
 
-                eof_dict[mod]['treeFrac'][ltr].plot(ax=ax,
+                # eof_dict[mod]['treeFrac'][ltr].plot(ax=ax,
+                eof_dict[mod][lulcc_type][ltr].plot(ax=ax,
                                                     cmap=cmap_list,
                                                     cbar_ax=cbax,
                                                     levels=levels,
@@ -888,7 +900,8 @@ def sig_noise_plot(sig_noise,
             
             x_h = 4
             y_h1 = 0.5
-            template = eof_dict['CanESM5']['treeFrac']['boreal']
+            # template = eof_dict['CanESM5']['treeFrac']['boreal']
+            template = eof_dict['CanESM5'][lulcc_type]['boreal']
             x_m = template.lon[int(len(template.lon)/2)]*-1
             y_m1 = 80
             con = ConnectionPatch(xyA=(x_h,y_h1),
@@ -903,7 +916,8 @@ def sig_noise_plot(sig_noise,
                 
                 x_h = 4
                 y_h1 = 0
-                template = eof_dict['CanESM5']['treeFrac']['boreal']
+                # template = eof_dict['CanESM5']['treeFrac']['boreal']
+                template = eof_dict['CanESM5'][lulcc_type]['boreal']
                 x_m = template.lon[int(len(template.lon)/2)]*-1
                 con = ConnectionPatch(xyA=(x_h,y_h1),
                                       xyB=(x_m,y_m1),
@@ -937,9 +951,7 @@ def sig_noise_plot(sig_noise,
         if flag_svplt == 0:
             pass
         elif flag_svplt == 1:
-            f.savefig(outDIR+'/pca_noise_{}_{}.png'.format(scale,t_ext))
-            
-#%%==============================================================================
+            f.savefig(outDIR+'/pca_noise_{}_{}_{}_newlabel.png'.format(scale,t_ext,lulcc_type))
 
     elif scale == 'continental':
 
@@ -1115,6 +1127,6 @@ def sig_noise_plot(sig_noise,
                         
                     i += 1
 
-                f.savefig(outDIR+'/pca_noise_{}_{}_{}.png'.format(scale,ar6,t_ext))
+                f.savefig(outDIR+'/pca_noise_{}_{}_{}_newlabel.png'.format(scale,ar6,t_ext))
 
         # %%

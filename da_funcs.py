@@ -1882,16 +1882,20 @@ def plot_scaling_map_combined(
                 ax.set_xticks([])
                 if j == 0:
                     if exp == 'hist-noLu':
-                        exp_label = 'HISTNL'
+                        # exp_label = 'HISTNL'
+                        exp_label = r'$\mathregular{t_{HISTNL}}$'
                     elif exp == 'lu':
-                        exp_label = 'LU'
+                        # exp_label = 'LU'
+                        exp_label = r'$\mathregular{t_{LU}}$'
                     elif exp == 'historical':
-                        exp_label = 'HIST'
+                        # exp_label = 'HIST'
+                        exp_label = r'$\mathregular{t_{HIST}}$'
                     ax.set_title(
                         exp_label,
                         loc='center',
                         fontweight='bold',
-                        fontsize=10)
+                        # fontsize=10)
+                        fontsize=14)
                 if i == 0:
                     ax.text(-0.07, 0.55, 
                             mod, 
@@ -2014,8 +2018,11 @@ def plot_scaling_map_combined(
             
             if ax == axes.flatten()[-1]:
                 
-                ax.set_xlabel(r'$\beta_{HISTNL}$',
-                            fontsize=12,
+                # ax.set_xlabel(r'$\beta_{HISTNL}$',
+                # ax.set_xlabel(r'$\beta_{t_{HISTNL}}$',r'$\mathregular{t_{HIST}}$'
+                ax.set_xlabel(r'$\beta_{\mathregular{t_{HISTNL}}}$',
+                            # fontsize=12,
+                            fontsize=14,
                             color=median_cols['hist-noLu'],
                             fontweight='bold')
                 ax.set_xticks(xticks_OF)
@@ -2024,16 +2031,20 @@ def plot_scaling_map_combined(
             if exp_list == ['hist-noLu','lu']:
             
                 ax.yaxis.set_label_position("right")
-                ax.set_ylabel(r'$\beta_{LU}$',
-                            fontsize=12,
+                # ax.set_ylabel(r'$\beta_{LU}$',
+                ax.set_ylabel(r'$\beta_{\mathregular{t_{LU}}}$',
+                            # fontsize=12,
+                            fontsize=14,
                             color=median_cols['lu'],
                             fontweight='bold')
                 
             elif exp_list == ['historical','hist-noLu']:
                 
                 ax.yaxis.set_label_position("right")
-                ax.set_ylabel(r'$\beta_{HIST}$',
-                            fontsize=12,
+                # ax.set_ylabel(r'$\beta_{HIST}$',
+                ax.set_ylabel(r'$\beta_{\mathregular{t_{HIST}}}$',
+                            # fontsize=12,
+                            fontsize=14,
                             color=median_cols['historical'],
                             fontweight='bold')
                 
@@ -2060,11 +2071,11 @@ def plot_scaling_map_combined(
             
             if exp_list == ['hist-noLu', 'lu']:
                 
-                f.savefig(outDIR+'/combined_attribution_2-factor_{}_{}-grid_{}-pi_{}-weight_{}_{}.png'.format(
+                f.savefig(outDIR+'/combined_attribution_2-factor_{}_{}-grid_{}-pi_{}-weight_{}_{}_newlabel.png'.format(
                     obs,grid,pi,weight,freq,reg),bbox_inches='tight',dpi=500)
                 
             elif exp_list == ['historical','hist-noLu']:
                 
-                f.savefig(outDIR+'/combined_attribution_1-factor_{}_{}-grid_{}-pi_{}-weight_{}_{}.png'.format(
+                f.savefig(outDIR+'/combined_attribution_1-factor_{}_{}-grid_{}-pi_{}-weight_{}_{}_newlabel.png'.format(
                     obs,grid,pi,weight,freq,reg),bbox_inches='tight',dpi=500)
 # %%

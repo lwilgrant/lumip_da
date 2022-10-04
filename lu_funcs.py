@@ -1054,13 +1054,13 @@ def combined_plot(
     cstlin_lw = 0.75   # linewidth for coastlines
 
     # fonts
-    title_font = 12
+    title_font = 14
     cbtitle_font = 20
-    tick_font = 10
+    tick_font = 12
     legend_font=12
 
-    x=14
-    y=8
+    x=21
+    y=12
 
     # placment lu trends cbar
     cb_lu_x0 = 0.1275
@@ -1189,7 +1189,7 @@ def combined_plot(
                             center=0,
                             add_labels=False)
             
-            for ax,column in zip(row_axes,['LU response',lc,'corr(LU,{})'.format(lc)]):
+            for ax,column in zip(row_axes,[r'$\mathregular{t_{LU}}$',lc,'corr({},{})'.format(r'$\mathregular{t_{LU}}$',lc)]):
                 
                 ax.set_extent(extent,
                             crs=ccrs.PlateCarree())
@@ -1204,7 +1204,7 @@ def combined_plot(
                         if mod == 'CanESM5':
                             height = 0.3
                         else:
-                            height= 0
+                            height= 0.15
                         ax.text(-0.1,
                                 height,
                                 mod,
@@ -1231,7 +1231,8 @@ def combined_plot(
                                         extend='both',
                                         ticks=tick_locs_lu,
                                         drawedges=False)
-        cb_lu.set_label('LU trends (°C/5-years)',
+        # cb_lu.set_label('LU trends (°C/5-years)',
+        cb_lu.set_label( r'$\mathregular{t_{LU}}$' +' trends (°C/5-years)',
                         size=title_font)
         cb_lu.ax.xaxis.set_label_position('top')
         cb_lu.ax.tick_params(labelcolor=col_cbticlbl,
@@ -1294,6 +1295,6 @@ def combined_plot(
         if flag_svplt == 0:
             pass
         elif flag_svplt == 1:
-            f.savefig(outDIR+'/combined_trends_corr_{}_{}.png'.format(lc,t_ext))
+            f.savefig(outDIR+'/combined_trends_corr_{}_{}_newlabel.png'.format(lc,t_ext))
 
 # %%
